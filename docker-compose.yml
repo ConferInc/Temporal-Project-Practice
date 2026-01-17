@@ -1,0 +1,102 @@
+services:
+  temporal:
+    image: temporalio/auto-setup:latest
+    ports:
+      - "17233:7233"
+      - "8233:8233"
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_SEEDS=postgres
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_DB=temporal
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - VISIBILITY_DRIVER=elasticsearch
+    networks:
+      - temporal-network
+    depends_on:
+      - postgres
+      - elasticsearch
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=temporal
+      - POSTGRES_DB=temporal
+    networks:
+      - temporal-network
+    ports:
+      - "5432:5432"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    networks:
+      - temporal-network
+    ports:
+      - "9200:9200"
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8080:8080"
+    networks:
+      - temporal-network
+    depends_on:
+      - temporal
+
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
+    volumes:
+      - ./backend:/code
+    ports:
+      - "3001:3001"
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+    networks:
+      - temporal-network
+    depends_on:
+      - temporal
+
+  worker:
+    build: ./backend
+    restart: always
+    # We keep your command, it is fine
+    command: python -m app.worker
+    volumes:
+      - ./backend:/code
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      # 1. Add your OpenAI Key here so the AI works
+      - OPENAI_API_KEY=${OPENAI_API_KEY} 
+      # 2. THE FIX: Tell Python to look in /code/app for files like 'workflows.py'
+      - PYTHONPATH=/code/app 
+    networks:
+      - temporal-network
+    depends_on:
+      - backend
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - temporal-network
+      
+
+networks:
+  temporal-network:
+    driver: bridge
