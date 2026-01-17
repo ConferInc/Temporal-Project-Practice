@@ -17,7 +17,11 @@ app = FastAPI(title="Moxi Mortgage API", version="1.0.0")
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,10 +48,11 @@ async def apply_for_loan(
     name: str = Form(...),
     email: str = Form(...),
     ssn: str = Form(...),
-    income: float = Form(...),
+    income: str = Form(...),
     id_document: UploadFile = File(...),
     tax_document: UploadFile = File(...),
-    pay_stub: UploadFile = File(...)
+    pay_stub: UploadFile = File(...),
+    credit_document: UploadFile = File(...)
 ):
     try:
         # 1. Create a Unique Application ID
@@ -65,12 +70,14 @@ async def apply_for_loan(
             path = os.path.join(app_dir, safe_name)
             with open(path, "wb") as buffer:
                 shutil.copyfileobj(uf.file, buffer)
-            return path, safe_name
+            # Return path and URL-friendly path
+            return path, f"/static/{app_id}/{safe_name}"
 
-        # Save all 3 files
-        path_id, name_id = save_file(id_document, "ID_Document")
-        path_tax, name_tax = save_file(tax_document, "Tax_Return")
-        path_pay, name_pay = save_file(pay_stub, "Pay_Stub")
+        # Save all 4 files
+        path_id, url_id = save_file(id_document, "ID_Document")
+        path_tax, url_tax = save_file(tax_document, "Tax_Return")
+        path_pay, url_pay = save_file(pay_stub, "Pay_Stub")
+        path_credit, url_credit = save_file(credit_document, "Credit_Report")
         
         # 4. Start Workflow
         client = await get_client()
@@ -86,12 +93,14 @@ async def apply_for_loan(
             "file_paths": {
                 "id_document": path_id,
                 "tax_document": path_tax,
-                "pay_stub": path_pay
+                "pay_stub": path_pay,
+                "credit_document": path_credit
             },
             "public_urls": {
-                "id_document": f"/static/{app_id}/{name_id}",
-                "tax_document": f"/static/{app_id}/{name_tax}",
-                "pay_stub": f"/static/{app_id}/{name_pay}"
+                "id_document": url_id,
+                "tax_document": url_tax,
+                "pay_stub": url_pay,
+                "credit_document": url_credit
             }
         }
         

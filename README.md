@@ -51,16 +51,26 @@ docker-compose up -d --build
 ```
 *Note: The first build installs dependencies and may take a few minutes.*
 
-### 4. Generate Test Data
-We provide a script to generate realistic test "personas" (folders containing Tax Returns, IDs, etc.):
+## 🧪 Testing with Generated Data
 
-```bash
-# Install fpdf locally if needed: pip install fpdf
-python generate_test_data.py
-```
-This creates a `test_data/` folder with:
-- `Alice_Perfect`: High income, perfect credit match.
-- `Bob_Liar`: Stated Income $100k, but Tax Return shows $30k (Tests Fraud Detection).
+We include a script to generate realistic test/demo data for different scenarios.
+
+1.  **Generate Data**:
+    ```bash
+    python generate_test_data.py
+    ```
+    This creates a `test_data/` folder with subfolders for each applicant.
+
+2.  **Test Personas**:
+    *   **Alice_Perfect** (Auto-Approve): High Income ($120k), High Credit (780), consistent data.
+    *   **Bob_Liar** (Auto-Reject): Low Credit (550), Income Mismatch.
+    *   **Charlie_Manual** (Manual Review): Good Income ($70k), Moderate Credit (680). *Use this to test the Dashboard approval flow.*
+
+3.  **Run the Flow**:
+    *   Open User Portal (`http://localhost:3000`).
+    *   Fill in the form using data from one of the personas.
+    *   Upload the corresponding 4 PDFs from `test_data/[Name]/`.
+    *   Submit and watch the status update!
 
 ### 5. Access the App
 - **User Portal**: [http://localhost:3000](http://localhost:3000) (Apply here!)

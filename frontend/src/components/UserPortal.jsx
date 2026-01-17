@@ -15,7 +15,8 @@ export default function UserPortal() {
     const [files, setFiles] = useState({
         id_document: null,
         tax_document: null,
-        pay_stub: null
+        pay_stub: null,
+        credit_document: null
     });
 
     const [uploading, setUploading] = useState(false);
@@ -130,6 +131,7 @@ export default function UserPortal() {
                 {renderFileUpload("Valid ID (Passport/License)", "id_document")}
                 {renderFileUpload("Latest Tax Return (1040)", "tax_document")}
                 {renderFileUpload("Recent Pay Stub", "pay_stub")}
+                {renderFileUpload("Credit Report (PDF)", "credit_document")}
             </div>
 
             <div className="flex justify-between pt-6 border-t">
@@ -137,7 +139,7 @@ export default function UserPortal() {
                     className="text-gray-500 font-medium px-4 hover:text-gray-800 transition">
                     Back
                 </button>
-                <button type="submit" disabled={uploading || !files.id_document || !files.tax_document || !files.pay_stub}
+                <button type="submit" disabled={uploading || !files.id_document || !files.tax_document || !files.pay_stub || !files.credit_document}
                     className={`flex items-center justify-center w-48 px-6 py-3 rounded-lg font-bold text-lg shadow-lg transition
                         ${uploading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700 hover:-translate-y-0.5"}`}>
                     {uploading ? <Loader className="animate-spin" /> : "Submit Application"}

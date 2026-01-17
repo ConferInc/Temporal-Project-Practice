@@ -13,9 +13,13 @@ load_dotenv(override=True)
 @dataclass
 class LoanData:
     applicant_name: str
-    annual_income: int
-    credit_score: int
-    missing_docs: list[str]
+    annual_income: int = 0
+    credit_score: int = 0
+    missing_docs: list[str] = None 
+    
+    def __post_init__(self):
+        if self.missing_docs is None:
+            self.missing_docs = []
 
 @activity.defn
 async def analyze_document(document_text: str) -> LoanData:
@@ -54,18 +58,25 @@ async def analyze_document(document_text: str) -> LoanData:
         data = json.loads(clean_json_string)
         # ------------------------------
 
-        if not data.get("applicant_name") or not data.get("annual_income"):
+        if not data.get("applicant_name"):
+            # We relax the check for income because ID docs might not have it.
             raise ApplicationError(
-                "LLM extraction incomplete (Name or Income missing). Retrying...", 
+                "LLM extraction incomplete (Name missing). Retrying...", 
                 non_retryable=False
             )
 
         activity.logger.info(f"Success! Extracted: {data['applicant_name']}")
 
+        # Robust Conversion: Handle 'null', None, or missing keys
+        def to_int(val):
+            if val is None: return 0
+            try: return int(val)
+            except: return 0
+
         return LoanData(
-            applicant_name=data.get("applicant_name"),
-            annual_income=data.get("annual_income", 0),
-            credit_score=data.get("credit_score", 0),
+            applicant_name=data.get("applicant_name") or "Unknown",
+            annual_income=to_int(data.get("annual_income")),
+            credit_score=to_int(data.get("credit_score")),
             missing_docs=data.get("missing_docs") or []
         )
 
