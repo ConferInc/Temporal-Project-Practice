@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // This allows Docker to expose the port
     port: 3000,
+    allowedHosts: true,
     watch: {
       usePolling: true // Crucial for Windows Docker to see file changes
     }
