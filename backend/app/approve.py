@@ -19,7 +19,7 @@ async def main():
 
     # 3. Send the signal!
     # True = Approved, False = Rejected
-    await handle.signal(LoanProcessWorkflow.human_approval_signal, True)
+    await handle.signal(LoanProcessWorkflow.is_waiting, True)
 
     print(f"Signal sent to {workflow_id}: Loan Approved!")
 

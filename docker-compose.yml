@@ -70,7 +70,7 @@ services:
     build: ./backend
     restart: always
     # We keep your command, it is fine
-    command: python -m app.worker
+    command: watchmedo auto-restart --directory=/code/app --pattern=*.py --recursive -- python -m app.worker
     volumes:
       - ./backend:/code
     environment:

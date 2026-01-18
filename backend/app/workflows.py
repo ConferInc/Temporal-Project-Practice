@@ -1,9 +1,10 @@
+import asyncio 
 from datetime import timedelta
 from temporalio import workflow
 from temporalio.exceptions import ApplicationError
 
 # Import activities
-from app.activities import analyze_document, read_pdf_content, send_email_mock, LoanData
+from app.activities import analyze_document, read_pdf_content, send_email_mock, organize_files, LoanData
 
 @workflow.defn
 class LoanProcessWorkflow:
@@ -13,9 +14,11 @@ class LoanProcessWorkflow:
         self.data = None # Store full object
 
     @workflow.signal
+    @workflow.signal
     def human_approval_signal(self, approved: bool):
         self.is_approved = approved
         self.status = "Human Reviewed" if approved else "Rejected by Manager"
+        self.is_waiting = False
 
     @workflow.query
     def get_status(self) -> str:
@@ -27,87 +30,91 @@ class LoanProcessWorkflow:
 
     @workflow.run
     async def run(self, input_data: dict) -> str:
-        # Input Data Structure:
-        # {
-        #   "applicant_info": { name, ssn, stated_income ... },
-        #   "file_paths": { id_document, tax_document, pay_stub },
-        #   "public_urls": { ... }
-        # }
-        
-        self.data = input_data
-        self.status = "Analyzing Documents"
         workflow.logger.info(f"Workflow started for {input_data['applicant_info']['name']}")
-
-        # 1. Read & Analyze all files
-        # Ideally we run these in parallel
-        # For MVP, sequential is safer to debug
         
-        try:
-            # Analyze Tax Return
-            tax_text = await workflow.execute_activity(
-                read_pdf_content,
-                input_data['file_paths']['tax_document'],
+        # --- Step 1: The File Clerk (Organize Workspace) ---
+        self.status = "File Clerk: Organizing Documents..."
+        
+        # Call the File Clerk Agent
+        cleaned_file_paths = await workflow.execute_activity(
+            "organize_files",
+            args=[input_data['applicant_info']['name'], input_data['file_paths']],
+            start_to_close_timeout=timedelta(seconds=10)
+        )
+        
+        # Update our data execution context with clean paths
+        self.data = input_data
+        self.data['file_paths'] = cleaned_file_paths
+        
+        # --- Step 2: The Analyst Agents (Parallel Execution) ---
+        self.status = "Agents: Analyzing Documents in Parallel..."
+        
+        # Define the content-reading tasks first (Sequential for now until read_pdf is lighter, or parallel if IO bound)
+        # Actually, let's just do them inside the gather if possible, but workflow logic suggests:
+        # We need text to pass to analyze. 
+        # Pattern: We can create async functions (sub-flows) or just chain them.
+        # Let's use simple chaining for clarity in the gather.
+        
+        async def job_auditor():
+            """Reads Tax Return and acts as Financial Auditor"""
+            text = await workflow.execute_activity(
+                read_pdf_content, args=[cleaned_file_paths['tax_document']], 
+                start_to_close_timeout=timedelta(seconds=20)
+            )
+            return await workflow.execute_activity(
+                analyze_document, args=[text, "financial_auditor"],
                 start_to_close_timeout=timedelta(minutes=1)
             )
-            tax_analysis = await workflow.execute_activity(
-                analyze_document,
-                tax_text,
-                start_to_close_timeout=timedelta(minutes=2)
-            )
 
-            # Analyze Credit Report
+        async def job_verifier():
+            """Reads Credit Report & ID and acts as Identity Verifier"""
+            # We can process both sequentially within this 'Verifier' job
             credit_text = await workflow.execute_activity(
-                read_pdf_content,
-                input_data['file_paths']['credit_document'],
-                start_to_close_timeout=timedelta(seconds=10)
+                read_pdf_content, args=[cleaned_file_paths['credit_document']],
+                start_to_close_timeout=timedelta(seconds=20)
             )
-            credit_analysis = await workflow.execute_activity(
-                analyze_document,
-                credit_text,
+            return await workflow.execute_activity(
+                analyze_document, args=[credit_text, "identity_verifier"],
                 start_to_close_timeout=timedelta(minutes=1)
             )
             
-            # Analyze ID
-            id_text = await workflow.execute_activity(
-                read_pdf_content,
-                input_data['file_paths']['id_document'],
-                start_to_close_timeout=timedelta(seconds=10)
-            )
-
-            # Store AI Results
-            self.data['ai_analysis'] = {
-                "tax_extracted": tax_analysis,
-                "credit_extracted": credit_analysis
-            }
-            
-        except Exception as e:
-            self.status = f"Analysis Failed: {str(e)}"
-            raise e
-
-        # 2. Verification Logic
+        # Launch Agents in Parallel!
+        # This is the "Magic" of Temporal/Asyncio
+        results = await asyncio.gather(job_auditor(), job_verifier())
+        
+        audit_result, verify_result = results[0], results[1]
+        
+        self.data['ai_analysis'] = {
+            "financial_audit": audit_result,
+            "identity_verification": verify_result
+        }
+        
+        # --- Step 3: Synthesis & Verification ---
         stated_income = float(input_data['applicant_info']['stated_income'])
-        verified_income = float(tax_analysis.annual_income)
-        # Use Credit Score from Credit Report, invalidating potential bad data from Tax Return
-        credit_score = credit_analysis.credit_score 
-
+        verified_income = float(audit_result.annual_income)
+        credit_score = verify_result.credit_score
+        
+        income_match = abs(stated_income - verified_income) < 5000
+        
         self.data['verification'] = {
             "stated_income": stated_income,
             "verified_income": verified_income,
-            "income_match": abs(stated_income - verified_income) < 5000, # $5k Tolerance
+            "income_match": income_match,
             "credit_score": credit_score
         }
+        
+        workflow.logger.info(f"Verification Complete: Score={credit_score}, Match={income_match}")
 
-        # 3. Decision Engine
+        # --- Step 4: The Boss Decides (Logic Gates) ---
         if credit_score < 620:
             self.status = "Auto-Rejected (Low Credit)"
-            # await workflow.execute_activity(send_email, "Rejected...", ...)
             return "Rejected"
         
-        if not self.data['verification']['income_match']:
+        if not income_match:
             self.status = "Flagged: Income Mismatch"
-            # Proceed to manual review...
-
-        if credit_score > 740 and verified_income > 60000 and self.data['verification']['income_match']:
+            # Proceeds to manual review below...
+        
+        elif credit_score > 740 and verified_income > 60000:
              self.status = "Auto-Approved"
              return "Approved"
         

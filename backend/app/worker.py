@@ -4,9 +4,9 @@ from temporalio.worker import Worker
 import os 
 # Import the code we wrote in previous steps
 try:
-    from activities import analyze_document, read_pdf_content, send_email_mock
+    from activities import analyze_document, read_pdf_content, send_email_mock, organize_files
 except ImportError:
-    from .activities import analyze_document, read_pdf_content, send_email_mock
+    from .activities import analyze_document, read_pdf_content, send_email_mock, organize_files
 from workflows import LoanProcessWorkflow
 
 async def main():
@@ -30,7 +30,7 @@ async def main():
         client,
         task_queue="loan-application-queue", # This is the channel name
         workflows=[LoanProcessWorkflow],
-        activities=[analyze_document, read_pdf_content, send_email_mock],
+        activities=[analyze_document, read_pdf_content, send_email_mock, organize_files],
     )
 
     print("Worker started. Listening for tasks on 'loan-application-queue'...")
