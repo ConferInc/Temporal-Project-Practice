@@ -55,15 +55,13 @@ services:
 
   backend:
     build: 
-      context: .
-      dockerfile: backend/Dockerfile
-    # FIXED: Removed --reload (dev mode) and removed volumes
+      context: ./backend      # <--- FIXED: Now looks inside the backend folder
+      dockerfile: Dockerfile  # <--- FIXED: Standard filename
     command: uvicorn app.main:app --host 0.0.0.0 --port 3001
     ports:
       - "3001:3001"
     environment:
       - TEMPORAL_HOST=temporal:7233
-      # Add this to fix the 500 error if the folder is missing in the image
       - PYTHONUNBUFFERED=1 
     networks:
       - temporal-network
@@ -72,10 +70,9 @@ services:
 
   worker:
     build: 
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend      # <--- FIXED: Now looks inside the backend folder
+      dockerfile: Dockerfile  # <--- FIXED: Standard filename
     restart: always
-    # FIXED: Reverted to standard python command (removed watchmedo)
     command: python -m app.worker
     environment:
       - TEMPORAL_HOST=temporal:7233
@@ -90,7 +87,6 @@ services:
     build: ./frontend
     ports:
       - "3000:3000"
-    # FIXED: Removed volumes mapping to prevent 'package.json not found'
     networks:
       - temporal-network
 
