@@ -10,7 +10,7 @@ services:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_SEEDS=postgres
-      - POSTGRES_USER=temporal
+      - POSTGRES_USER=postgres  # <--- CHANGED BACK TO STANDARD
       - POSTGRES_PWD=temporal
       - POSTGRES_DB=temporal
       - ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -24,7 +24,7 @@ services:
   postgres:
     image: postgres:13
     environment:
-      - POSTGRES_USER=temporal
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=temporal
       - POSTGRES_DB=temporal
     networks:
