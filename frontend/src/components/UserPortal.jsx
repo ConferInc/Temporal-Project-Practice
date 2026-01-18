@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { UploadCloud, FileText, CheckCircle, Loader, ArrowRight, User, DollarSign, CreditCard } from 'lucide-react';
 
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 export default function UserPortal() {
     const [step, setStep] = useState(1);
