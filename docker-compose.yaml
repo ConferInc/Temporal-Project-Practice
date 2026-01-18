@@ -1,13 +1,14 @@
+version: '3.5'
+
 services:
   temporal:
     image: temporalio/auto-setup:latest
     ports:
-      - "17233:7233"
+      - "7233:7233"
       - "8233:8233"
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_SEEDS=postgres
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_DB=temporal
@@ -53,32 +54,33 @@ services:
       - temporal
 
   backend:
-    build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
-    volumes:
-      - ./backend:/code
+    build: 
+      context: .
+      dockerfile: backend/Dockerfile
+    # FIXED: Removed --reload (dev mode) and removed volumes
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3001
     ports:
       - "3001:3001"
     environment:
       - TEMPORAL_HOST=temporal:7233
+      # Add this to fix the 500 error if the folder is missing in the image
+      - PYTHONUNBUFFERED=1 
     networks:
       - temporal-network
     depends_on:
       - temporal
 
   worker:
-    build: ./backend
+    build: 
+      context: .
+      dockerfile: backend/Dockerfile
     restart: always
-    # We keep your command, it is fine
-    command: watchmedo auto-restart --directory=/code/app --pattern=*.py --recursive -- python -m app.worker
-    volumes:
-      - ./backend:/code
+    # FIXED: Reverted to standard python command (removed watchmedo)
+    command: python -m app.worker
     environment:
       - TEMPORAL_HOST=temporal:7233
-      # 1. Add your OpenAI Key here so the AI works
-      - OPENAI_API_KEY=${OPENAI_API_KEY} 
-      # 2. THE FIX: Tell Python to look in /code/app for files like 'workflows.py'
-      - PYTHONPATH=/code/app 
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/code/app
     networks:
       - temporal-network
     depends_on:
@@ -88,14 +90,9 @@ services:
     build: ./frontend
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true
+    # FIXED: Removed volumes mapping to prevent 'package.json not found'
     networks:
       - temporal-network
-      
 
 networks:
   temporal-network:
