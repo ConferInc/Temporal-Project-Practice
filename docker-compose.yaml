@@ -27,6 +27,8 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=temporal
       - POSTGRES_DB=temporal
+    volumes:
+      - postgres_data_v2_fix:/var/lib/postgresql/data
     networks:
       - temporal-network
     ports:
