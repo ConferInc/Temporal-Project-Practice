@@ -1,10 +1,10 @@
-version: '3.5'
+
 
 services:
   temporal:
     image: temporalio/auto-setup:latest
     ports:
-      - "7233:7233"
+      - "9233:7233"
       - "8233:8233"
     environment:
       - DB=postgres12
@@ -61,6 +61,8 @@ services:
       context: ./backend      # <--- FIXED: Now looks inside the backend folder
       dockerfile: Dockerfile  # <--- FIXED: Standard filename
     command: uvicorn app.main:app --host 0.0.0.0 --port 3001
+    volumes:
+      - ./backend/uploads:/code/uploads
     ports:
       - "3001:3001"
     environment:
@@ -77,6 +79,8 @@ services:
       dockerfile: Dockerfile  # <--- FIXED: Standard filename
     restart: always
     command: python -m app.worker
+    volumes:
+      - ./backend/uploads:/code/uploads
     environment:
       - TEMPORAL_HOST=temporal:7233
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -98,3 +102,6 @@ services:
 networks:
   temporal-network:
     driver: bridge
+
+volumes:
+  postgres_data_v2_fix:

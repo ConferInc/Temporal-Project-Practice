@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { UploadCloud, FileText, CheckCircle, Loader, ArrowRight, User, DollarSign, CreditCard } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 export default function UserPortal() {
     const [step, setStep] = useState(1);
@@ -39,7 +37,8 @@ export default function UserPortal() {
         Object.keys(files).forEach(k => data.append(k, files[k]));
 
         try {
-            const res = await axios.post(`${API_URL}/apply`, data, {
+            // Use the 'api' instance which automatically attaches the Bearer token
+            const res = await api.post('/apply', data, {
                 headers: { "Content-Type": "multipart/form-data" }
             });
             setResult({ workflow_id: res.data.workflow_id, status: 'success' });

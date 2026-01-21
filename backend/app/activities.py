@@ -32,7 +32,11 @@ async def organize_files(applicant_name: str, file_paths: dict) -> dict:
 
     new_paths = {}
     for doc_type, old_path in file_paths.items():
-        if not old_path or not os.path.exists(old_path): 
+        if not old_path:
+             continue
+             
+        if not os.path.exists(old_path): 
+            activity.logger.error(f"❌ File missing: {old_path}")
             continue
             
         extension = os.path.splitext(old_path)[1]

@@ -57,6 +57,10 @@ class LoanProcessWorkflow:
         
         async def job_auditor():
             """Reads Tax Return and acts as Financial Auditor"""
+            if 'tax_document' not in cleaned_file_paths:
+                workflow.logger.error("Missing Tax Document for Auditor")
+                return LoanData(applicant_name="Unknown", missing_docs=["Tax Return"])
+
             text = await workflow.execute_activity(
                 read_pdf_content, args=[cleaned_file_paths['tax_document']], 
                 start_to_close_timeout=timedelta(seconds=20)
@@ -69,6 +73,10 @@ class LoanProcessWorkflow:
         async def job_verifier():
             """Reads Credit Report & ID and acts as Identity Verifier"""
             # We can process both sequentially within this 'Verifier' job
+            if 'credit_document' not in cleaned_file_paths:
+                 workflow.logger.error("Missing Credit Document for Verifier")
+                 return LoanData(applicant_name="Unknown", missing_docs=["Credit Report"])
+
             credit_text = await workflow.execute_activity(
                 read_pdf_content, args=[cleaned_file_paths['credit_document']],
                 start_to_close_timeout=timedelta(seconds=20)
