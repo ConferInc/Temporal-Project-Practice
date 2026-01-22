@@ -92,6 +92,15 @@ We include a script to generate realistic test/demo data for different scenarios
 - **Manager Dashboard**: [http://localhost:3000/manager](http://localhost:3000/manager)
     - *Review and approve loan requests.*
 - **Apply for Loan**: [http://localhost:3000/apply](http://localhost:3000/apply)
+### 6. Admin Access (Manager Workstation)
+The system automatically seeds an admin account on startup:
+- **Email**: `admin@gmail.com`
+- **Password**: `admin1234`
+- **Role**: `manager`
+
+Log in with these credentials to access the **Manager Workstation**.
+
+### 7. Other Links
 - **Temporal UI**: [http://localhost:8080](http://localhost:8080) (Debug workflows)
 - **API Docs**: [http://localhost:3001/docs](http://localhost:3001/docs)
 

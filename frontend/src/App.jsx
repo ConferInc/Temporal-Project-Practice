@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ApplicantDashboard from './pages/ApplicantDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
+import ApplicationDetail from './pages/ApplicationDetail';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import RequireAuth from './components/RequireAuth';
 
@@ -72,6 +73,11 @@ export default function App() {
               <Route path="/manager" element={
                 <RequireAuth>
                   <ManagerDashboard />
+                </RequireAuth>
+              } />
+              <Route path="/manager/application/:id" element={
+                <RequireAuth>
+                  <ApplicationDetail />
                 </RequireAuth>
               } />
             </Routes>

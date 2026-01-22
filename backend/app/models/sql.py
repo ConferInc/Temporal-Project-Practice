@@ -1,7 +1,7 @@
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
-from sqlmodel import Field, SQLModel, JSON
-from sqlalchemy import Column # Needed for JSON column type
+from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, JSON
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -26,5 +26,6 @@ class Application(SQLModel, table=True):
     # Flexible Metadata (Documents, Income, etc.)
     # We use sa_column for JSON/JSONB types to store complex structures
     loan_metadata: dict = Field(default={}, sa_column=Column(JSON))
+    decision_reason: Optional[str] = Field(default=None)
     
     created_at: datetime = Field(default_factory=datetime.utcnow)

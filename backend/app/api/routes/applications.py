@@ -1,0 +1,258 @@
+import os
+import uuid
+import traceback
+from fastapi import APIRouter, File, UploadFile, Form, Depends, HTTPException
+from sqlmodel import Session, select
+
+from app.api import deps
+from app.models.sql import User, Application
+from app.models.schemas import ApprovalRequest
+from app.services import files, temporal
+from app.workflows import LoanProcessWorkflow
+
+router = APIRouter()
+
+@router.post("/apply")
+async def apply_for_loan(
+    name: str = Form(...),
+    email: str = Form(...),
+    ssn: str = Form(...),
+    income: str = Form(...),
+    id_document: UploadFile = File(...),
+    tax_document: UploadFile = File(...),
+    pay_stub: UploadFile = File(...),
+    credit_document: UploadFile = File(...),
+    current_user: User = Depends(deps.get_current_user), 
+    session: Session = Depends(deps.get_session)
+):
+    try:
+        # 1. Create a Unique Application ID
+        app_id = f"loan-{uuid.uuid4()}"
+        
+        # 2. Save all 4 files
+        path_id, url_id = files.save_application_file(app_id, id_document, "ID_Document")
+        path_tax, url_tax = files.save_application_file(app_id, tax_document, "Tax_Return")
+        path_pay, url_pay = files.save_application_file(app_id, pay_stub, "Pay_Stub")
+        path_credit, url_credit = files.save_application_file(app_id, credit_document, "Credit_Report")
+        
+        # 3. Prepare Workflow Data
+        workflow_input = {
+            "applicant_info": {
+                "name": name,
+                "email": email,
+                "ssn": ssn,
+                "stated_income": income
+            },
+            "file_paths": {
+                "id_document": path_id,
+                "tax_document": path_tax,
+                "pay_stub": path_pay,
+                "credit_document": path_credit
+            },
+            "public_urls": {
+                "id_document": url_id,
+                "tax_document": url_tax,
+                "pay_stub": url_pay,
+                "credit_document": url_credit
+            }
+        }
+
+        # 4. Persist to Database
+        new_app = Application(
+            user_id=current_user.id,
+            workflow_id=app_id,
+            status="Submitted",
+            loan_amount=0.0, 
+            loan_metadata=workflow_input
+        )
+        session.add(new_app)
+        session.commit()
+        
+        # 5. Start Workflow
+        client = await temporal.get_client()
+        try:
+            await client.start_workflow(
+                LoanProcessWorkflow.run,
+                workflow_input,
+                id=app_id,
+                task_queue="loan-application-queue",
+            )
+        except Exception as wf_error:
+            new_app.status = "Failed to Start"
+            session.add(new_app)
+            session.commit()
+            raise wf_error
+        
+        return {
+            "status": "submitted", 
+            "workflow_id": app_id, 
+            "message": "Application received and processing started."
+        }
+
+    except Exception as e:
+        print(f"Upload Error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/applications")
+async def list_applications(
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    try:
+        if current_user.role == "manager":
+            apps = session.query(Application).order_by(Application.created_at.desc()).all()
+        else:
+            apps = session.query(Application).filter(Application.user_id == current_user.id).order_by(Application.created_at.desc()).all()      
+        return apps
+    except Exception as e:
+        print(f"Error listing applications: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/status/{workflow_id}")
+async def get_status(workflow_id: str):
+    client = await temporal.get_client()
+    try:
+        handle = client.get_workflow_handle(workflow_id)
+        
+        status = await handle.query(LoanProcessWorkflow.get_status)
+        data = await handle.query(LoanProcessWorkflow.get_loan_data)
+        
+        return {
+            "workflow_id": workflow_id,
+            "status": status,
+            "data": data,
+        }
+    except Exception as e:
+        return {"status": "Unknown", "error": str(e)}
+
+@router.get("/applications/{workflow_id}/structure")
+async def get_application_structure(
+    workflow_id: str,
+    current_user: User = Depends(deps.get_current_user)
+):
+    app_dir = os.path.join(files.get_upload_root(), workflow_id)
+    if not os.path.exists(app_dir):
+        raise HTTPException(status_code=404, detail="Application files not found")
+    
+    structure = []
+    for f in os.listdir(app_dir):
+        if os.path.isfile(os.path.join(app_dir, f)):
+            structure.append({
+                "name": f,
+                "type": "file",
+                "url": f"/static/{workflow_id}/{f}"
+            })
+    return structure
+
+@router.post("/review")
+async def review_application(
+    request: ApprovalRequest,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can review applications")
+
+    # 1. Update DB Status immediately
+    app_record = session.exec(select(Application).where(Application.workflow_id == request.workflow_id)).first()
+    if not app_record:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    status_msg = "Approved" if request.approved else "Rejected"
+    app_record.status = f"{status_msg} by Manager"
+    app_record.decision_reason = request.reason
+    session.add(app_record)
+    session.commit()
+
+    # 2. Signal Temporal Workflow
+    try:
+        client = await temporal.get_client()
+        handle = client.get_workflow_handle(request.workflow_id)
+        await handle.signal("approve_signal", request.approved)
+    except Exception as e:
+        print(f"Warning: Failed to signal workflow {request.workflow_id}: {e}")
+        # We generally don't want to crash the HTTP request if DB persist worked but workflow is gone/done
+        # The manager's decision is recorded in DB regardless.
+    
+    return {"message": f"Application {status_msg}"}
+
+@router.get("/applications/{application_id}/history")
+async def get_application_history(
+    application_id: str,
+    current_user: User = Depends(deps.get_current_user)
+):
+    try:
+        client = await temporal.get_client()
+        handle = client.get_workflow_handle(application_id)
+        
+        history = []
+        async for event in handle.fetch_history_events():
+            event_type = event.event_type
+            timestamp = event.event_time.isoformat()
+            
+            # Narrative Mapping
+            narrative = None
+            agent_name = "System"
+            
+            if event_type == 1: # WorkflowExecutionStarted
+                narrative = "Application received and workflow started."
+                agent_name = "System"
+                
+            # Activity Tasks
+            if hasattr(event, "activity_task_scheduled_event_attributes"):
+                attrs = event.activity_task_scheduled_event_attributes
+                act_type = attrs.activity_type.name
+                
+                if act_type == "init_loan_folder":
+                    narrative = "Created secure folder structure for applicant documents."
+                    agent_name = "Agent 0 (File Clerk)"
+                elif act_type == "read_pdf_content":
+                    narrative = "Extracted text content from uploaded PDF documents."
+                    agent_name = "Agent 1 (OCR)"
+                elif act_type == "analyze_document":
+                    narrative = "Performed AI analysis to extract key financial data."
+                    agent_name = "Agent 2 (Analyst)"
+                elif act_type == "check_credit_score":
+                    narrative = "Checked internal credit guidelines and risk logic."
+                    agent_name = "Agent 3 (Risk)"
+                
+                if narrative:
+                    history.append({
+                        "agent": agent_name,
+                        "message": narrative,
+                        "timestamp": timestamp,
+                        "original_type": act_type
+                    })
+
+            # Signals (Approve/Reject)
+            elif hasattr(event, "workflow_execution_signaled_event_attributes"):
+                 history.append({
+                    "agent": "Agent 5 (Human Manager)",
+                    "message": "Final Decision submitted via Dashboard.",
+                    "timestamp": timestamp,
+                    "original_type": "Signal"
+                })
+
+        return history
+
+    except Exception as e:
+        print(f"History Error: {e}")
+        return []
+
+@router.delete("/application/{workflow_id}")
+async def delete_application(workflow_id: str):
+    client = await temporal.get_client()
+    try:
+        handle = client.get_workflow_handle(workflow_id)
+        
+        try:
+            await handle.terminate("User requested deletion")
+        except:
+            pass
+
+        files.delete_application_files(workflow_id)
+            
+        return {"status": "deleted", "workflow_id": workflow_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

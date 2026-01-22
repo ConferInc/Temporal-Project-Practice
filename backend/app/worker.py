@@ -2,12 +2,8 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 import os 
-# Import the code we wrote in previous steps
-try:
-    from activities import analyze_document, read_pdf_content, send_email_mock, organize_files
-except ImportError:
-    from .activities import analyze_document, read_pdf_content, send_email_mock, organize_files
-from workflows import LoanProcessWorkflow
+from app.activities import analyze_document, read_pdf_content, send_email_mock, organize_files
+from app.workflows import LoanProcessWorkflow
 
 async def main():
     # 1. Connect to the Temporal Server

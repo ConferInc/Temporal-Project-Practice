@@ -92,9 +92,16 @@ export default function ApplicantDashboard() {
                                                 </span>
                                             </td>
                                             <td className="p-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(app.status)}`}>
-                                                    {app.status}
-                                                </span>
+                                                <div className="flex flex-col items-start gap-2">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(app.status)}`}>
+                                                        {app.status}
+                                                    </span>
+                                                    {app.decision_reason && (
+                                                        <div className={`text-xs p-2 rounded border ${app.status.toLowerCase().includes('approved') ? 'bg-green-50 border-green-100 text-green-800' : 'bg-red-50 border-red-100 text-red-800'}`}>
+                                                            <strong>Note:</strong> {app.decision_reason}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="p-4 text-gray-700 font-medium">
                                                 ${app.loan_amount?.toLocaleString() || '0'}
