@@ -8,7 +8,13 @@ from app.api import deps
 from app.models.sql import User, Application
 from app.models.schemas import ApprovalRequest
 from app.services import files, temporal
-from app.workflows import LoanProcessWorkflow
+from app.temporal.workflows import LoanProcessWorkflow
+
+# ... (omitted shared imports) ...
+
+# ... (inside get_application_history function) ...
+
+
 
 router = APIRouter()
 
@@ -186,6 +192,15 @@ async def get_application_history(
         client = await temporal.get_client()
         handle = client.get_workflow_handle(application_id)
         
+        # 1. Try to get logs directly from the worker (User Requirement)
+        try:
+            worker_logs = await handle.query(LoanProcessWorkflow.get_logs)
+            if worker_logs:
+                return worker_logs
+        except Exception:
+            pass
+
+        # 2. Fallback: Parse History Events (Legacy/Resilience)
         history = []
         async for event in handle.fetch_history_events():
             event_type = event.event_type

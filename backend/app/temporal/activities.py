@@ -83,7 +83,7 @@ async def analyze_document(document_text: str, role: str = "general_analyst") ->
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-5-nano",
+            model="gpt-5-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Analyze this text: {document_text}"}
