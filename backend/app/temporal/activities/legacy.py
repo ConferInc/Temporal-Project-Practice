@@ -55,6 +55,20 @@ async def organize_files(applicant_name: str, file_paths: dict) -> dict:
 
 @activity.defn
 async def analyze_document(document_text: str, role: str = "general_analyst") -> LoanData:
+    base_url = os.getenv("LITELLM_BASE_URL")
+    api_key = os.getenv("LITELLM_API_KEY") or os.getenv("OPENAI_API_KEY")
+    model = "gpt-5-nano" # Or os.getenv("LITELLM_MODEL")
+
+    print(f"\n🕵️ CONNECTION DEBUG REPORT:")
+    print(f"   -> TARGET URL: '{base_url}'")
+    print(f"   -> API KEY: '{api_key[:5]}...{api_key[-4:] if api_key else 'NONE'}'")
+    print(f"   -> MODEL: '{model}'")
+    
+    if not base_url:
+        print("   ❌ CRITICAL: BASE_URL is None! AsyncOpenAI will default to official OpenAI!")
+
+
+
     activity.logger.info(f"🕵️ Analyst ({role}) starting analysis...")
 
     # Define System Prompts based on Role
@@ -76,14 +90,17 @@ async def analyze_document(document_text: str, role: str = "general_analyst") ->
              "Return JSON: {\"applicant_name\": str, \"annual_income\": int, \"credit_score\": int, \"missing_docs\": [str]}."
         )
 
+    
+    # Use environment variables
+    # LITELLM_BASE_URL and OPENAI_API_KEY are loaded from .env or docker-compose environment
     client = AsyncOpenAI(
         base_url=os.getenv("LITELLM_BASE_URL"),
-        api_key=os.getenv("OPENAI_API_KEY")
+        api_key=os.getenv("LITELLM_API_KEY") or os.getenv("OPENAI_API_KEY")
     )
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-5-nano",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Analyze this text: {document_text}"}

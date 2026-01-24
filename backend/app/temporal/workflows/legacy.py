@@ -3,9 +3,10 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.exceptions import ApplicationError
 
-# Use relative import for sibling activity file in same package
-from .activities import analyze_document, read_pdf_content, send_email_mock, organize_files, LoanData
-
+# Use absolute import for sibling package
+from app.temporal.activities import analyze_document, read_pdf_content, send_email_mock, organize_files
+# LoanData was likely defined in the old activities file, so we import it from there too
+from app.temporal.activities.legacy import LoanData
 @workflow.defn
 class LoanProcessWorkflow:
     def __init__(self) -> None:

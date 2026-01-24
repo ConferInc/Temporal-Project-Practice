@@ -46,12 +46,15 @@ export const AuthProvider = ({ children }) => {
         return userObj;
     };
 
-    const register = async (email, password, role = 'applicant') => {
-        // Backend API: POST /auth/register { email, password }
-        // Note: Use role param if backend supports it in register payload, 
-        // but currently backend assigns default 'applicant'. 
-        // We strictly use the decoded token role as truth.
-        const response = await api.post('/auth/register', { email, password });
+    const register = async (email, password, role = 'applicant', initialMetadata = null) => {
+        // Backend API: POST /auth/register { email, password, initial_metadata }
+        // The initial_metadata contains funnel answers from the borrower flow
+        const payload = { email, password };
+        if (initialMetadata) {
+            payload.initial_metadata = initialMetadata;
+        }
+
+        const response = await api.post('/auth/register', payload);
         const { access_token } = response.data;
 
         localStorage.setItem('token', access_token);

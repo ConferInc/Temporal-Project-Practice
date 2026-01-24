@@ -5,10 +5,13 @@ from fastapi import APIRouter, File, UploadFile, Form, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.api import deps
-from app.models.sql import User, Application
+from app.models.sql import User, Application, LoanStage
 from app.models.schemas import ApprovalRequest
 from app.services import files, temporal
 from app.temporal.workflows import LoanProcessWorkflow
+
+# Pyramid Architecture: CEO Workflow
+from app.temporal.workflows.ceo import LoanLifecycleWorkflow
 
 # ... (omitted shared imports) ...
 
@@ -28,19 +31,27 @@ async def apply_for_loan(
     tax_document: UploadFile = File(...),
     pay_stub: UploadFile = File(...),
     credit_document: UploadFile = File(...),
-    current_user: User = Depends(deps.get_current_user), 
+    use_pyramid: bool = Form(default=False),
+    current_user: User = Depends(deps.get_current_user),
     session: Session = Depends(deps.get_session)
 ):
+    """
+    Submit a loan application.
+
+    Args:
+        use_pyramid: If True, uses the Pyramid Architecture (LoanLifecycleWorkflow).
+                     If False (default), uses the original LoanProcessWorkflow.
+    """
     try:
         # 1. Create a Unique Application ID
         app_id = f"loan-{uuid.uuid4()}"
-        
+
         # 2. Save all 4 files
         path_id, url_id = files.save_application_file(app_id, id_document, "ID_Document")
         path_tax, url_tax = files.save_application_file(app_id, tax_document, "Tax_Return")
         path_pay, url_pay = files.save_application_file(app_id, pay_stub, "Pay_Stub")
         path_credit, url_credit = files.save_application_file(app_id, credit_document, "Credit_Report")
-        
+
         # 3. Prepare Workflow Data
         workflow_input = {
             "applicant_info": {
@@ -68,30 +79,44 @@ async def apply_for_loan(
             user_id=current_user.id,
             workflow_id=app_id,
             status="Submitted",
-            loan_amount=0.0, 
+            loan_stage=LoanStage.LEAD_CAPTURE.value if use_pyramid else None,
+            loan_amount=0.0,
             loan_metadata=workflow_input
         )
         session.add(new_app)
         session.commit()
-        
+
         # 5. Start Workflow
         client = await temporal.get_client()
         try:
-            await client.start_workflow(
-                LoanProcessWorkflow.run,
-                workflow_input,
-                id=app_id,
-                task_queue="loan-application-queue",
-            )
+            if use_pyramid:
+                # Pyramid Architecture: Start CEO Workflow
+                await client.start_workflow(
+                    LoanLifecycleWorkflow.run,
+                    workflow_input,
+                    id=app_id,
+                    task_queue="loan-application-queue",
+                )
+                workflow_type = "LoanLifecycleWorkflow (Pyramid)"
+            else:
+                # Original workflow (backward compatible)
+                await client.start_workflow(
+                    LoanProcessWorkflow.run,
+                    workflow_input,
+                    id=app_id,
+                    task_queue="loan-application-queue",
+                )
+                workflow_type = "LoanProcessWorkflow (Original)"
         except Exception as wf_error:
             new_app.status = "Failed to Start"
             session.add(new_app)
             session.commit()
             raise wf_error
-        
+
         return {
-            "status": "submitted", 
-            "workflow_id": app_id, 
+            "status": "submitted",
+            "workflow_id": app_id,
+            "workflow_type": workflow_type,
             "message": "Application received and processing started."
         }
 
@@ -120,12 +145,27 @@ async def get_status(workflow_id: str):
     client = await temporal.get_client()
     try:
         handle = client.get_workflow_handle(workflow_id)
-        
+
+        # Try Pyramid workflow queries first
+        try:
+            stage = await handle.query(LoanLifecycleWorkflow.get_current_stage)
+            logs = await handle.query(LoanLifecycleWorkflow.get_logs)
+            return {
+                "workflow_id": workflow_id,
+                "workflow_type": "Pyramid",
+                "loan_stage": stage,
+                "logs": logs,
+            }
+        except Exception:
+            pass
+
+        # Fallback to original workflow
         status = await handle.query(LoanProcessWorkflow.get_status)
         data = await handle.query(LoanProcessWorkflow.get_loan_data)
-        
+
         return {
             "workflow_id": workflow_id,
+            "workflow_type": "Original",
             "status": status,
             "data": data,
         }
@@ -164,10 +204,18 @@ async def review_application(
     app_record = session.exec(select(Application).where(Application.workflow_id == request.workflow_id)).first()
     if not app_record:
         raise HTTPException(status_code=404, detail="Application not found")
-    
+
     status_msg = "Approved" if request.approved else "Rejected"
     app_record.status = f"{status_msg} by Manager"
     app_record.decision_reason = request.reason
+
+    # Update loan_stage for Pyramid workflows
+    if app_record.loan_stage:
+        if request.approved:
+            app_record.loan_stage = LoanStage.PROCESSING.value
+        else:
+            app_record.loan_stage = LoanStage.ARCHIVED.value
+
     session.add(app_record)
     session.commit()
 
@@ -175,12 +223,22 @@ async def review_application(
     try:
         client = await temporal.get_client()
         handle = client.get_workflow_handle(request.workflow_id)
-        await handle.signal("approve_signal", request.approved)
+
+        # Try Pyramid workflow signal first (LeadCaptureWorkflow child)
+        is_pyramid = app_record.loan_stage is not None
+        if is_pyramid:
+            # Signal the LeadCaptureWorkflow child
+            child_handle = client.get_workflow_handle(f"{request.workflow_id}-lead-capture")
+            await child_handle.signal("human_approval", request.approved)
+        else:
+            # Original workflow signal
+            await handle.signal("approve_signal", request.approved)
+
     except Exception as e:
         print(f"Warning: Failed to signal workflow {request.workflow_id}: {e}")
         # We generally don't want to crash the HTTP request if DB persist worked but workflow is gone/done
         # The manager's decision is recorded in DB regardless.
-    
+
     return {"message": f"Application {status_msg}"}
 
 @router.get("/applications/{application_id}/history")
@@ -191,8 +249,16 @@ async def get_application_history(
     try:
         client = await temporal.get_client()
         handle = client.get_workflow_handle(application_id)
-        
-        # 1. Try to get logs directly from the worker (User Requirement)
+
+        # 1. Try Pyramid workflow logs first (CEO Workflow)
+        try:
+            worker_logs = await handle.query(LoanLifecycleWorkflow.get_logs)
+            if worker_logs:
+                return worker_logs
+        except Exception:
+            pass
+
+        # 2. Try Original workflow logs
         try:
             worker_logs = await handle.query(LoanProcessWorkflow.get_logs)
             if worker_logs:

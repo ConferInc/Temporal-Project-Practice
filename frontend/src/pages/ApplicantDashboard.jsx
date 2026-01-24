@@ -2,7 +2,42 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { PlusCircle, FileText, Calendar, DollarSign, Loader, RefreshCw } from 'lucide-react';
+import { PlusCircle, FileText, Calendar, DollarSign, Loader, RefreshCw, CheckCircle, Circle } from 'lucide-react';
+
+// Task Item Component for the getting started checklist
+function TaskItem({ number, title, description, completed, isNext }) {
+    return (
+        <div className={`
+            flex items-start gap-4 p-4 rounded-xl border-2 transition-all
+            ${completed
+                ? 'bg-green-50 border-green-200'
+                : isNext
+                    ? 'bg-blue-50 border-blue-300 shadow-sm'
+                    : 'bg-gray-50 border-gray-200'
+            }
+        `}>
+            <div className={`
+                w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                ${completed
+                    ? 'bg-green-500 text-white'
+                    : isNext
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-500'
+                }
+            `}>
+                {completed ? <CheckCircle size={18} /> : number}
+            </div>
+            <div>
+                <h4 className={`font-semibold ${completed ? 'text-green-800' : isNext ? 'text-blue-900' : 'text-gray-700'}`}>
+                    {title}
+                </h4>
+                <p className={`text-sm mt-0.5 ${completed ? 'text-green-600' : isNext ? 'text-blue-700' : 'text-gray-500'}`}>
+                    {description}
+                </p>
+            </div>
+        </div>
+    );
+}
 
 export default function ApplicantDashboard() {
     const { user } = useAuth();
@@ -57,13 +92,57 @@ export default function ApplicantDashboard() {
                 </div>
 
                 {applications.length === 0 && !loading ? (
-                    <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <FileText size={32} />
+                    <div className="p-8">
+                        {/* Task List Style - Getting Started */}
+                        <div className="max-w-lg mx-auto">
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <FileText size={32} />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Let's Complete Your Application</h3>
+                                <p className="text-gray-500">Follow these steps to submit your loan application.</p>
+                            </div>
+
+                            {/* Task List */}
+                            <div className="space-y-4">
+                                <TaskItem
+                                    number={1}
+                                    title="Account Created"
+                                    description="Your profile is set up and ready to go"
+                                    completed={true}
+                                />
+                                <TaskItem
+                                    number={2}
+                                    title="Upload Documents"
+                                    description="Submit your ID, tax returns, pay stub, and credit report"
+                                    completed={false}
+                                    isNext={true}
+                                />
+                                <TaskItem
+                                    number={3}
+                                    title="AI Verification"
+                                    description="Our system will analyze your documents automatically"
+                                    completed={false}
+                                />
+                                <TaskItem
+                                    number={4}
+                                    title="Receive Decision"
+                                    description="Get your approval status within minutes"
+                                    completed={false}
+                                />
+                            </div>
+
+                            {/* CTA Button */}
+                            <div className="mt-8 text-center">
+                                <Link
+                                    to="/apply"
+                                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg hover:-translate-y-0.5 text-lg"
+                                >
+                                    <PlusCircle size={22} />
+                                    Upload Documents Now
+                                </Link>
+                            </div>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900">No applications yet</h3>
-                        <p className="text-gray-500 mb-6">You haven't submitted any loan applications.</p>
-                        <Link to="/apply" className="text-blue-600 hover:underline font-medium">Create your first application</Link>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">

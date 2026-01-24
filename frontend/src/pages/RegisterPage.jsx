@@ -19,7 +19,7 @@ export default function RegisterPage() {
 
         try {
             await register(email, password);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             console.error(err);
             setError(err.response?.data?.detail || 'Failed to register');

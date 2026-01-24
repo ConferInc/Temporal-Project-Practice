@@ -20,12 +20,13 @@ def register(user: UserCreate, session: Session = Depends(deps.get_session)):
             detail="Email already registered"
         )
     
-    # Create new user
+    # Create new user with optional funnel metadata
     hashed_password = security.get_password_hash(user.password)
     db_user = User(
-        email=user.email, 
+        email=user.email,
         password_hash=hashed_password,
-        role="applicant" # Default role
+        role="applicant",  # Default role
+        initial_metadata=user.initial_metadata  # Moxi Portal: Store funnel answers
     )
     session.add(db_user)
     session.commit()

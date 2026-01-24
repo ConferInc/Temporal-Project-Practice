@@ -14,7 +14,7 @@ export default function LoginPage() {
     const location = useLocation();
 
     // Create a fallback for redirect after login
-    const from = location.state?.from?.pathname || '/';
+    const from = location.state?.from?.pathname || '/dashboard';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -26,10 +26,8 @@ export default function LoginPage() {
             if (user.role === 'manager') {
                 navigate('/manager');
             } else {
-                navigate(from === '/' ? '/apply' : '/'); // Default to Applicant Dashboard or where they were
-                // Wait, if from is '/', we want to go to Dashboard ('/').
-                // Let's just say:
-                navigate('/');
+                // Redirect to dashboard or where they were trying to go
+                navigate(from === '/' || from === '/funnel' ? '/dashboard' : from);
             }
         } catch (err) {
             console.error(err);
@@ -99,8 +97,8 @@ export default function LoginPage() {
 
                 <div className="mt-6 text-center text-sm text-gray-500">
                     Don't have an account?{' '}
-                    <Link to="/register" className="text-blue-600 hover:underline font-medium">
-                        Sign up
+                    <Link to="/funnel" className="text-blue-600 hover:underline font-medium">
+                        Get Started
                     </Link>
                 </div>
             </div>
