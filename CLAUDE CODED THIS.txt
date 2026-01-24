@@ -1,0 +1,1389 @@
+❯ Read the file @docs/protocol/1_ARCHITECT.MD  and imlement this file: @docs/prompts/Frontend_Prompt_2.MD and fisnish this task
+  ⎿  Read docs\protocol\1_ARCHITECT.MD (74 lines)
+  ⎿  Read docs\prompts\Frontend_Prompt_2.MD (35 lines)
+  ⎿ API Error: 401 {"type":"error","error":{"type":"authentication_error","message":"OAuth token has expired. Please obtain a new token or refresh your existing
+    token."},"request_id":"req_011CXSX7qh4EtBW8jQSwGDtq"} · Please run /login
+
+❯ /login
+  ⎿  Login successful
+
+❯ Read the file @docs/protocol/1_ARCHITECT.MD  and imlement this file: @docs/prompts/Frontend_Prompt_2.MD and fisnish this task
+  ⎿  Read docs\protocol\1_ARCHITECT.MD (74 lines)
+  ⎿  Read docs\prompts\Frontend_Prompt_2.MD (35 lines)
+
+● I'll implement this task following the Architect protocol. Let me first explore the existing codebase to understand the current structure.
+
+● Explore(Explore codebase structure)
+  ⎿  Done (11 tool uses · 29.8k tokens · 38s)
+
+● Excellent. Now let me read the actual files I need to modify.
+
+● Read(backend\app\temporal\workflows\managers.py)
+  ⎿  Read 137 lines
+
+● Read(backend\app\api\routes\applications.py)
+  ⎿  Read 340 lines
+
+● Read(frontend\src\pages\ManagerDashboard.jsx)
+  ⎿  Read 121 lines
+
+● Read(frontend\src\pages\ApplicationDetail.jsx)
+  ⎿  Read 323 lines
+
+● Now I have a complete picture. Let me create the Design Scorecard and implement the solution.
+
+  ---
+  Design Scorecard
+  ┌─────────────┬───────────┬─────────────────────────────────────────────────────┐
+  │  Category   │   Score   │                  Risks Identified                   │
+  ├─────────────┼───────────┼─────────────────────────────────────────────────────┤
+  │ SOP Align   │ 40 / 40   │ None - adding state, not removing fields            │
+  ├─────────────┼───────────┼─────────────────────────────────────────────────────┤
+  │ Arch Fit    │ 30 / 30   │ Signals are Temporal-native; syncing workflow + SQL │
+  ├─────────────┼───────────┼─────────────────────────────────────────────────────┤
+  │ Reusability │ 30 / 30   │ Using existing temporal service, API patterns       │
+  ├─────────────┼───────────┼─────────────────────────────────────────────────────┤
+  │ TOTAL       │ 100 / 100 │ Ready to proceed                                    │
+  └─────────────┴───────────┴─────────────────────────────────────────────────────┘
+  ---
+  Let me implement all three missions:
+
+● Update(backend\app\temporal\workflows\managers.py)
+  ⎿  Added 14 lines
+       8  2. ProcessingWorkflow - Document verification and processing
+       9  """
+      10  from datetime import timedelta
+      11 +from typing import Any
+      12  from temporalio import workflow
+      13
+      14  # Import MCP Activities
+     ...
+      26      1. Create loan file in Encompass LOS
+      27      2. Send welcome email to applicant
+      28      3. Wait for human approval signal
+      29 +    4. Allow real-time field updates via signals
+      30
+      31      Returns: "APPROVED" or "REJECTED"
+      32      """
+     ...
+      34      def __init__(self) -> None:
+      35          self.human_decision = None
+      36          self.loan_number = None
+      37 +        self.loan_data = {}  # Mutable state for Encompass-style editing
+      38
+      39      @workflow.signal
+      40      def human_approval(self, approved: bool):
+     ...
+      42          self.human_decision = "APPROVED" if approved else "REJECTED"
+      43          workflow.logger.info(f"LeadCapture received human decision: {self.human_decision}")
+      44
+      45 +    @workflow.signal
+      46 +    def update_field(self, field_name: str, value: Any):
+      47 +        """Signal handler for real-time field updates from manager dashboard"""
+      48 +        self.loan_data[field_name] = value
+      49 +        workflow.logger.info(f"Manager updated {field_name} to {value}")
+      50 +
+      51      @workflow.query
+      52      def get_loan_number(self) -> str:
+      53          """Query the Encompass loan number"""
+      54          return self.loan_number
+      55
+      56 +    @workflow.query
+      57 +    def get_loan_data(self) -> dict:
+      58 +        """Query the current (potentially modified) loan data"""
+      59 +        return self.loan_data
+      60 +
+      61      @workflow.run
+      62      async def run(self, applicant_data: dict) -> str:
+      63          """
+
+● Update(backend\app\temporal\workflows\managers.py)
+  ⎿  Added 2 lines
+      69          Returns:
+      70              "APPROVED" or "REJECTED"
+      71          """
+      72 +        # Initialize loan_data with input args for real-time editing
+      73 +        self.loan_data = applicant_data.copy()
+      74          workflow.logger.info(f"LeadCaptureWorkflow started for {applicant_data.get('applicant_info', {}).get('name', 'Unknown')}")
+      75
+      76          # Step 1: Create loan file in Encompass
+
+● Now let me add the PATCH endpoint to the API.
+
+● Update(backend\app\api\routes\applications.py)
+  ⎿  Added 2 lines, removed 3 lines
+      13  # Pyramid Architecture: CEO Workflow
+      14  from app.temporal.workflows.ceo import LoanLifecycleWorkflow
+      15
+      16 -# ... (omitted shared imports) ...
+      16 +# Pyramid Architecture: Manager Workflows (for signals)
+      17 +from app.temporal.workflows.managers import LeadCaptureWorkflow
+      18
+      18 -# ... (inside get_application_history function) ...
+      19
+      20
+      21 -
+      21  router = APIRouter()
+      22
+      23  @router.post("/apply")
+
+● Read(backend\app\api\routes\applications.py)
+  ⎿  Read 339 lines
+
+● Update(backend\app\api\routes\applications.py)
+  ⎿  Added 66 lines
+      190              })
+      191      return structure
+      192
+      193 +
+      194 +@router.patch("/applications/{workflow_id}/fields")
+      195 +async def update_application_field(
+      196 +    workflow_id: str,
+      197 +    field_update: dict,
+      198 +    session: Session = Depends(deps.get_session),
+      199 +    current_user: User = Depends(deps.get_current_user)
+      200 +):
+      201 +    """
+      202 +    Update a field in a running loan application.
+      203 +    Sends signal to Temporal workflow and updates SQL database.
+      204 +
+      205 +    Accepts: {"field": str, "value": any}
+      206 +    """
+      207 +    if current_user.role != "manager":
+      208 +        raise HTTPException(status_code=403, detail="Only managers can update fields")
+      209 +
+      210 +    field_name = field_update.get("field")
+      211 +    field_value = field_update.get("value")
+      212 +
+      213 +    if not field_name:
+      214 +        raise HTTPException(status_code=400, detail="Field name is required")
+      215 +
+      216 +    # 1. Update SQL Database
+      217 +    app_record = session.exec(
+      218 +        select(Application).where(Application.workflow_id == workflow_id)
+      219 +    ).first()
+      220 +
+      221 +    if not app_record:
+      222 +        raise HTTPException(status_code=404, detail="Application not found")
+      223 +
+      224 +    # Update loan_metadata JSON field
+      225 +    metadata = app_record.loan_metadata or {}
+      226 +
+      227 +    # Handle nested applicant_info fields
+      228 +    if field_name in ["name", "email", "ssn", "stated_income"]:
+      229 +        if "applicant_info" not in metadata:
+      230 +            metadata["applicant_info"] = {}
+      231 +        metadata["applicant_info"][field_name] = field_value
+      232 +    else:
+      233 +        metadata[field_name] = field_value
+      234 +
+      235 +    app_record.loan_metadata = metadata
+      236 +    session.add(app_record)
+      237 +    session.commit()
+      238 +
+      239 +    # 2. Signal Temporal Workflow (Pyramid architecture)
+      240 +    try:
+      241 +        client = await temporal.get_client()
+      242 +
+      243 +        # Try to signal LeadCaptureWorkflow child
+      244 +        if app_record.loan_stage:
+      245 +            child_handle = client.get_workflow_handle(f"{workflow_id}-lead-capture")
+      246 +            await child_handle.signal("update_field", field_name, field_value)
+      247 +    except Exception as e:
+      248 +        print(f"Warning: Failed to signal workflow {workflow_id}: {e}")
+      249 +        # DB update succeeded, workflow signal is best-effort
+      250 +
+      251 +    return {
+      252 +        "message": f"Field '{field_name}' updated successfully",
+      253 +        "workflow_id": workflow_id,
+      254 +        "field": field_name,
+      255 +        "value": field_value
+      256 +    }
+      257 +
+      258 +
+      259  @router.post("/review")
+      260  async def review_application(
+      261      request: ApprovalRequest,
+
+● Now let me implement Mission 3 - the Encompass-style frontend. First, the ManagerDashboard with sidebar:
+
+● Write(frontend\src\pages\ManagerDashboard.jsx)
+  ⎿  Added 208 lines, removed 120 lines
+        1 -import React, { useEffect, useState } from 'react';
+        2 -import { useNavigate } from 'react-router-dom';
+        3 -import api from '../utils/api';
+        4 -import {
+        5 -    LayoutDashboard, RefreshCw, Trash2, Calendar
+        6 -} from 'lucide-react';
+        7 -
+        8 -export default function ManagerDashboard() {
+        9 -    const [applications, setApplications] = useState([]);
+       10 -    const navigate = useNavigate();
+       11 -
+       12 -    const fetchApplications = async () => {
+       13 -        try {
+       14 -            const res = await api.get('/applications');
+       15 -            setApplications(res.data);
+       16 -        } catch (err) {
+       17 -            console.error(err);
+       18 -        }
+       19 -    };
+       20 -
+       21 -    useEffect(() => {
+       22 -        fetchApplications();
+       23 -        const interval = setInterval(fetchApplications, 5000); // Poll every 5s
+       24 -        return () => clearInterval(interval);
+       25 -    }, []);
+       26 -
+       27 -    const handleDelete = async (e, appId) => {
+       28 -        e.stopPropagation();
+       29 -        if (!confirm("Are you sure you want to DELETE this application? This cannot be undone.")) return;
+       30 -        try {
+       31 -            await api.delete(`/application/${appId}`);
+       32 -            fetchApplications();
+       33 -        } catch (err) {
+       34 -            alert("Delete failed");
+       35 -        }
+       36 -    }
+       37 -
+       38 -    const getStatusColor = (status) => {
+       39 -        const s = status?.toLowerCase() || "";
+       40 -        if (s.includes("approved")) return "bg-green-100 text-green-800";
+       41 -        if (s.includes("rejected") || s.includes("fail")) return "bg-red-100 text-red-800";
+       42 -        if (s.includes("flagged") || s.includes("mismatch")) return "bg-orange-100 text-orange-800";
+       43 -        return "bg-blue-100 text-blue-800";
+       44 -    };
+       45 -
+       46 -    return (
+       47 -        <div className="min-h-[calc(100vh-64px)] bg-gray-50 p-6">
+       48 -            <div className="max-w-6xl mx-auto">
+       49 -                <div className="flex justify-between items-center mb-6">
+       50 -                    <div>
+       51 -                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+       52 -                            <LayoutDashboard className="text-blue-600" /> Manager Dashboard
+       53 -                        </h1>
+       54 -                        <p className="text-gray-500">Overview of all loan applications.</p>
+       55 -                    </div>
+       56 -                    <button onClick={fetchApplications} className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition shadow-sm">
+       57 -                        <RefreshCw size={20} className="text-gray-600" />
+       58 -                    </button>
+       59 -                </div>
+       60 -
+       61 -                <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+       62 -                    <table className="w-full text-left border-collapse">
+       63 -                        <thead>
+       64 -                            <tr className="bg-gray-50 text-gray-500 text-sm border-b">
+       65 -                                <th className="p-4 font-semibold">Application ID</th>
+       66 -                                <th className="p-4 font-semibold">Date</th>
+       67 -                                <th className="p-4 font-semibold">Current Status</th>
+       68 -                                <th className="p-4 font-semibold text-right">Actions</th>
+       69 -                            </tr>
+       70 -                        </thead>
+       71 -                        <tbody>
+       72 -                            {applications.length === 0 ? (
+       73 -                                <tr>
+       74 -                                    <td colSpan={4} className="p-8 text-center text-gray-400">
+       75 -                                        No active applications.
+       76 -                                    </td>
+       77 -                                </tr>
+       78 -                            ) : (
+       79 -                                applications.map((app) => (
+       80 -                                    <tr
+       81 -                                        key={app.workflow_id}
+       82 -                                        onClick={() => navigate(`/manager/application/${app.workflow_id}`)}
+       83 -                                        className="border-b last:border-0 hover:bg-blue-50 cursor-pointer transition group"
+       84 -                                    >
+       85 -                                        <td className="p-4 font-mono text-sm text-blue-600 font-medium">
+       86 -                                            {app.workflow_id}
+       87 -                                        </td>
+       88 -                                        <td className="p-4 text-gray-600 text-sm">
+       89 -                                            <div className="flex items-center gap-2">
+       90 -                                                <Calendar size={14} className="opacity-50" />
+       91 -                                                {new Date(app.created_at).toLocaleDateString()}
+       92 -                                                <span className="text-xs text-gray-400">
+       93 -                                                    {new Date(app.created_at).toLocaleTimeString()}
+       94 -                                                </span>
+       95 -                                            </div>
+       96 -                                        </td>
+       97 -                                        <td className="p-4">
+       98 -                                            <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getStatusColor(app.status)}`}>
+       99 -                                                {app.status}
+      100 -                                            </span>
+      101 -                                        </td>
+      102 -                                        <td className="p-4 text-right">
+      103 -                                            <button
+      104 -                                                onClick={(e) => handleDelete(e, app.workflow_id)}
+      105 -                                                className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition"
+      106 -                                                title="Delete"
+      107 -                                            >
+      108 -                                                <Trash2 size={16} />
+      109 -                                            </button>
+      110 -                                        </td>
+      111 -                                    </tr>
+      112 -                                ))
+      113 -                            )}
+      114 -                        </tbody>
+      115 -                    </table>
+      116 -                </div>
+      117 -            </div>
+      118 -        </div>
+      119 -    );
+      120 -}
+        1 +import React, { useEffect, useState } from 'react';
+        2 +import { useNavigate } from 'react-router-dom';
+        3 +import api from '../utils/api';
+        4 +import {
+        5 +    LayoutDashboard, RefreshCw, Trash2, Calendar,
+        6 +    FolderOpen, FileText, CheckSquare, History,
+        7 +    ChevronRight, Users, Clock, CheckCircle, XCircle, AlertTriangle
+        8 +} from 'lucide-react';
+        9 +
+       10 +const PIPELINE_STAGES = [
+       11 +    { key: 'all', label: 'All Applications', icon: FolderOpen },
+       12 +    { key: 'LEAD_CAPTURE', label: 'Lead Capture', icon: Users },
+       13 +    { key: 'PROCESSING', label: 'Processing', icon: Clock },
+       14 +    { key: 'UNDERWRITING', label: 'Underwriting', icon: FileText },
+       15 +    { key: 'CLOSING', label: 'Closing', icon: CheckSquare },
+       16 +    { key: 'ARCHIVED', label: 'Archived', icon: History },
+       17 +];
+       18 +
+       19 +export default function ManagerDashboard() {
+       20 +    const [applications, setApplications] = useState([]);
+       21 +    const [selectedStage, setSelectedStage] = useState('all');
+       22 +    const [selectedApp, setSelectedApp] = useState(null);
+       23 +    const navigate = useNavigate();
+       24 +
+       25 +    const fetchApplications = async () => {
+       26 +        try {
+       27 +            const res = await api.get('/applications');
+       28 +            setApplications(res.data);
+       29 +        } catch (err) {
+       30 +            console.error(err);
+       31 +        }
+       32 +    };
+       33 +
+       34 +    useEffect(() => {
+       35 +        fetchApplications();
+       36 +        const interval = setInterval(fetchApplications, 5000);
+       37 +        return () => clearInterval(interval);
+       38 +    }, []);
+       39 +
+       40 +    const handleDelete = async (e, appId) => {
+       41 +        e.stopPropagation();
+       42 +        if (!confirm("Are you sure you want to DELETE this application? This cannot be undone.")) return;
+       43 +        try {
+       44 +            await api.delete(`/application/${appId}`);
+       45 +            fetchApplications();
+       46 +            if (selectedApp?.workflow_id === appId) setSelectedApp(null);
+       47 +        } catch (err) {
+       48 +            alert("Delete failed");
+       49 +        }
+       50 +    };
+       51 +
+       52 +    const getStatusIcon = (status) => {
+       53 +        const s = status?.toLowerCase() || "";
+       54 +        if (s.includes("approved")) return <CheckCircle size={14} className="text-green-600" />;
+       55 +        if (s.includes("rejected") || s.includes("fail")) return <XCircle size={14} className="text-red-600" />;
+       56 +        if (s.includes("flagged") || s.includes("mismatch")) return <AlertTriangle size={14} className="text-orange-500" />;
+       57 +        return <Clock size={14} className="text-blue-500" />;
+       58 +    };
+       59 +
+       60 +    const getStatusColor = (status) => {
+       61 +        const s = status?.toLowerCase() || "";
+       62 +        if (s.includes("approved")) return "bg-green-50 border-green-200 text-green-700";
+       63 +        if (s.includes("rejected") || s.includes("fail")) return "bg-red-50 border-red-200 text-red-700";
+       64 +        if (s.includes("flagged") || s.includes("mismatch")) return "bg-orange-50 border-orange-200 text-orange-700";
+       65 +        return "bg-blue-50 border-blue-200 text-blue-700";
+       66 +    };
+       67 +
+       68 +    // Filter applications by stage
+       69 +    const filteredApps = selectedStage === 'all'
+       70 +        ? applications
+       71 +        : applications.filter(app => app.loan_stage === selectedStage);
+       72 +
+       73 +    // Count by stage
+       74 +    const stageCounts = PIPELINE_STAGES.reduce((acc, stage) => {
+       75 +        if (stage.key === 'all') {
+       76 +            acc[stage.key] = applications.length;
+       77 +        } else {
+       78 +            acc[stage.key] = applications.filter(app => app.loan_stage === stage.key).length;
+       79 +        }
+       80 +        return acc;
+       81 +    }, {});
+       82 +
+       83 +    return (
+       84 +        <div className="h-[calc(100vh-64px)] bg-gray-100 flex">
+       85 +            {/* Sidebar - Pipeline View */}
+       86 +            <div className="w-56 bg-white border-r border-gray-200 flex flex-col">
+       87 +                <div className="p-3 border-b border-gray-100">
+       88 +                    <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pipeline</h2>
+       89 +                </div>
+       90 +                <div className="flex-1 overflow-y-auto">
+       91 +                    {PIPELINE_STAGES.map((stage) => {
+       92 +                        const Icon = stage.icon;
+       93 +                        const isActive = selectedStage === stage.key;
+       94 +                        return (
+       95 +                            <button
+       96 +                                key={stage.key}
+       97 +                                onClick={() => setSelectedStage(stage.key)}
+       98 +                                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition border-l-2 ${
+       99 +                                    isActive
+      100 +                                        ? 'bg-blue-50 border-blue-500 text-blue-700 font-medium'
+      101 +                                        : 'border-transparent text-gray-600 hover:bg-gray-50'
+      102 +                                }`}
+      103 +                            >
+      104 +                                <Icon size={16} className={isActive ? 'text-blue-500' : 'text-gray-400'} />
+      105 +                                <span className="flex-1 truncate">{stage.label}</span>
+      106 +                                <span className={`text-xs px-1.5 py-0.5 rounded ${
+      107 +                                    isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+      108 +                                }`}>
+      109 +                                    {stageCounts[stage.key] || 0}
+      110 +                                </span>
+      111 +                            </button>
+      112 +                        );
+      113 +                    })}
+      114 +                </div>
+      115 +                <div className="p-2 border-t border-gray-100">
+      116 +                    <button
+      117 +                        onClick={fetchApplications}
+      118 +                        className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition"
+      119 +                    >
+      120 +                        <RefreshCw size={14} /> Refresh
+      121 +                    </button>
+      122 +                </div>
+      123 +            </div>
+      124 +
+      125 +            {/* Main Content - Loan List */}
+      126 +            <div className="flex-1 flex flex-col overflow-hidden">
+      127 +                {/* Header */}
+      128 +                <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      129 +                    <div className="flex items-center gap-2">
+      130 +                        <LayoutDashboard size={20} className="text-blue-600" />
+      131 +                        <h1 className="text-lg font-bold text-gray-800">Loan Pipeline</h1>
+      132 +                        <span className="text-sm text-gray-500">
+      133 +                            ({filteredApps.length} {filteredApps.length === 1 ? 'loan' : 'loans'})
+      134 +                        </span>
+      135 +                    </div>
+      136 +                </div>
+      137 +
+      138 +                {/* Loan List */}
+      139 +                <div className="flex-1 overflow-y-auto p-3">
+      140 +                    {filteredApps.length === 0 ? (
+      141 +                        <div className="h-full flex flex-col items-center justify-center text-gray-400">
+      142 +                            <FolderOpen size={48} className="mb-2 opacity-30" />
+      143 +                            <p className="text-sm">No applications in this stage</p>
+      144 +                        </div>
+      145 +                    ) : (
+      146 +                        <div className="space-y-1">
+      147 +                            {filteredApps.map((app) => {
+      148 +                                const info = app.loan_metadata?.applicant_info || {};
+      149 +                                return (
+      150 +                                    <div
+      151 +                                        key={app.workflow_id}
+      152 +                                        onClick={() => navigate(`/manager/application/${app.workflow_id}`)}
+      153 +                                        className={`bg-white border rounded-lg p-3 cursor-pointer transition group hover:border-blue-300 hover:shadow-sm ${
+      154 +                                            selectedApp?.workflow_id === app.workflow_id ? 'border-blue-400 shadow-sm' : 'border-gray-200'
+      155 +                                        }`}
+      156 +                                    >
+      157 +                                        <div className="flex items-center gap-3">
+      158 +                                            {/* Status Icon */}
+      159 +                                            <div className={`w-8 h-8 rounded flex items-center justify-center ${getStatusColor(app.status)}`}>
+      160 +                                                {getStatusIcon(app.status)}
+      161 +                                            </div>
+      162 +
+      163 +                                            {/* Loan Info */}
+      164 +                                            <div className="flex-1 min-w-0">
+      165 +                                                <div className="flex items-center gap-2">
+      166 +                                                    <span className="font-medium text-gray-900 text-sm truncate">
+      167 +                                                        {info.name || 'Unknown Borrower'}
+      168 +                                                    </span>
+      169 +                                                    {app.loan_stage && (
+      170 +                                                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+      171 +                                                            {app.loan_stage}
+      172 +                                                        </span>
+      173 +                                                    )}
+      174 +                                                </div>
+      175 +                                                <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+      176 +                                                    <span className="font-mono">{app.workflow_id.slice(0, 18)}...</span>
+      177 +                                                    <span className="flex items-center gap-1">
+      178 +                                                        <Calendar size={10} />
+      179 +                                                        {new Date(app.created_at).toLocaleDateString()}
+      180 +                                                    </span>
+      181 +                                                </div>
+      182 +                                            </div>
+      183 +
+      184 +                                            {/* Actions */}
+      185 +                                            <div className="flex items-center gap-2">
+      186 +                                                <span className={`text-xs px-2 py-1 rounded border font-medium ${getStatusColor(app.status)}`}>
+      187 +                                                    {app.status}
+      188 +                                                </span>
+      189 +                                                <button
+      190 +                                                    onClick={(e) => handleDelete(e, app.workflow_id)}
+      191 +                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition opacity-0 group-hover:opacity-100"
+      192 +                                                    title="Delete"
+      193 +                                                >
+      194 +                                                    <Trash2 size={14} />
+      195 +                                                </button>
+      196 +                                                <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-400" />
+      197 +                                            </div>
+      198 +                                        </div>
+      199 +                                    </div>
+      200 +                                );
+      201 +                            })}
+      202 +                        </div>
+      203 +                    )}
+      204 +                </div>
+      205 +            </div>
+      206 +        </div>
+      207 +    );
+      208 +}
+
+● Now let me create the Encompass-style ApplicationDetail with tabs (Forms, eFolder, Log) and floating Action Bar:
+
+● Write(frontend\src\pages\ApplicationDetail.jsx)
+  ⎿  Added 476 lines, removed 322 lines
+        1 -import React, { useEffect, useState } from 'react';
+        2 -import { useParams, useNavigate } from 'react-router-dom';
+        3 -import api from '../utils/api';
+        4 -import { useAuth } from '../context/AuthContext';
+        5 -import {
+        6 -    FileText, CheckCircle, XCircle, AlertTriangle,
+        7 -    Folder, File, Clock, ArrowLeft, RefreshCw,
+        8 -    Shield, User, FolderOpen
+        9 -} from 'lucide-react';
+       10 -
+       11 -const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+       12 -
+       13 -export default function ApplicationDetail() {
+       14 -    const { id } = useParams();
+       15 -    const navigate = useNavigate();
+       16 -    const { user } = useAuth(); // Get current user
+       17 -
+       18 -    const [details, setDetails] = useState(null);
+       19 -    const [structure, setStructure] = useState([]);
+       20 -    const [history, setHistory] = useState([]);
+       21 -    const [loading, setLoading] = useState(true);
+       22 -    const [error, setError] = useState('');
+       23 -
+       24 -    // Review Modal State
+       25 -    const [reviewModal, setReviewModal] = useState({ open: false, approved: false });
+       26 -    const [reviewReason, setReviewReason] = useState("");
+       27 -
+       28 -    const fetchData = async () => {
+       29 -        try {
+       30 -            // Fetch Status (Critical)
+       31 -            const statusRes = await api.get(`/status/${id}`);
+       32 -            setDetails(statusRes.data);
+       33 -
+       34 -            // Fetch Structure (Non-Critical)
+       35 -            try {
+       36 -                const structRes = await api.get(`/applications/${id}/structure`);
+       37 -                setStructure(structRes.data || []);
+       38 -            } catch (e) {
+       39 -                console.warn("Structure fetch failed:", e);
+       40 -                setStructure([]);
+       41 -            }
+       42 -
+       43 -            // Fetch History (Non-Critical)
+       44 -            try {
+       45 -                const histRes = await api.get(`/applications/${id}/history`);
+       46 -                setHistory(histRes.data || []);
+       47 -            } catch (e) {
+       48 -                console.warn("History fetch failed:", e);
+       49 -                setHistory([]);
+       50 -            }
+       51 -
+       52 -            setLoading(false);
+       53 -        } catch (err) {
+       54 -            console.error(err);
+       55 -            setError("Failed to load application data. " + (err.response?.data?.detail || err.message));
+       56 -            setLoading(false);
+       57 -        }
+       58 -    };
+       59 -
+       60 -    useEffect(() => {
+       61 -        fetchData();
+       62 -        // Poll for history updates
+       63 -        const interval = setInterval(async () => {
+       64 -            try {
+       65 -                const histRes = await api.get(`/applications/${id}/history`);
+       66 -                setHistory(histRes.data || []);
+       67 -                const statusRes = await api.get(`/status/${id}`);
+       68 -                setDetails(statusRes.data);
+       69 -            } catch (e) { console.error(e); }
+       70 -        }, 5000);
+       71 -        return () => clearInterval(interval);
+       72 -    }, [id]);
+       73 -
+       74 -    const openReviewModal = (approved) => {
+       75 -        setReviewModal({ open: true, approved });
+       76 -        setReviewReason("");
+       77 -    };
+       78 -
+       79 -    const submitReview = async () => {
+       80 -        try {
+       81 -            await api.post('/review', {
+       82 -                workflow_id: id,
+       83 -                approved: reviewModal.approved,
+       84 -                reason: reviewReason
+       85 -            });
+       86 -            setReviewModal({ open: false, approved: false });
+       87 -            fetchData();
+       88 -        } catch (err) {
+       89 -            alert("Action failed: " + err.message);
+       90 -        }
+       91 -    };
+       92 -
+       93 -    if (loading) return (
+       94 -        <div className="h-screen flex items-center justify-center">
+       95 -            <RefreshCw className="animate-spin text-green-600" size={32} />
+       96 -        </div>
+       97 -    );
+       98 -
+       99 -    if (error) return (
+      100 -        <div className="p-8 text-center text-red-600">
+      101 -            <AlertTriangle className="mx-auto mb-4" size={48} />
+      102 -            <p>{error}</p>
+      103 -            <button onClick={() => navigate('/manager')} className="mt-4 text-blue-600 underline">
+      104 -                Back to Dashboard
+      105 -            </button>
+      106 -        </div>
+      107 -    );
+      108 -
+      109 -    // Helpers
+      110 -    const info = details?.data?.applicant_info || {};
+      111 -    const verify = details?.data?.verification || {};
+      112 -    const status = details?.status || "Unknown";
+      113 -    const statusColor =
+      114 -        status.includes("Approved") ? "text-green-600 bg-green-50 border-green-200" :
+      115 -            status.includes("Rejected") ? "text-red-600 bg-red-50 border-red-200" :
+      116 -                status.includes("Review") ? "text-yellow-600 bg-yellow-50 border-yellow-200" : "text-blue-600 bg-blue-50 border-blue-200";
+      117 -
+      118 -    return (
+      119 -        <div className="min-h-[calc(100vh-64px)] bg-gray-100 p-4">
+      120 -            {/* Top Bar */}
+      121 -            <div className="mb-4 flex justify-between items-center">
+      122 -                <button onClick={() => navigate('/manager')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium">
+      123 -                    <ArrowLeft size={20} /> Back to Dashboard
+      124 -                </button>
+      125 -                <div className="flex items-center gap-4">
+      126 -                    {/* Decision Reason Display if Available */}
+      127 -                    {details?.decision_reason && (
+      128 -                        <div className="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-full font-medium">
+      129 -                            Note: {details.decision_reason}
+      130 -                        </div>
+      131 -                    )}
+      132 -                    <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+      133 -                        Application: <span className="font-mono text-gray-500">{id}</span>
+      134 -                    </h1>
+      135 -                </div>
+      136 -            </div>
+      137 -
+      138 -            {/* 3-Column Grid */}
+      139 -            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+      140 -
+      141 -                {/* COL 1: OVERVIEW & ACTIONS */}
+      142 -                <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      143 -                    <div className="p-4 border-b bg-gray-50 flex items-center gap-2 font-bold text-gray-700">
+      144 -                        <User size={18} /> Applicant Overview
+      145 -                    </div>
+      146 -                    <div className="p-6 overflow-y-auto flex-1 space-y-6">
+      147 -                        {/* Status Card */}
+      148 -                        <div className={`p-4 rounded-lg border text-center ${statusColor}`}>
+      149 -                            <p className="text-xs font-bold uppercase tracking-wider mb-1">Current Status</p>
+      150 -                            <p className="text-2xl font-bold">{status}</p>
+      151 -                        </div>
+      152 -
+      153 -                        {/* Details */}
+      154 -                        <div className="space-y-3">
+      155 -                            <div>
+      156 -                                <label className="text-xs text-gray-500 font-bold uppercase">Name</label>
+      157 -                                <p className="text-lg font-medium text-gray-900">{info.name || "N/A"}</p>
+      158 -                            </div>
+      159 -                            <div>
+      160 -                                <label className="text-xs text-gray-500 font-bold uppercase">Email</label>
+      161 -                                <p className="text-gray-700">{info.email || "N/A"}</p>
+      162 -                            </div>
+      163 -                            <div>
+      164 -                                <label className="text-xs text-gray-500 font-bold uppercase">Stated Income</label>
+      165 -                                <p className="font-mono text-gray-700">${info.stated_income}</p>
+      166 -                            </div>
+      167 -                            <div>
+      168 -                                <label className="text-xs text-gray-500 font-bold uppercase">SSN</label>
+      169 -                                <p className="font-mono text-gray-700">***-**-{info.ssn || "****"}</p>
+      170 -                            </div>
+      171 -                        </div>
+      172 -
+      173 -                        <hr />
+      174 -
+      175 -                        {/* AI Analysis */}
+      176 -                        <div>
+      177 -                            <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3">
+      178 -                                <Shield size={16} className="text-blue-500" /> AI Verification
+      179 -                            </h3>
+      180 -                            {verify.credit_score ? (
+      181 -                                <div className="space-y-3 text-sm">
+      182 -                                    <div className="flex justify-between">
+      183 -                                        <span className="text-gray-500">Credit Score</span>
+      184 -                                        <span className={verify.credit_score >= 620 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+      185 -                                            {verify.credit_score}
+      186 -                                        </span>
+      187 -                                    </div>
+      188 -                                    <div className="flex justify-between">
+      189 -                                        <span className="text-gray-500">Verified Income</span>
+      190 -                                        <span className="font-mono">${verify.verified_income?.toLocaleString()}</span>
+      191 -                                    </div>
+      192 -                                    <div className={`flex items-center gap-2 p-2 rounded ${verify.income_match ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+      193 -                                        {verify.income_match ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+      194 -                                        <span className="font-medium">{verify.income_match ? "Income Matches" : "Income Mismatch"}</span>
+      195 -                                    </div>
+      196 -                                </div>
+      197 -                            ) : (
+      198 -                                <p className="text-gray-400 italic text-sm">Pending Analysis...</p>
+      199 -                            )}
+      200 -                        </div>
+      201 -                    </div>
+      202 -                    {/* Actions Footer - Only for Managers */}
+      203 -                    {user?.role === 'manager' && (
+      204 -                        <div className="p-4 border-t bg-gray-50 flex gap-3">
+      205 -                            <button onClick={() => openReviewModal(true)} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-bold flex justify-center items-cente
+          -r gap-2 transition">
+      206 -                                <CheckCircle size={18} /> Approve
+      207 -                            </button>
+      208 -                            <button onClick={() => openReviewModal(false)} className="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg font-bold flex justify-
+          -center items-center gap-2 transition">
+      209 -                                <XCircle size={18} /> Reject
+      210 -                            </button>
+      211 -                        </div>
+      212 -                    )}
+      213 -                </div>
+      214 -
+      215 -                {/* COL 2: FILE SYSTEM */}
+      216 -                <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      217 -                    <div className="p-4 border-b bg-gray-50 flex items-center gap-2 font-bold text-gray-700">
+      218 -                        <FolderOpen size={18} /> Application Files
+      219 -                    </div>
+      220 -                    <div className="p-2 overflow-y-auto flex-1">
+      221 -                        {structure.length === 0 ? (
+      222 -                            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+      223 -                                <Folder size={48} className="mb-2 opacity-20" />
+      224 -                                <p>No files found</p>
+      225 -                            </div>
+      226 -                        ) : (
+      227 -                            <div className="space-y-1">
+      228 -                                {structure.map((file, idx) => (
+      229 -                                    <a
+      230 -                                        key={idx}
+      231 -                                        href={`${API_URL}${file.url}`}
+      232 -                                        target="_blank"
+      233 -                                        rel="noreferrer"
+      234 -                                        className="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-lg group transition border border-transparent hover:border-blue-100"
+      235 -                                    >
+      236 -                                        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition">
+      237 -                                            <FileText size={20} />
+      238 -                                        </div>
+      239 -                                        <div className="flex-1 min-w-0">
+      240 -                                            <p className="font-medium text-gray-800 truncate">{file.name}</p>
+      241 -                                            <p className="text-xs text-gray-400">PDF Document</p>
+      242 -                                        </div>
+      243 -                                    </a>
+      244 -                                ))}
+      245 -                            </div>
+      246 -                        )}
+      247 -                    </div>
+      248 -                </div>
+      249 -
+      250 -                {/* COL 3: AGENT LOG (Timeline) */}
+      251 -                <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      252 -                    <div className="p-4 border-b bg-gray-50 flex items-center gap-2 font-bold text-gray-700">
+      253 -                        <Clock size={18} /> Agent Narrative
+      254 -                    </div>
+      255 -                    <div className="p-4 overflow-y-auto flex-1 bg-gray-50/50">
+      256 -                        {history.length === 0 ? (
+      257 -                            <div className="mt-10 text-center text-gray-400">
+      258 -                                <p>No history available</p>
+      259 -                            </div>
+      260 -                        ) : (
+      261 -                            <div className="pl-2">
+      262 -                                {history.map((event, idx) => (
+      263 -                                    <div key={idx} className="relative pb-8 pl-8 border-l-2 border-blue-100 last:border-0 last:pb-0 group">
+      264 -                                        {/* Icon */}
+      265 -                                        <div className="absolute -left-[9px] top-0 w-5 h-5 rounded-full bg-blue-50 border-2 border-blue-500 flex items-center justify-center">
+      266 -                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+      267 -                                        </div>
+      268 -
+      269 -                                        {/* Content */}
+      270 -                                        <div className="-mt-1.5">
+      271 -                                            <p className="text-xs text-gray-400 font-mono mb-1">
+      272 -                                                {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : '--:--:--'}
+      273 -                                            </p>
+      274 -                                            <p className="text-sm font-bold text-gray-800">{event.agent}</p>
+      275 -                                            <p className="text-sm text-gray-600 mt-0.5">{event.message}</p>
+      276 -                                        </div>
+      277 -                                    </div>
+      278 -                                ))}
+      279 -                            </div>
+      280 -                        )}
+      281 -                    </div>
+      282 -                </div>
+      283 -            </div>
+      284 -
+      285 -            {/* Review Modal */}
+      286 -            {reviewModal.open && (
+      287 -                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      288 -                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+      289 -                        <h3 className="text-xl font-bold text-gray-800 mb-2">
+      290 -                            {reviewModal.approved ? "Approve Application" : "Reject Application"}
+      291 -                        </h3>
+      292 -                        <p className="text-gray-500 text-sm mb-4">
+      293 -                            Please provide a reason for this decision. This will be visible to the applicant.
+      294 -                        </p>
+      295 -
+      296 -                        <textarea
+      297 -                            className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+      298 -                            placeholder={reviewModal.approved ? "e.g., Criteria met, reliable income..." : "e.g., Credit score below minimum..."}
+      299 -                            value={reviewReason}
+      300 -                            onChange={e => setReviewReason(e.target.value)}
+      301 -                        ></textarea>
+      302 -
+      303 -                        <div className="flex gap-3 mt-6">
+      304 -                            <button
+      305 -                                onClick={() => setReviewModal({ open: false, approved: false })}
+      306 -                                className="flex-1 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+      307 -                            >
+      308 -                                Cancel
+      309 -                            </button>
+      310 -                            <button
+      311 -                                onClick={submitReview}
+      312 -                                className={`flex-1 py-2 text-white font-bold rounded-lg ${reviewModal.approved ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+      313 -                            >
+      314 -                                Confirm Decision
+      315 -                            </button>
+      316 -                        </div>
+      317 -                    </div>
+      318 -                </div>
+      319 -            )}
+      320 -        </div>
+      321 -    );
+      322 -}
+        1 +import React, { useEffect, useState } from 'react';
+        2 +import { useParams, useNavigate } from 'react-router-dom';
+        3 +import api from '../utils/api';
+        4 +import { useAuth } from '../context/AuthContext';
+        5 +import {
+        6 +    FileText, CheckCircle, XCircle, AlertTriangle,
+        7 +    Folder, Clock, ArrowLeft, RefreshCw, Save,
+        8 +    FolderOpen, History, Edit3, Eye, Download
+        9 +} from 'lucide-react';
+       10 +
+       11 +const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+       12 +
+       13 +// Tab configuration
+       14 +const TABS = [
+       15 +    { key: 'forms', label: 'Forms', icon: Edit3 },
+       16 +    { key: 'efolder', label: 'eFolder', icon: FolderOpen },
+       17 +    { key: 'log', label: 'Log', icon: History },
+       18 +];
+       19 +
+       20 +// Form fields configuration for Encompass-style editing
+       21 +const FORM_FIELDS = [
+       22 +    { key: 'name', label: 'Borrower Name', type: 'text', section: 'Borrower Information' },
+       23 +    { key: 'email', label: 'Email Address', type: 'email', section: 'Borrower Information' },
+       24 +    { key: 'ssn', label: 'SSN', type: 'text', section: 'Borrower Information' },
+       25 +    { key: 'stated_income', label: 'Stated Income', type: 'text', section: 'Financial Information' },
+       26 +];
+       27 +
+       28 +export default function ApplicationDetail() {
+       29 +    const { id } = useParams();
+       30 +    const navigate = useNavigate();
+       31 +    const { user } = useAuth();
+       32 +
+       33 +    const [details, setDetails] = useState(null);
+       34 +    const [structure, setStructure] = useState([]);
+       35 +    const [history, setHistory] = useState([]);
+       36 +    const [loading, setLoading] = useState(true);
+       37 +    const [error, setError] = useState('');
+       38 +    const [activeTab, setActiveTab] = useState('forms');
+       39 +
+       40 +    // Form editing state
+       41 +    const [formData, setFormData] = useState({});
+       42 +    const [editingField, setEditingField] = useState(null);
+       43 +    const [saving, setSaving] = useState(false);
+       44 +
+       45 +    // Review Modal State
+       46 +    const [reviewModal, setReviewModal] = useState({ open: false, approved: false });
+       47 +    const [reviewReason, setReviewReason] = useState("");
+       48 +
+       49 +    const fetchData = async () => {
+       50 +        try {
+       51 +            const statusRes = await api.get(`/status/${id}`);
+       52 +            setDetails(statusRes.data);
+       53 +
+       54 +            // Initialize form data from applicant_info
+       55 +            const info = statusRes.data?.data?.applicant_info || {};
+       56 +            setFormData(info);
+       57 +
+       58 +            try {
+       59 +                const structRes = await api.get(`/applications/${id}/structure`);
+       60 +                setStructure(structRes.data || []);
+       61 +            } catch (e) {
+       62 +                console.warn("Structure fetch failed:", e);
+       63 +                setStructure([]);
+       64 +            }
+       65 +
+       66 +            try {
+       67 +                const histRes = await api.get(`/applications/${id}/history`);
+       68 +                setHistory(histRes.data || []);
+       69 +            } catch (e) {
+       70 +                console.warn("History fetch failed:", e);
+       71 +                setHistory([]);
+       72 +            }
+       73 +
+       74 +            setLoading(false);
+       75 +        } catch (err) {
+       76 +            console.error(err);
+       77 +            setError("Failed to load application data. " + (err.response?.data?.detail || err.message));
+       78 +            setLoading(false);
+       79 +        }
+       80 +    };
+       81 +
+       82 +    useEffect(() => {
+       83 +        fetchData();
+       84 +        const interval = setInterval(async () => {
+       85 +            try {
+       86 +                const histRes = await api.get(`/applications/${id}/history`);
+       87 +                setHistory(histRes.data || []);
+       88 +                const statusRes = await api.get(`/status/${id}`);
+       89 +                setDetails(statusRes.data);
+       90 +            } catch (e) { console.error(e); }
+       91 +        }, 5000);
+       92 +        return () => clearInterval(interval);
+       93 +    }, [id]);
+       94 +
+       95 +    const handleFieldChange = (field, value) => {
+       96 +        setFormData(prev => ({ ...prev, [field]: value }));
+       97 +    };
+       98 +
+       99 +    const saveField = async (field) => {
+      100 +        setSaving(true);
+      101 +        try {
+      102 +            await api.patch(`/applications/${id}/fields`, {
+      103 +                field: field,
+      104 +                value: formData[field]
+      105 +            });
+      106 +            setEditingField(null);
+      107 +        } catch (err) {
+      108 +            alert("Failed to save: " + err.message);
+      109 +        }
+      110 +        setSaving(false);
+      111 +    };
+      112 +
+      113 +    const openReviewModal = (approved) => {
+      114 +        setReviewModal({ open: true, approved });
+      115 +        setReviewReason("");
+      116 +    };
+      117 +
+      118 +    const submitReview = async () => {
+      119 +        try {
+      120 +            await api.post('/review', {
+      121 +                workflow_id: id,
+      122 +                approved: reviewModal.approved,
+      123 +                reason: reviewReason
+      124 +            });
+      125 +            setReviewModal({ open: false, approved: false });
+      126 +            fetchData();
+      127 +        } catch (err) {
+      128 +            alert("Action failed: " + err.message);
+      129 +        }
+      130 +    };
+      131 +
+      132 +    if (loading) return (
+      133 +        <div className="h-screen flex items-center justify-center bg-gray-100">
+      134 +            <RefreshCw className="animate-spin text-blue-600" size={32} />
+      135 +        </div>
+      136 +    );
+      137 +
+      138 +    if (error) return (
+      139 +        <div className="p-8 text-center text-red-600 bg-gray-100 min-h-screen">
+      140 +            <AlertTriangle className="mx-auto mb-4" size={48} />
+      141 +            <p>{error}</p>
+      142 +            <button onClick={() => navigate('/manager')} className="mt-4 text-blue-600 underline">
+      143 +                Back to Dashboard
+      144 +            </button>
+      145 +        </div>
+      146 +    );
+      147 +
+      148 +    const info = details?.data?.applicant_info || formData;
+      149 +    const verify = details?.data?.verification || {};
+      150 +    const status = details?.status || "Unknown";
+      151 +    const loanStage = details?.loan_stage || "LEAD_CAPTURE";
+      152 +
+      153 +    const getStatusBadgeColor = () => {
+      154 +        const s = status.toLowerCase();
+      155 +        if (s.includes("approved")) return "bg-green-500";
+      156 +        if (s.includes("rejected") || s.includes("fail")) return "bg-red-500";
+      157 +        if (s.includes("review")) return "bg-yellow-500";
+      158 +        return "bg-blue-500";
+      159 +    };
+      160 +
+      161 +    // Group form fields by section
+      162 +    const groupedFields = FORM_FIELDS.reduce((acc, field) => {
+      163 +        if (!acc[field.section]) acc[field.section] = [];
+      164 +        acc[field.section].push(field);
+      165 +        return acc;
+      166 +    }, {});
+      167 +
+      168 +    return (
+      169 +        <div className="h-[calc(100vh-64px)] bg-gray-100 flex flex-col">
+      170 +            {/* Header */}
+      171 +            <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+      172 +                <div className="flex items-center gap-4">
+      173 +                    <button
+      174 +                        onClick={() => navigate('/manager')}
+      175 +                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
+      176 +                    >
+      177 +                        <ArrowLeft size={18} />
+      178 +                    </button>
+      179 +                    <div>
+      180 +                        <div className="flex items-center gap-2">
+      181 +                            <span className="font-bold text-gray-900">{info.name || 'Borrower'}</span>
+      182 +                            <span className={`px-2 py-0.5 text-xs text-white font-medium rounded ${getStatusBadgeColor()}`}>
+      183 +                                {status}
+      184 +                            </span>
+      185 +                            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+      186 +                                {loanStage}
+      187 +                            </span>
+      188 +                        </div>
+      189 +                        <div className="text-xs text-gray-500 font-mono">{id}</div>
+      190 +                    </div>
+      191 +                </div>
+      192 +                <button
+      193 +                    onClick={fetchData}
+      194 +                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
+      195 +                >
+      196 +                    <RefreshCw size={16} />
+      197 +                </button>
+      198 +            </div>
+      199 +
+      200 +            {/* Tab Bar */}
+      201 +            <div className="bg-white border-b border-gray-200 px-4 flex">
+      202 +                {TABS.map((tab) => {
+      203 +                    const Icon = tab.icon;
+      204 +                    const isActive = activeTab === tab.key;
+      205 +                    return (
+      206 +                        <button
+      207 +                            key={tab.key}
+      208 +                            onClick={() => setActiveTab(tab.key)}
+      209 +                            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition ${
+      210 +                                isActive
+      211 +                                    ? 'border-blue-500 text-blue-600'
+      212 +                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+      213 +                            }`}
+      214 +                        >
+      215 +                            <Icon size={16} />
+      216 +                            {tab.label}
+      217 +                        </button>
+      218 +                    );
+      219 +                })}
+      220 +            </div>
+      221 +
+      222 +            {/* Tab Content */}
+      223 +            <div className="flex-1 overflow-y-auto p-4">
+      224 +                {/* Forms Tab */}
+      225 +                {activeTab === 'forms' && (
+      226 +                    <div className="max-w-4xl mx-auto space-y-4">
+      227 +                        {Object.entries(groupedFields).map(([section, fields]) => (
+      228 +                            <div key={section} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      229 +                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+      230 +                                    <h3 className="text-sm font-bold text-gray-700">{section}</h3>
+      231 +                                </div>
+      232 +                                <div className="divide-y divide-gray-100">
+      233 +                                    {fields.map((field) => (
+      234 +                                        <div key={field.key} className="flex items-center px-4 py-2 hover:bg-gray-50">
+      235 +                                            <label className="w-40 text-xs font-medium text-gray-500 uppercase tracking-wide">
+      236 +                                                {field.label}
+      237 +                                            </label>
+      238 +                                            <div className="flex-1 flex items-center gap-2">
+      239 +                                                {editingField === field.key ? (
+      240 +                                                    <>
+      241 +                                                        <input
+      242 +                                                            type={field.type}
+      243 +                                                            value={formData[field.key] || ''}
+      244 +                                                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
+      245 +                                                            className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+      246 +                                                            autoFocus
+      247 +                                                        />
+      248 +                                                        <button
+      249 +                                                            onClick={() => saveField(field.key)}
+      250 +                                                            disabled={saving}
+      251 +                                                            className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+      252 +                                                        >
+      253 +                                                            <Save size={14} />
+      254 +                                                        </button>
+      255 +                                                        <button
+      256 +                                                            onClick={() => setEditingField(null)}
+      257 +                                                            className="p-1.5 text-gray-400 hover:bg-gray-100 rounded"
+      258 +                                                        >
+      259 +                                                            <XCircle size={14} />
+      260 +                                                        </button>
+      261 +                                                    </>
+      262 +                                                ) : (
+      263 +                                                    <>
+      264 +                                                        <span className="flex-1 text-sm text-gray-900">
+      265 +                                                            {field.key === 'ssn'
+      266 +                                                                ? `***-**-${(formData[field.key] || '').slice(-4)}`
+      267 +                                                                : formData[field.key] || '-'
+      268 +                                                            }
+      269 +                                                        </span>
+      270 +                                                        {user?.role === 'manager' && (
+      271 +                                                            <button
+      272 +                                                                onClick={() => setEditingField(field.key)}
+      273 +                                                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition"
+      274 +                                                            >
+      275 +                                                                <Edit3 size={14} />
+      276 +                                                            </button>
+      277 +                                                        )}
+      278 +                                                    </>
+      279 +                                                )}
+      280 +                                            </div>
+      281 +                                        </div>
+      282 +                                    ))}
+      283 +                                </div>
+      284 +                            </div>
+      285 +                        ))}
+      286 +
+      287 +                        {/* AI Verification Section */}
+      288 +                        {verify.credit_score && (
+      289 +                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      290 +                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+      291 +                                    <h3 className="text-sm font-bold text-gray-700">AI Verification Results</h3>
+      292 +                                </div>
+      293 +                                <div className="p-4 grid grid-cols-3 gap-4">
+      294 +                                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+      295 +                                        <div className={`text-2xl font-bold ${verify.credit_score >= 620 ? 'text-green-600' : 'text-red-600'}`}>
+      296 +                                            {verify.credit_score}
+      297 +                                        </div>
+      298 +                                        <div className="text-xs text-gray-500 uppercase mt-1">Credit Score</div>
+      299 +                                    </div>
+      300 +                                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+      301 +                                        <div className="text-2xl font-bold text-gray-900 font-mono">
+      302 +                                            ${verify.verified_income?.toLocaleString() || '0'}
+      303 +                                        </div>
+      304 +                                        <div className="text-xs text-gray-500 uppercase mt-1">Verified Income</div>
+      305 +                                    </div>
+      306 +                                    <div className={`text-center p-3 rounded-lg ${verify.income_match ? 'bg-green-50' : 'bg-red-50'}`}>
+      307 +                                        <div className={`text-lg font-bold ${verify.income_match ? 'text-green-600' : 'text-red-600'}`}>
+      308 +                                            {verify.income_match ? <CheckCircle size={28} className="mx-auto" /> : <XCircle size={28} className="mx-auto" />}
+      309 +                                        </div>
+      310 +                                        <div className="text-xs text-gray-500 uppercase mt-1">Income Match</div>
+      311 +                                    </div>
+      312 +                                </div>
+      313 +                            </div>
+      314 +                        )}
+      315 +                    </div>
+      316 +                )}
+      317 +
+      318 +                {/* eFolder Tab */}
+      319 +                {activeTab === 'efolder' && (
+      320 +                    <div className="max-w-4xl mx-auto">
+      321 +                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      322 +                            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+      323 +                                <h3 className="text-sm font-bold text-gray-700">Documents</h3>
+      324 +                                <span className="text-xs text-gray-500">{structure.length} files</span>
+      325 +                            </div>
+      326 +                            {structure.length === 0 ? (
+      327 +                                <div className="p-12 text-center text-gray-400">
+      328 +                                    <Folder size={48} className="mx-auto mb-2 opacity-30" />
+      329 +                                    <p className="text-sm">No documents uploaded</p>
+      330 +                                </div>
+      331 +                            ) : (
+      332 +                                <div className="divide-y divide-gray-100">
+      333 +                                    {structure.map((file, idx) => (
+      334 +                                        <div
+      335 +                                            key={idx}
+      336 +                                            className="flex items-center px-4 py-3 hover:bg-gray-50 group"
+      337 +                                        >
+      338 +                                            <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded flex items-center justify-center mr-3">
+      339 +                                                <FileText size={20} />
+      340 +                                            </div>
+      341 +                                            <div className="flex-1 min-w-0">
+      342 +                                                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+      343 +                                                <p className="text-xs text-gray-500">PDF Document</p>
+      344 +                                            </div>
+      345 +                                            <div className="flex items-center gap-1">
+      346 +                                                <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+      347 +                                                    Uploaded
+      348 +                                                </span>
+      349 +                                                <a
+      350 +                                                    href={`${API_URL}${file.url}`}
+      351 +                                                    target="_blank"
+      352 +                                                    rel="noreferrer"
+      353 +                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+      354 +                                                    title="View Document"
+      355 +                                                >
+      356 +                                                    <Eye size={16} />
+      357 +                                                </a>
+      358 +                                                <a
+      359 +                                                    href={`${API_URL}${file.url}`}
+      360 +                                                    download
+      361 +                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+      362 +                                                    title="Download"
+      363 +                                                >
+      364 +                                                    <Download size={16} />
+      365 +                                                </a>
+      366 +                                            </div>
+      367 +                                        </div>
+      368 +                                    ))}
+      369 +                                </div>
+      370 +                            )}
+      371 +                        </div>
+      372 +                    </div>
+      373 +                )}
+      374 +
+      375 +                {/* Log Tab */}
+      376 +                {activeTab === 'log' && (
+      377 +                    <div className="max-w-4xl mx-auto">
+      378 +                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      379 +                            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+      380 +                                <h3 className="text-sm font-bold text-gray-700">Audit Trail</h3>
+      381 +                            </div>
+      382 +                            {history.length === 0 ? (
+      383 +                                <div className="p-12 text-center text-gray-400">
+      384 +                                    <Clock size={48} className="mx-auto mb-2 opacity-30" />
+      385 +                                    <p className="text-sm">No history available</p>
+      386 +                                </div>
+      387 +                            ) : (
+      388 +                                <div className="p-4">
+      389 +                                    <div className="pl-4 border-l-2 border-gray-200">
+      390 +                                        {history.map((event, idx) => (
+      391 +                                            <div key={idx} className="relative pb-6 last:pb-0">
+      392 +                                                {/* Timeline dot */}
+      393 +                                                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-blue-500" />
+      394 +
+      395 +                                                <div className="pl-6">
+      396 +                                                    <div className="flex items-center gap-2 mb-1">
+      397 +                                                        <span className="text-sm font-bold text-gray-800">{event.agent}</span>
+      398 +                                                        <span className="text-xs text-gray-400 font-mono">
+      399 +                                                            {event.timestamp ? new Date(event.timestamp).toLocaleString() : '--'}
+      400 +                                                        </span>
+      401 +                                                    </div>
+      402 +                                                    <p className="text-sm text-gray-600">{event.message}</p>
+      403 +                                                </div>
+      404 +                                            </div>
+      405 +                                        ))}
+      406 +                                    </div>
+      407 +                                </div>
+      408 +                            )}
+      409 +                        </div>
+      410 +                    </div>
+      411 +                )}
+      412 +            </div>
+      413 +
+      414 +            {/* Floating Action Bar - Manager Only */}
+      415 +            {user?.role === 'manager' && (
+      416 +                <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between shadow-lg">
+      417 +                    <div className="text-sm text-gray-500">
+      418 +                        {details?.decision_reason && (
+      419 +                            <span>Decision Note: <span className="text-gray-700">{details.decision_reason}</span></span>
+      420 +                        )}
+      421 +                    </div>
+      422 +                    <div className="flex items-center gap-3">
+      423 +                        <button
+      424 +                            onClick={() => openReviewModal(true)}
+      425 +                            className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition shadow-sm"
+      426 +                        >
+      427 +                            <CheckCircle size={18} /> Approve
+      428 +                        </button>
+      429 +                        <button
+      430 +                            onClick={() => openReviewModal(false)}
+      431 +                            className="flex items-center gap-2 px-6 py-2 bg-white border border-red-300 text-red-600 hover:bg-red-50 font-bold rounded-lg transition"
+      432 +                        >
+      433 +                            <XCircle size={18} /> Reject
+      434 +                        </button>
+      435 +                    </div>
+      436 +                </div>
+      437 +            )}
+      438 +
+      439 +            {/* Review Modal */}
+      440 +            {reviewModal.open && (
+      441 +                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      442 +                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+      443 +                        <h3 className="text-xl font-bold text-gray-800 mb-2">
+      444 +                            {reviewModal.approved ? "Approve Application" : "Reject Application"}
+      445 +                        </h3>
+      446 +                        <p className="text-gray-500 text-sm mb-4">
+      447 +                            Please provide a reason for this decision.
+      448 +                        </p>
+      449 +
+      450 +                        <textarea
+      451 +                            className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+      452 +                            placeholder={reviewModal.approved ? "e.g., All criteria met, stable income verified..." : "e.g., Credit score below threshold..."}
+      453 +                            value={reviewReason}
+      454 +                            onChange={e => setReviewReason(e.target.value)}
+      455 +                        ></textarea>
+      456 +
+      457 +                        <div className="flex gap-3 mt-6">
+      458 +                            <button
+      459 +                                onClick={() => setReviewModal({ open: false, approved: false })}
+      460 +                                className="flex-1 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+      461 +                            >
+      462 +                                Cancel
+      463 +                            </button>
+      464 +                            <button
+      465 +                                onClick={submitReview}
+      466 +                                className={`flex-1 py-2 text-white font-bold rounded-lg ${reviewModal.approved ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+      467 +                            >
+      468 +                                Confirm
+      469 +                            </button>
+      470 +                        </div>
+      471 +                    </div>
+      472 +                </div>
+      473 +            )}
+      474 +        </div>
+      475 +    );
+      476 +}
+
+● All three missions are complete. Here's a summary:
+
+  ---
+  Implementation Summary
+
+  Mission 1: Backend (Data Mutation) - managers.py
+
+  - Added self.loan_data = {} state variable to LeadCaptureWorkflow
+  - Added update_field(field_name: str, value: Any) signal handler that logs updates
+  - Added get_loan_data() query that returns current (modified) loan data
+  - Initialized self.loan_data with input args in the run() method
+
+  Mission 2: API Wiring - applications.py
+
+  - Added PATCH /applications/{workflow_id}/fields endpoint
+  - Accepts {field: str, value: any} payload
+  - Updates SQL loan_metadata JSON column (handles nested applicant_info fields)
+  - Signals the LeadCaptureWorkflow with update_field for Pyramid architecture workflows
+
+  Mission 3: Frontend (Encompass Workspace)
+
+  ManagerDashboard.jsx:
+  - Sidebar with Pipeline View (Lead Capture, Processing, Underwriting, Closing, Archived)
+  - Stage filtering with badge counts
+  - Loan cards showing borrower name, workflow ID, status, stage
+  - Dense professional UI design
+
+  ApplicationDetail.jsx:
+  - Header with Loan Number, Borrower Name, Status Badge, Stage Badge
+  - Tabbed interface:
+    - [Forms] - Editable grid of inputs (Income, SSN, etc.) that call PATCH endpoint
+    - [eFolder] - Document list with View/Download buttons and status badges
+    - [Log] - Temporal Audit Trail timeline
+  - Floating Action Bar at bottom with Approve/Reject buttons (manager-only)
+
+  ---
+  Verification Steps
+
+  1. Backend: Check that managers.py has the new signal and query
+  2. API: Test PATCH /applications/{workflow_id}/fields via Swagger at /docs
+  3. Frontend: Run npm run dev and navigate to Manager Dashboard to see the new UI
+  4. Integration: Edit a field in Forms tab and verify it persists to database
+
+

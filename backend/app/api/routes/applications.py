@@ -13,9 +13,8 @@ from app.temporal.workflows import LoanProcessWorkflow
 # Pyramid Architecture: CEO Workflow
 from app.temporal.workflows.ceo import LoanLifecycleWorkflow
 
-# ... (omitted shared imports) ...
-
-# ... (inside get_application_history function) ...
+# Pyramid Architecture: Manager Workflows (for signals)
+from app.temporal.workflows.managers import LeadCaptureWorkflow
 
 
 
@@ -190,6 +189,72 @@ async def get_application_structure(
                 "url": f"/static/{workflow_id}/{f}"
             })
     return structure
+
+
+@router.patch("/applications/{workflow_id}/fields")
+async def update_application_field(
+    workflow_id: str,
+    field_update: dict,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Update a field in a running loan application.
+    Sends signal to Temporal workflow and updates SQL database.
+
+    Accepts: {"field": str, "value": any}
+    """
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can update fields")
+
+    field_name = field_update.get("field")
+    field_value = field_update.get("value")
+
+    if not field_name:
+        raise HTTPException(status_code=400, detail="Field name is required")
+
+    # 1. Update SQL Database
+    app_record = session.exec(
+        select(Application).where(Application.workflow_id == workflow_id)
+    ).first()
+
+    if not app_record:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    # Update loan_metadata JSON field
+    metadata = app_record.loan_metadata or {}
+
+    # Handle nested applicant_info fields
+    if field_name in ["name", "email", "ssn", "stated_income"]:
+        if "applicant_info" not in metadata:
+            metadata["applicant_info"] = {}
+        metadata["applicant_info"][field_name] = field_value
+    else:
+        metadata[field_name] = field_value
+
+    app_record.loan_metadata = metadata
+    session.add(app_record)
+    session.commit()
+
+    # 2. Signal Temporal Workflow (Pyramid architecture)
+    try:
+        client = await temporal.get_client()
+
+        # Try to signal LeadCaptureWorkflow child
+        if app_record.loan_stage:
+            child_handle = client.get_workflow_handle(f"{workflow_id}-lead-capture")
+            await child_handle.signal("update_field", field_name, field_value)
+    except Exception as e:
+        print(f"Warning: Failed to signal workflow {workflow_id}: {e}")
+        # DB update succeeded, workflow signal is best-effort
+
+    return {
+        "message": f"Field '{field_name}' updated successfully",
+        "workflow_id": workflow_id,
+        "field": field_name,
+        "value": field_value
+    }
+
 
 @router.post("/review")
 async def review_application(

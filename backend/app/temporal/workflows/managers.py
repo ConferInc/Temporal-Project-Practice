@@ -8,6 +8,7 @@ Each manager handles a specific phase of the loan lifecycle:
 2. ProcessingWorkflow - Document verification and processing
 """
 from datetime import timedelta
+from typing import Any
 from temporalio import workflow
 
 # Import MCP Activities
@@ -25,6 +26,7 @@ class LeadCaptureWorkflow:
     1. Create loan file in Encompass LOS
     2. Send welcome email to applicant
     3. Wait for human approval signal
+    4. Allow real-time field updates via signals
 
     Returns: "APPROVED" or "REJECTED"
     """
@@ -32,6 +34,7 @@ class LeadCaptureWorkflow:
     def __init__(self) -> None:
         self.human_decision = None
         self.loan_number = None
+        self.loan_data = {}  # Mutable state for Encompass-style editing
 
     @workflow.signal
     def human_approval(self, approved: bool):
@@ -39,10 +42,21 @@ class LeadCaptureWorkflow:
         self.human_decision = "APPROVED" if approved else "REJECTED"
         workflow.logger.info(f"LeadCapture received human decision: {self.human_decision}")
 
+    @workflow.signal
+    def update_field(self, field_name: str, value: Any):
+        """Signal handler for real-time field updates from manager dashboard"""
+        self.loan_data[field_name] = value
+        workflow.logger.info(f"Manager updated {field_name} to {value}")
+
     @workflow.query
     def get_loan_number(self) -> str:
         """Query the Encompass loan number"""
         return self.loan_number
+
+    @workflow.query
+    def get_loan_data(self) -> dict:
+        """Query the current (potentially modified) loan data"""
+        return self.loan_data
 
     @workflow.run
     async def run(self, applicant_data: dict) -> str:
@@ -55,6 +69,8 @@ class LeadCaptureWorkflow:
         Returns:
             "APPROVED" or "REJECTED"
         """
+        # Initialize loan_data with input args for real-time editing
+        self.loan_data = applicant_data.copy()
         workflow.logger.info(f"LeadCaptureWorkflow started for {applicant_data.get('applicant_info', {}).get('name', 'Unknown')}")
 
         # Step 1: Create loan file in Encompass
