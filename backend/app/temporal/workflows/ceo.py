@@ -36,6 +36,9 @@ class LoanLifecycleWorkflow:
         self.decision_reason = None
         self.loan_number = None
         self.logs = []
+        # THE GATE: Human decision is tracked at CEO level
+        self.human_decision = None
+        self.loan_data = {}  # Stores current loan data for field updates
 
     def _add_log(self, agent: str, message: str):
         """Add an audit log entry"""
@@ -46,6 +49,32 @@ class LoanLifecycleWorkflow:
             "stage": self.current_stage.value
         }
         self.logs.append(entry)
+
+    # =========================================
+    # Signals - Human approval gate at CEO level
+    # =========================================
+
+    @workflow.signal
+    def human_approval(self, approved: bool):
+        """
+        Signal handler for human manager approval.
+        THE GATE: This is where human decisions are received.
+        """
+        self.human_decision = "APPROVED" if approved else "REJECTED"
+        workflow.logger.info(f"CEO received human decision: {self.human_decision}")
+
+    @workflow.signal
+    def update_field(self, field_name: str, value):
+        """Signal handler for real-time field updates from manager dashboard"""
+        if "applicant_info" not in self.loan_data:
+            self.loan_data["applicant_info"] = {}
+
+        # Handle nested applicant_info fields
+        if field_name in ["name", "email", "ssn", "stated_income"]:
+            self.loan_data["applicant_info"][field_name] = value
+        else:
+            self.loan_data[field_name] = value
+        workflow.logger.info(f"CEO: Manager updated {field_name} to {value}")
 
     # =========================================
     # Queries - Expose live status
@@ -103,25 +132,42 @@ class LoanLifecycleWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=1)
         )
 
-        workflow.logger.info(f"Lead Capture completed with: {lead_capture_result}")
-        self._add_log("Lead Capture", f"Phase completed: {lead_capture_result}")
+        # Extract recommendation and loan_data from LeadCapture result
+        ai_recommendation = lead_capture_result.get("recommendation", "PENDING_REVIEW")
+        self.loan_data = lead_capture_result.get("loan_data", input_data)
+        self.loan_number = lead_capture_result.get("loan_number")
+
+        workflow.logger.info(f"Lead Capture completed with AI recommendation: {ai_recommendation}")
+        self._add_log("Lead Capture", f"Phase completed. AI Recommendation: {ai_recommendation}")
+        self._add_log("CEO", "Waiting for human approval...")
+
+        # =========================================
+        # THE GATE: Wait for human approval signal
+        # This is the ONLY place where we wait for human decision
+        # =========================================
+        workflow.logger.info("CEO: Waiting for human approval signal...")
+        await workflow.wait_condition(lambda: self.human_decision is not None)
+
+        workflow.logger.info(f"CEO received human decision: {self.human_decision}")
+        self._add_log("Human Manager", f"Decision: {self.human_decision}")
 
         # Check: If rejected, archive and end
-        if lead_capture_result == "REJECTED":
+        if self.human_decision == "REJECTED":
             self.current_stage = LoanStage.ARCHIVED
-            self.decision_reason = "Rejected during Lead Capture phase"
+            self.decision_reason = "Rejected by human manager"
             self._add_log("CEO", "Application REJECTED - Moving to Archive")
             return "REJECTED"
 
         # =========================================
         # Phase 2: Processing (Transition on Approval)
+        # Pass the loan_data (includes any manager field updates)
         # =========================================
         self.current_stage = LoanStage.PROCESSING
-        self._add_log("CEO", "Delegating to Processing Department")
+        self._add_log("CEO", "Human APPROVED - Delegating to Processing Department")
 
         processing_result = await workflow.execute_child_workflow(
             ProcessingWorkflow.run,
-            args=[input_data],
+            args=[self.loan_data],  # Pass current loan_data with any updates
             id=f"{workflow.info().workflow_id}-processing",
             retry_policy=RetryPolicy(maximum_attempts=1)
         )

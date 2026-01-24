@@ -14,6 +14,7 @@ from app.temporal.workflows.managers import LeadCaptureWorkflow, ProcessingWorkf
 # Pyramid Architecture: New Activities (Level 3 - MCP Workers)
 from app.temporal.activities.mcp_comms import send_email, send_sms
 from app.temporal.activities.mcp_encompass import create_loan_file, push_field_update
+from app.temporal.activities.mcp_docgen import generate_document
 
 async def main():
     # 1. Connect to the Temporal Server
@@ -55,6 +56,7 @@ async def main():
             send_sms,
             create_loan_file,
             push_field_update,
+            generate_document,
         ],
     )
 

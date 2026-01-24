@@ -51,7 +51,14 @@ async def apply_for_loan(
         path_pay, url_pay = files.save_application_file(app_id, pay_stub, "Pay_Stub")
         path_credit, url_credit = files.save_application_file(app_id, credit_document, "Credit_Report")
 
-        # 3. Prepare Workflow Data
+        # 3. Get funnel data from user's initial_metadata
+        funnel_data = current_user.initial_metadata or {}
+        property_value = float(funnel_data.get("property_value", 0))
+        down_payment = float(funnel_data.get("down_payment", 0))
+        loan_amount = float(funnel_data.get("loan_amount", property_value - down_payment))
+        citizenship = funnel_data.get("citizenship", None)
+
+        # 4. Prepare Workflow Data (include funnel financial data)
         workflow_input = {
             "applicant_info": {
                 "name": name,
@@ -70,22 +77,27 @@ async def apply_for_loan(
                 "tax_document": url_tax,
                 "pay_stub": url_pay,
                 "credit_document": url_credit
-            }
+            },
+            # Funnel data for DocGen and Processing
+            "property_value": property_value,
+            "down_payment": down_payment,
+            "loan_amount": loan_amount,
+            "citizenship": citizenship,
         }
 
-        # 4. Persist to Database
+        # 5. Persist to Database
         new_app = Application(
             user_id=current_user.id,
             workflow_id=app_id,
             status="Submitted",
             loan_stage=LoanStage.LEAD_CAPTURE.value if use_pyramid else None,
-            loan_amount=0.0,
+            loan_amount=loan_amount,  # Store actual loan amount from funnel
             loan_metadata=workflow_input
         )
         session.add(new_app)
         session.commit()
 
-        # 5. Start Workflow
+        # 6. Start Workflow
         client = await temporal.get_client()
         try:
             if use_pyramid:
@@ -240,10 +252,10 @@ async def update_application_field(
     try:
         client = await temporal.get_client()
 
-        # Try to signal LeadCaptureWorkflow child
+        # Signal the CEO workflow directly (gate is at CEO level)
         if app_record.loan_stage:
-            child_handle = client.get_workflow_handle(f"{workflow_id}-lead-capture")
-            await child_handle.signal("update_field", field_name, field_value)
+            handle = client.get_workflow_handle(workflow_id)
+            await handle.signal("update_field", field_name, field_value)
     except Exception as e:
         print(f"Warning: Failed to signal workflow {workflow_id}: {e}")
         # DB update succeeded, workflow signal is best-effort
@@ -289,12 +301,12 @@ async def review_application(
         client = await temporal.get_client()
         handle = client.get_workflow_handle(request.workflow_id)
 
-        # Try Pyramid workflow signal first (LeadCaptureWorkflow child)
+        # Try Pyramid workflow signal first (signal the PARENT CEO workflow)
         is_pyramid = app_record.loan_stage is not None
         if is_pyramid:
-            # Signal the LeadCaptureWorkflow child
-            child_handle = client.get_workflow_handle(f"{request.workflow_id}-lead-capture")
-            await child_handle.signal("human_approval", request.approved)
+            # Signal the CEO workflow directly (not the child)
+            # The gate is now at the CEO level
+            await handle.signal("human_approval", request.approved)
         else:
             # Original workflow signal
             await handle.signal("approve_signal", request.approved)
