@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Moxi Mortgage Auto-Underwriter - a loan origination system that automates underwriting using Temporal workflows and OpenAI for document analysis. The system processes loan applications through AI-powered document extraction, automatic approval logic, and human-in-the-loop manager review.
+Moxi Mortgage Auto-Underwriter - a loan origination system that automates underwriting using Temporal workflows and OpenAI for document analysis. The system uses a "Pyramid Architecture" with hierarchical workflows: CEO (parent) orchestrates Manager workflows (children), which execute MCP Activities (workers).
 
 ## Commands
 
@@ -47,45 +47,71 @@ Frontend (React:3000) → Backend (FastAPI:3001) → Temporal (7233)
                          PostgreSQL              Elasticsearch
 ```
 
-### Key Components
+### Pyramid Architecture (Temporal Workflows)
 
-**Backend (`backend/app/`)**
-- `main.py` - FastAPI app, CORS, router registration
-- `api/routes/auth.py` - JWT authentication (register/login)
-- `api/routes/applications.py` - `/apply` endpoint, application management
-- `temporal/workflows.py` - `LoanProcessWorkflow` orchestration
-- `temporal/activities.py` - AI extraction (OCR, GPT analysis), file operations
-- `temporal/worker.py` - Temporal worker entry point
-- `core/security.py` - JWT creation, bcrypt password hashing
-- `models/sql.py` - SQLModel tables (User, Application)
+The system uses a hierarchical "Pyramid" workflow structure:
 
-**Frontend (`frontend/src/`)**
-- `pages/` - LoginPage, RegisterPage, ApplicantDashboard, ManagerDashboard, ApplicationDetail
-- `components/UserPortal.jsx` - Multi-step loan application wizard
-- `context/AuthContext.jsx` - JWT token management
+```
+Level 1: CEO (LoanLifecycleWorkflow)
+    └── Orchestrates entire loan lifecycle
+    └── Contains human approval gate
+    └── Contains borrower signature gate
 
-### Workflow State Machine
+Level 2: Managers (Child Workflows)
+    ├── LeadCaptureWorkflow - Creates loan file, sends welcome email, AI document analysis
+    └── ProcessingWorkflow - Generates Initial Disclosures, verifies documents
 
-`LoanProcessWorkflow` processes applications through:
-1. File organization (File Clerk activity)
-2. Parallel document analysis (OCR + GPT extraction)
-3. Decision logic:
-   - Credit < 620 → Auto-Reject
-   - Credit > 740 & Income > $60k → Auto-Approve
-   - Otherwise → Pending Manual Review (waits for `human_approval_signal`)
+Level 3: Workers (MCP Activities)
+    ├── mcp_comms - send_email, send_sms
+    ├── mcp_encompass - create_loan_file, push_field_update
+    ├── mcp_docgen - generate_document
+    └── legacy - analyze_document, read_pdf_content
+```
 
-Manager approval sends a signal to resume the workflow.
+### Loan Stage State Machine
+
+```
+LEAD_CAPTURE → (human approval) → PROCESSING → UNDERWRITING (signature wait) → CLOSING → ARCHIVED
+                    ↓ (rejected)
+                 ARCHIVED
+```
+
+Defined in `backend/app/models/sql.py` as `LoanStage` enum.
+
+### Key Backend Files
+
+- `temporal/workflows/ceo.py` - `LoanLifecycleWorkflow`: Parent workflow with signals (`human_approval`, `borrower_signature`, `update_field`) and queries
+- `temporal/workflows/managers.py` - `LeadCaptureWorkflow`, `ProcessingWorkflow`: Child workflows
+- `temporal/workflows/legacy.py` - `LoanProcessWorkflow`: Original flat workflow (backward compatible)
+- `temporal/activities/` - MCP activities organized by domain (comms, encompass, docgen, legacy)
+- `api/routes/applications.py` - REST endpoints including `/apply`, `/review`, `/sign`
+
+### Workflow Signals
+
+The CEO workflow accepts these signals:
+- `human_approval(approved: bool)` - Manager approves/rejects application
+- `borrower_signature(signed: bool)` - Borrower signs Initial Disclosures
+- `update_field(field_name, value)` - Real-time field updates from manager dashboard
 
 ### File Handling
 
-Uploads saved to `/backend/uploads/{app_id}/{label}.pdf`, served at `/static/{app_id}/`. File paths stored in `Application.loan_metadata` JSON field.
+Uploads saved to `/backend/uploads/{workflow_id}/{label}.pdf`, served at `/static/{workflow_id}/`. Generated documents (Initial Disclosures) are saved to the same location.
 
 ## Environment Variables
 
-- `OPENAI_API_KEY` - Required for AI document analysis
+- `OPENAI_API_KEY` or `LITELLM_API_KEY` - Required for AI document analysis
+- `LITELLM_BASE_URL` - Optional LiteLLM proxy URL
 - `TEMPORAL_HOST` - Temporal server address (default: `temporal:7233` in Docker, `localhost:9233` on host)
 - `DATABASE_URL` - PostgreSQL connection (default configured in docker-compose)
 
 ## Port Mapping Note
 
 Temporal uses port 9233 on host → 7233 in container to avoid Windows conflicts. Docker services communicate internally on 7233.
+
+## Temporal Workflow Rules
+
+When modifying workflows:
+- Use `workflow.now()` instead of `datetime.utcnow()` for determinism
+- Import non-workflow code inside `with workflow.unsafe.imports_passed_through():`
+- Activities must be decorated with `@activity.defn` and called via `workflow.execute_activity()`
+- Child workflows called via `workflow.execute_child_workflow()`

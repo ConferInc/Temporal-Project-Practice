@@ -5,24 +5,90 @@ import { useAuth } from '../context/AuthContext';
 import {
     FileText, CheckCircle, XCircle, AlertTriangle,
     Folder, Clock, ArrowLeft, RefreshCw, Save,
-    FolderOpen, History, Edit3, Eye, Download
+    FolderOpen, History, Edit3, Eye, Download,
+    DollarSign, User, Mail, CreditCard, Building,
+    TrendingUp, Shield, AlertOctagon, BadgeCheck, Percent
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
+// Info Card Component with verification badge
+function InfoCard({ label, value, icon: Icon, verified, source, warning }) {
+    return (
+        <div className={`p-4 rounded-lg border ${warning ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
+            <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-xs text-gray-500 uppercase mb-1">
+                    {Icon && <Icon size={12} />}
+                    {label}
+                </div>
+                {verified && (
+                    <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        <BadgeCheck size={10} />
+                        Verified
+                    </span>
+                )}
+                {warning && (
+                    <span className="flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                        <AlertTriangle size={10} />
+                        Mismatch
+                    </span>
+                )}
+            </div>
+            <div className={`text-lg font-bold ${warning ? 'text-red-700' : 'text-gray-900'}`}>
+                {value || '-'}
+            </div>
+            {source && (
+                <div className="text-xs text-gray-400 mt-1">
+                    Source: {source}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Progress Bar Component
+function ProgressBar({ stage }) {
+    const stages = ['LEAD_CAPTURE', 'PROCESSING', 'UNDERWRITING', 'CLOSING', 'ARCHIVED'];
+    const currentIdx = stages.indexOf(stage?.toUpperCase()) || 0;
+    const progress = ((currentIdx + 1) / stages.length) * 100;
+
+    return (
+        <div className="w-full">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Lead Capture</span>
+                <span>Clear to Close</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+        </div>
+    );
+}
+
+// Document Thumbnail Component
+function DocumentThumbnail({ file, onClick }) {
+    return (
+        <div
+            onClick={onClick}
+            className="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:shadow-sm cursor-pointer transition group"
+        >
+            <div className="w-full h-20 bg-gray-100 rounded flex items-center justify-center mb-2">
+                <FileText size={32} className="text-gray-400 group-hover:text-blue-500" />
+            </div>
+            <p className="text-xs font-medium text-gray-700 truncate">{file.name}</p>
+            <p className="text-xs text-gray-400">PDF</p>
+        </div>
+    );
+}
+
 // Tab configuration
 const TABS = [
-    { key: 'forms', label: 'Forms', icon: Edit3 },
-    { key: 'efolder', label: 'eFolder', icon: FolderOpen },
-    { key: 'log', label: 'Log', icon: History },
-];
-
-// Form fields configuration for Encompass-style editing
-const FORM_FIELDS = [
-    { key: 'name', label: 'Borrower Name', type: 'text', section: 'Borrower Information' },
-    { key: 'email', label: 'Email Address', type: 'email', section: 'Borrower Information' },
-    { key: 'ssn', label: 'SSN', type: 'text', section: 'Borrower Information' },
-    { key: 'stated_income', label: 'Stated Income', type: 'text', section: 'Financial Information' },
+    { key: 'overview', label: 'Overview', icon: TrendingUp },
+    { key: 'documents', label: 'Documents', icon: FolderOpen },
+    { key: 'timeline', label: 'Timeline', icon: History },
 ];
 
 export default function ApplicationDetail() {
@@ -35,7 +101,7 @@ export default function ApplicationDetail() {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState('forms');
+    const [activeTab, setActiveTab] = useState('overview');
 
     // Form editing state
     const [formData, setFormData] = useState({});
@@ -51,8 +117,9 @@ export default function ApplicationDetail() {
             const statusRes = await api.get(`/status/${id}`);
             setDetails(statusRes.data);
 
-            // Initialize form data from applicant_info
-            const info = statusRes.data?.data?.applicant_info || {};
+            // Initialize form data from loan_metadata.applicant_info
+            const loanMetadata = statusRes.data?.loan_metadata || statusRes.data?.data || {};
+            const info = loanMetadata.applicant_info || {};
             setFormData(info);
 
             try {
@@ -145,60 +212,80 @@ export default function ApplicationDetail() {
         </div>
     );
 
-    const info = details?.data?.applicant_info || formData;
-    const verify = details?.data?.verification || {};
+    // Read from loan_metadata (Pyramid) or data (Original workflow)
+    const loanMetadata = details?.loan_metadata || details?.data || {};
+    const info = loanMetadata.applicant_info || formData;
+    const analysis = loanMetadata.analysis || {};
+    const riskEval = loanMetadata.risk_evaluation || {};
     const status = details?.status || "Unknown";
     const loanStage = details?.loan_stage || "LEAD_CAPTURE";
+    const aiRecommendation = loanMetadata.ai_recommendation || "";
+    const underwritingDecision = loanMetadata.underwriting_decision || "";
 
-    const getStatusBadgeColor = () => {
+    const getStatusBadge = () => {
         const s = status.toLowerCase();
-        if (s.includes("approved")) return "bg-green-500";
-        if (s.includes("rejected") || s.includes("fail")) return "bg-red-500";
-        if (s.includes("review")) return "bg-yellow-500";
-        return "bg-blue-500";
+        if (underwritingDecision === "CLEAR_TO_CLOSE") return { color: "bg-green-500", text: "Clear to Close" };
+        if (s.includes("signed")) return { color: "bg-green-500", text: "Signed" };
+        if (s.includes("approved")) return { color: "bg-green-500", text: "Approved" };
+        if (s.includes("rejected") || s.includes("fail")) return { color: "bg-red-500", text: "Rejected" };
+        if (s.includes("review")) return { color: "bg-yellow-500", text: "In Review" };
+        return { color: "bg-blue-500", text: "Processing" };
     };
 
-    // Group form fields by section
-    const groupedFields = FORM_FIELDS.reduce((acc, field) => {
-        if (!acc[field.section]) acc[field.section] = [];
-        acc[field.section].push(field);
-        return acc;
-    }, {});
+    const statusBadge = getStatusBadge();
+
+    const formatCurrency = (val) => {
+        const num = parseFloat(val) || 0;
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0
+        }).format(num);
+    };
 
     return (
         <div className="h-[calc(100vh-64px)] bg-gray-100 flex flex-col">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/manager')}
-                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900">{info.name || 'Borrower'}</span>
-                            <span className={`px-2 py-0.5 text-xs text-white font-medium rounded ${getStatusBadgeColor()}`}>
-                                {status}
-                            </span>
-                            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
-                                {loanStage}
-                            </span>
+            <div className="bg-white border-b border-gray-200 px-6 py-4">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/manager')}
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-xl font-bold text-gray-900">{info.name || 'Borrower'}</h1>
+                                <span className={`px-3 py-1 text-sm text-white font-medium rounded-lg ${statusBadge.color}`}>
+                                    {statusBadge.text}
+                                </span>
+                                {aiRecommendation && (
+                                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                        aiRecommendation === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                        AI: {aiRecommendation}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="text-sm text-gray-500 font-mono mt-1">{id}</div>
                         </div>
-                        <div className="text-xs text-gray-500 font-mono">{id}</div>
                     </div>
+                    <button
+                        onClick={fetchData}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                    >
+                        <RefreshCw size={18} />
+                    </button>
                 </div>
-                <button
-                    onClick={fetchData}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition"
-                >
-                    <RefreshCw size={16} />
-                </button>
+
+                {/* Progress Bar */}
+                <ProgressBar stage={loanStage} />
             </div>
 
             {/* Tab Bar */}
-            <div className="bg-white border-b border-gray-200 px-4 flex">
+            <div className="bg-white border-b border-gray-200 px-6 flex">
                 {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.key;
@@ -206,7 +293,7 @@ export default function ApplicationDetail() {
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
-                            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition ${
+                            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
                                 isActive
                                     ? 'border-blue-500 text-blue-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -220,221 +307,260 @@ export default function ApplicationDetail() {
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-4">
-                {/* Forms Tab */}
-                {activeTab === 'forms' && (
-                    <div className="max-w-4xl mx-auto space-y-4">
-                        {Object.entries(groupedFields).map(([section, fields]) => (
-                            <div key={section} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                                    <h3 className="text-sm font-bold text-gray-700">{section}</h3>
-                                </div>
-                                <div className="divide-y divide-gray-100">
-                                    {fields.map((field) => (
-                                        <div key={field.key} className="flex items-center px-4 py-2 hover:bg-gray-50">
-                                            <label className="w-40 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                                {field.label}
-                                            </label>
-                                            <div className="flex-1 flex items-center gap-2">
-                                                {editingField === field.key ? (
-                                                    <>
-                                                        <input
-                                                            type={field.type}
-                                                            value={formData[field.key] || ''}
-                                                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                                                            className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                            autoFocus
-                                                        />
-                                                        <button
-                                                            onClick={() => saveField(field.key)}
-                                                            disabled={saving}
-                                                            className="p-1.5 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
-                                                        >
-                                                            <Save size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setEditingField(null)}
-                                                            className="p-1.5 text-gray-400 hover:bg-gray-100 rounded"
-                                                        >
-                                                            <XCircle size={14} />
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className="flex-1 text-sm text-gray-900">
-                                                            {field.key === 'ssn'
-                                                                ? `***-**-${(formData[field.key] || '').slice(-4)}`
-                                                                : formData[field.key] || '-'
-                                                            }
-                                                        </span>
-                                                        {user?.role === 'manager' && (
-                                                            <button
-                                                                onClick={() => setEditingField(field.key)}
-                                                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition"
-                                                            >
-                                                                <Edit3 size={14} />
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+            <div className="flex-1 overflow-y-auto p-6">
+                {/* Overview Tab */}
+                {activeTab === 'overview' && (
+                    <div className="grid grid-cols-3 gap-6">
+                        {/* Left Column - Borrower Info */}
+                        <div className="space-y-4">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                    <User size={16} />
+                                    Borrower Information
+                                </h3>
+                                <div className="space-y-3">
+                                    <InfoCard label="Full Name" value={info.name} icon={User} />
+                                    <InfoCard label="Email" value={info.email} icon={Mail} />
+                                    <InfoCard
+                                        label="SSN"
+                                        value={info.ssn ? `***-**-${info.ssn.slice(-4)}` : '-'}
+                                        icon={Shield}
+                                    />
+                                    <InfoCard
+                                        label="Stated Income"
+                                        value={formatCurrency(info.stated_income)}
+                                        icon={DollarSign}
+                                    />
                                 </div>
                             </div>
-                        ))}
+                        </div>
 
-                        {/* AI Verification Section */}
-                        {verify.credit_score && (
-                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                                    <h3 className="text-sm font-bold text-gray-700">AI Verification Results</h3>
+                        {/* Middle Column - AI Analysis */}
+                        <div className="space-y-4">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                    <TrendingUp size={16} />
+                                    AI Verification Results
+                                </h3>
+
+                                {analysis.verified_income > 0 ? (
+                                    <div className="space-y-3">
+                                        <InfoCard
+                                            label="Verified Income"
+                                            value={formatCurrency(analysis.verified_income)}
+                                            icon={DollarSign}
+                                            verified={!analysis.income_mismatch}
+                                            source="Tax Return & Pay Stub"
+                                            warning={analysis.income_mismatch}
+                                        />
+
+                                        {analysis.income_mismatch && (
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                                <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
+                                                    <AlertOctagon size={18} />
+                                                    Income Mismatch Detected
+                                                </div>
+                                                <p className="text-sm text-red-600">
+                                                    Stated: {formatCurrency(analysis.stated_income)} vs
+                                                    Verified: {formatCurrency(analysis.verified_income)}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <InfoCard
+                                            label="AI Confidence"
+                                            value={`${((analysis.confidence || 0) * 100).toFixed(0)}%`}
+                                            icon={Percent}
+                                            verified={analysis.confidence >= 0.8}
+                                        />
+
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div className="bg-gray-50 rounded p-2">
+                                                <span className="text-gray-500">Pay Stub:</span>
+                                                <span className="ml-1 font-medium">{formatCurrency(analysis.pay_stub_income)}</span>
+                                            </div>
+                                            <div className="bg-gray-50 rounded p-2">
+                                                <span className="text-gray-500">Tax Return:</span>
+                                                <span className="ml-1 font-medium">{formatCurrency(analysis.tax_income)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <TrendingUp size={32} className="mx-auto mb-2 opacity-30" />
+                                        <p className="text-sm">AI analysis pending...</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Risk Evaluation */}
+                            {riskEval.decision && (
+                                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        <Shield size={16} />
+                                        Underwriting Risk Assessment
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div className={`p-4 rounded-lg ${
+                                            riskEval.decision === 'CLEAR_TO_CLOSE'
+                                                ? 'bg-green-50 border border-green-200'
+                                                : 'bg-yellow-50 border border-yellow-200'
+                                        }`}>
+                                            <div className={`font-bold text-lg ${
+                                                riskEval.decision === 'CLEAR_TO_CLOSE' ? 'text-green-700' : 'text-yellow-700'
+                                            }`}>
+                                                {riskEval.decision === 'CLEAR_TO_CLOSE' ? 'Clear to Close' : 'Referred for Review'}
+                                            </div>
+                                        </div>
+
+                                        <InfoCard
+                                            label="Credit Score"
+                                            value={riskEval.credit_score || '-'}
+                                            icon={CreditCard}
+                                            verified={riskEval.credit_score > 700}
+                                        />
+                                        <InfoCard
+                                            label="DTI Ratio"
+                                            value={`${riskEval.dti_ratio || 0}%`}
+                                            icon={Percent}
+                                            verified={riskEval.dti_ratio < 43}
+                                            warning={riskEval.dti_ratio >= 43}
+                                        />
+
+                                        {riskEval.issues?.length > 0 && (
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                                <div className="text-xs font-bold text-red-700 mb-2">Issues Found:</div>
+                                                <ul className="text-xs text-red-600 space-y-1">
+                                                    {riskEval.issues.map((issue, idx) => (
+                                                        <li key={idx}>- {issue}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="p-4 grid grid-cols-3 gap-4">
-                                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                                        <div className={`text-2xl font-bold ${verify.credit_score >= 620 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {verify.credit_score}
-                                        </div>
-                                        <div className="text-xs text-gray-500 uppercase mt-1">Credit Score</div>
-                                    </div>
-                                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                                        <div className="text-2xl font-bold text-gray-900 font-mono">
-                                            ${verify.verified_income?.toLocaleString() || '0'}
-                                        </div>
-                                        <div className="text-xs text-gray-500 uppercase mt-1">Verified Income</div>
-                                    </div>
-                                    <div className={`text-center p-3 rounded-lg ${verify.income_match ? 'bg-green-50' : 'bg-red-50'}`}>
-                                        <div className={`text-lg font-bold ${verify.income_match ? 'text-green-600' : 'text-red-600'}`}>
-                                            {verify.income_match ? <CheckCircle size={28} className="mx-auto" /> : <XCircle size={28} className="mx-auto" />}
-                                        </div>
-                                        <div className="text-xs text-gray-500 uppercase mt-1">Income Match</div>
+                            )}
+                        </div>
+
+                        {/* Right Column - Actions */}
+                        <div className="space-y-4">
+                            {/* Loan Details */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                    <Building size={16} />
+                                    Loan Details
+                                </h3>
+                                <div className="space-y-3">
+                                    <InfoCard
+                                        label="Loan Amount"
+                                        value={formatCurrency(loanMetadata.loan_amount)}
+                                        icon={DollarSign}
+                                    />
+                                    <InfoCard
+                                        label="Property Value"
+                                        value={formatCurrency(loanMetadata.property_value)}
+                                        icon={Building}
+                                    />
+                                    <InfoCard
+                                        label="Down Payment"
+                                        value={formatCurrency(loanMetadata.down_payment)}
+                                        icon={DollarSign}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Quick Actions for Manager */}
+                            {user?.role === 'manager' && loanStage === 'LEAD_CAPTURE' && (
+                                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                    <h3 className="text-sm font-bold text-gray-700 mb-4">Manager Actions</h3>
+                                    <div className="space-y-2">
+                                        <button
+                                            onClick={() => openReviewModal(true)}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition"
+                                        >
+                                            <CheckCircle size={18} /> Approve Application
+                                        </button>
+                                        <button
+                                            onClick={() => openReviewModal(false)}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-red-300 text-red-600 hover:bg-red-50 font-bold rounded-lg transition"
+                                        >
+                                            <XCircle size={18} /> Reject Application
+                                        </button>
                                     </div>
                                 </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Documents Tab */}
+                {activeTab === 'documents' && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                            <FolderOpen size={16} />
+                            eFolder ({structure.length} documents)
+                        </h3>
+                        {structure.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400">
+                                <Folder size={48} className="mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">No documents uploaded</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-4 gap-4">
+                                {structure.map((file, idx) => (
+                                    <DocumentThumbnail
+                                        key={idx}
+                                        file={file}
+                                        onClick={() => window.open(`${API_URL}${file.url}`, '_blank')}
+                                    />
+                                ))}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* eFolder Tab */}
-                {activeTab === 'efolder' && (
-                    <div className="max-w-4xl mx-auto">
-                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                                <h3 className="text-sm font-bold text-gray-700">Documents</h3>
-                                <span className="text-xs text-gray-500">{structure.length} files</span>
+                {/* Timeline Tab */}
+                {activeTab === 'timeline' && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                            <History size={16} />
+                            Audit Trail
+                        </h3>
+                        {history.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400">
+                                <Clock size={48} className="mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">No history available</p>
                             </div>
-                            {structure.length === 0 ? (
-                                <div className="p-12 text-center text-gray-400">
-                                    <Folder size={48} className="mx-auto mb-2 opacity-30" />
-                                    <p className="text-sm">No documents uploaded</p>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-gray-100">
-                                    {structure.map((file, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="flex items-center px-4 py-3 hover:bg-gray-50 group"
-                                        >
-                                            <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded flex items-center justify-center mr-3">
-                                                <FileText size={20} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                                                <p className="text-xs text-gray-500">PDF Document</p>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-                                                    Uploaded
+                        ) : (
+                            <div className="pl-4 border-l-2 border-gray-200">
+                                {history.map((event, idx) => (
+                                    <div key={idx} className="relative pb-6 last:pb-0">
+                                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-blue-500" />
+                                        <div className="pl-6">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                                                    event.agent?.includes('CEO') ? 'bg-purple-100 text-purple-700' :
+                                                    event.agent?.includes('AI') || event.agent?.includes('Analyst') ? 'bg-blue-100 text-blue-700' :
+                                                    event.agent?.includes('DocGen') ? 'bg-yellow-100 text-yellow-700' :
+                                                    event.agent?.includes('Underwriting') ? 'bg-orange-100 text-orange-700' :
+                                                    event.agent?.includes('Human') || event.agent?.includes('Manager') ? 'bg-green-100 text-green-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {event.agent}
                                                 </span>
-                                                <a
-                                                    href={`${API_URL}${file.url}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-                                                    title="View Document"
-                                                >
-                                                    <Eye size={16} />
-                                                </a>
-                                                <a
-                                                    href={`${API_URL}${file.url}`}
-                                                    download
-                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-                                                    title="Download"
-                                                >
-                                                    <Download size={16} />
-                                                </a>
+                                                <span className="text-xs text-gray-400 font-mono">
+                                                    {event.timestamp ? new Date(event.timestamp).toLocaleString() : '--'}
+                                                </span>
                                             </div>
+                                            <p className="text-sm text-gray-600">{event.message}</p>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Log Tab */}
-                {activeTab === 'log' && (
-                    <div className="max-w-4xl mx-auto">
-                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                                <h3 className="text-sm font-bold text-gray-700">Audit Trail</h3>
-                            </div>
-                            {history.length === 0 ? (
-                                <div className="p-12 text-center text-gray-400">
-                                    <Clock size={48} className="mx-auto mb-2 opacity-30" />
-                                    <p className="text-sm">No history available</p>
-                                </div>
-                            ) : (
-                                <div className="p-4">
-                                    <div className="pl-4 border-l-2 border-gray-200">
-                                        {history.map((event, idx) => (
-                                            <div key={idx} className="relative pb-6 last:pb-0">
-                                                {/* Timeline dot */}
-                                                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-blue-500" />
-
-                                                <div className="pl-6">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-bold text-gray-800">{event.agent}</span>
-                                                        <span className="text-xs text-gray-400 font-mono">
-                                                            {event.timestamp ? new Date(event.timestamp).toLocaleString() : '--'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">{event.message}</p>
-                                                </div>
-                                            </div>
-                                        ))}
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
-
-            {/* Floating Action Bar - Manager Only */}
-            {user?.role === 'manager' && (
-                <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between shadow-lg">
-                    <div className="text-sm text-gray-500">
-                        {details?.decision_reason && (
-                            <span>Decision Note: <span className="text-gray-700">{details.decision_reason}</span></span>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => openReviewModal(true)}
-                            className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition shadow-sm"
-                        >
-                            <CheckCircle size={18} /> Approve
-                        </button>
-                        <button
-                            onClick={() => openReviewModal(false)}
-                            className="flex items-center gap-2 px-6 py-2 bg-white border border-red-300 text-red-600 hover:bg-red-50 font-bold rounded-lg transition"
-                        >
-                            <XCircle size={18} /> Reject
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* Review Modal */}
             {reviewModal.open && (

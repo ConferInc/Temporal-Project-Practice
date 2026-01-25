@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
     Home, RefreshCw, Building, Palmtree, TrendingUp,
     Award, ThumbsUp, AlertCircle, ArrowRight, ArrowLeft,
-    Mail, Lock, Loader, CheckCircle
+    Mail, Lock, Loader, CheckCircle, Flag, DollarSign, Wallet
 } from 'lucide-react';
 
 export default function BorrowerFunnel() {
@@ -19,7 +19,10 @@ export default function BorrowerFunnel() {
     const [answers, setAnswers] = useState({
         purpose: null,      // "buy" | "refinance"
         occupancy: null,    // "primary" | "vacation" | "investment"
-        credit: null        // "excellent" | "good" | "fair"
+        credit: null,       // "excellent" | "good" | "fair"
+        citizenship: null,  // "yes" | "no"
+        propertyValue: '',  // dollar amount
+        downPayment: ''     // dollar amount
     });
 
     // Registration form
@@ -28,7 +31,7 @@ export default function BorrowerFunnel() {
         password: ''
     });
 
-    const totalSteps = 4;
+    const totalSteps = 7;
 
     const handleSelect = (key, value) => {
         setAnswers({ ...answers, [key]: value });
@@ -46,11 +49,20 @@ export default function BorrowerFunnel() {
         setError(null);
 
         try {
+            // Calculate loan amount from property value and down payment
+            const propertyValue = parseFloat(answers.propertyValue) || 0;
+            const downPayment = parseFloat(answers.downPayment) || 0;
+            const loanAmount = propertyValue - downPayment;
+
             // Pass funnel answers as initial_metadata
             await register(formData.email, formData.password, 'applicant', {
                 purpose: answers.purpose,
                 occupancy: answers.occupancy,
                 credit: answers.credit,
+                citizenship: answers.citizenship,
+                property_value: propertyValue,
+                down_payment: downPayment,
+                loan_amount: loanAmount,
                 funnel_completed_at: new Date().toISOString()
             });
             // Navigate to dashboard on success
@@ -173,8 +185,152 @@ export default function BorrowerFunnel() {
         </div>
     );
 
-    // Step 4: Registration
+    // Step 4: Citizenship
     const renderStep4 = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                    Are you a U.S. Citizen or Permanent Resident?
+                </h2>
+                <p className="text-gray-500">This helps determine your loan eligibility</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <OptionCard
+                    icon={Flag}
+                    title="Yes"
+                    description="I am a U.S. Citizen or Permanent Resident"
+                    selected={answers.citizenship === 'yes'}
+                    onClick={() => handleSelect('citizenship', 'yes')}
+                />
+                <OptionCard
+                    icon={AlertCircle}
+                    title="No"
+                    description="I am not a U.S. Citizen or Permanent Resident"
+                    badge="Options Available"
+                    badgeColor="amber"
+                    selected={answers.citizenship === 'no'}
+                    onClick={() => handleSelect('citizenship', 'no')}
+                />
+            </div>
+        </div>
+    );
+
+    // Step 5: Property Value
+    const renderStep5 = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                    What is the property value?
+                </h2>
+                <p className="text-gray-500">Enter the estimated purchase price or home value</p>
+            </div>
+
+            <div className="max-w-sm mx-auto">
+                <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
+                    <input
+                        type="number"
+                        placeholder="500,000"
+                        value={answers.propertyValue}
+                        onChange={(e) => setAnswers({ ...answers, propertyValue: e.target.value })}
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-lg"
+                    />
+                </div>
+                <p className="text-sm text-gray-500 mt-2 text-center">Enter amount in dollars</p>
+
+                <button
+                    onClick={() => answers.propertyValue && setStep(step + 1)}
+                    disabled={!answers.propertyValue}
+                    className={`
+                        w-full mt-6 py-3 rounded-xl font-semibold text-white
+                        flex items-center justify-center gap-2
+                        transition-all duration-200
+                        ${!answers.propertyValue
+                            ? 'bg-gray-300 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'
+                        }
+                    `}
+                >
+                    Continue
+                    <ArrowRight size={18} />
+                </button>
+            </div>
+        </div>
+    );
+
+    // Step 6: Down Payment
+    const renderStep6 = () => {
+        const propertyValue = parseFloat(answers.propertyValue) || 0;
+        const downPayment = parseFloat(answers.downPayment) || 0;
+        const loanAmount = propertyValue - downPayment;
+        const downPaymentPercent = propertyValue > 0 ? ((downPayment / propertyValue) * 100).toFixed(1) : 0;
+
+        return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="text-center mb-8">
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                        How much is your down payment?
+                    </h2>
+                    <p className="text-gray-500">Enter the amount you plan to put down</p>
+                </div>
+
+                <div className="max-w-sm mx-auto">
+                    <div className="relative">
+                        <Wallet className="absolute left-3 top-3 text-gray-400" size={20} />
+                        <input
+                            type="number"
+                            placeholder="100,000"
+                            value={answers.downPayment}
+                            onChange={(e) => setAnswers({ ...answers, downPayment: e.target.value })}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-lg"
+                        />
+                    </div>
+
+                    {/* Loan Summary Preview */}
+                    {answers.downPayment && (
+                        <div className="bg-blue-50 rounded-xl p-4 mt-4 border border-blue-100">
+                            <p className="text-xs uppercase tracking-wider text-blue-600 mb-3 font-medium">Loan Summary</p>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Property Value</span>
+                                    <span className="font-medium">${propertyValue.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Down Payment ({downPaymentPercent}%)</span>
+                                    <span className="font-medium">-${downPayment.toLocaleString()}</span>
+                                </div>
+                                <div className="border-t border-blue-200 pt-2 flex justify-between">
+                                    <span className="text-blue-700 font-medium">Loan Amount</span>
+                                    <span className="font-bold text-blue-700">${loanAmount.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => answers.downPayment && setStep(step + 1)}
+                        disabled={!answers.downPayment}
+                        className={`
+                            w-full mt-6 py-3 rounded-xl font-semibold text-white
+                            flex items-center justify-center gap-2
+                            transition-all duration-200
+                            ${!answers.downPayment
+                                ? 'bg-gray-300 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'
+                            }
+                        `}
+                    >
+                        Continue
+                        <ArrowRight size={18} />
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    // Step 7: Registration
+    const renderStep7 = () => (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -189,7 +345,7 @@ export default function BorrowerFunnel() {
             {/* Summary of answers */}
             <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
                 <p className="text-xs uppercase tracking-wider text-gray-500 mb-3 font-medium">Your Profile</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-3">
                     <span className="bg-white px-3 py-1 rounded-full text-sm border border-gray-200 text-gray-700">
                         {answers.purpose === 'buy' ? 'Buying' : 'Refinancing'}
                     </span>
@@ -201,6 +357,23 @@ export default function BorrowerFunnel() {
                         {answers.credit === 'excellent' ? 'Excellent Credit' :
                          answers.credit === 'good' ? 'Good Credit' : 'Fair Credit'}
                     </span>
+                    <span className="bg-white px-3 py-1 rounded-full text-sm border border-gray-200 text-gray-700">
+                        {answers.citizenship === 'yes' ? 'U.S. Citizen/PR' : 'Non-Citizen'}
+                    </span>
+                </div>
+                <div className="border-t border-gray-200 pt-3 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">Property Value</span>
+                        <span className="font-medium">${parseFloat(answers.propertyValue || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">Down Payment</span>
+                        <span className="font-medium">${parseFloat(answers.downPayment || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-blue-700 font-medium">
+                        <span>Loan Amount</span>
+                        <span>${(parseFloat(answers.propertyValue || 0) - parseFloat(answers.downPayment || 0)).toLocaleString()}</span>
+                    </div>
                 </div>
             </div>
 
@@ -283,11 +456,11 @@ export default function BorrowerFunnel() {
                 {/* Progress Bar */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
-                        {[1, 2, 3, 4].map((s) => (
+                        {[1, 2, 3, 4, 5, 6, 7].map((s) => (
                             <div
                                 key={s}
                                 className={`
-                                    w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
+                                    w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs
                                     transition-all duration-300
                                     ${step >= s
                                         ? 'bg-blue-600 text-white'
@@ -295,7 +468,7 @@ export default function BorrowerFunnel() {
                                     }
                                 `}
                             >
-                                {step > s ? <CheckCircle size={18} /> : s}
+                                {step > s ? <CheckCircle size={14} /> : s}
                             </div>
                         ))}
                     </div>
@@ -313,8 +486,11 @@ export default function BorrowerFunnel() {
                     {step === 2 && renderStep2()}
                     {step === 3 && renderStep3()}
                     {step === 4 && renderStep4()}
+                    {step === 5 && renderStep5()}
+                    {step === 6 && renderStep6()}
+                    {step === 7 && renderStep7()}
 
-                    {/* Back Button (for steps 2-4) */}
+                    {/* Back Button (for steps 2-7) */}
                     {step > 1 && (
                         <button
                             onClick={() => setStep(step - 1)}

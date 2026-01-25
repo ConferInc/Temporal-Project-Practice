@@ -5,6 +5,7 @@ The EncompassMCP handles all Loan Origination System (LOS) operations:
 - Creating loan files in Encompass
 - Pushing field updates
 - Syncing loan data
+- Updating loan metadata in SQL
 
 This is a mock implementation with print logs for development.
 In production, integrate with Encompass API via ICE Mortgage Technology SDK.
@@ -13,6 +14,11 @@ from dataclasses import dataclass
 from temporalio import activity
 from datetime import datetime
 import uuid
+
+# Database imports for update_loan_metadata activity
+from sqlmodel import Session, select
+from app.core.database import engine
+from app.models.sql import Application
 
 
 @dataclass
@@ -80,3 +86,57 @@ async def create_loan_file(data: dict) -> dict:
 async def push_field_update(loan_number: str, field_id: str, value: str) -> str:
     """Temporal Activity: Push field update via EncompassMCP"""
     return EncompassMCP.push_field_update(loan_number, field_id, value)
+
+
+@activity.defn
+async def update_loan_metadata(workflow_id: str, metadata_update: dict) -> dict:
+    """
+    Temporal Activity: Update loan_metadata in SQL database.
+
+    This activity persists AI analysis results and other workflow data
+    to the Application SQL record so the frontend can display it.
+
+    Args:
+        workflow_id: The workflow/application ID
+        metadata_update: Dict of fields to merge into loan_metadata
+
+    Returns:
+        Dict with status and updated fields
+    """
+    timestamp = datetime.utcnow().isoformat()
+    print(f"[EncompassMCP] [{timestamp}] UPDATE LOAN METADATA")
+    print(f"  Workflow ID: {workflow_id}")
+    print(f"  Update Keys: {list(metadata_update.keys())}")
+
+    try:
+        with Session(engine) as session:
+            app_record = session.exec(
+                select(Application).where(Application.workflow_id == workflow_id)
+            ).first()
+
+            if not app_record:
+                return {
+                    "status": "error",
+                    "message": f"Application not found: {workflow_id}"
+                }
+
+            # Merge new data into existing loan_metadata
+            current_metadata = app_record.loan_metadata or {}
+            current_metadata.update(metadata_update)
+            app_record.loan_metadata = current_metadata
+
+            session.add(app_record)
+            session.commit()
+
+            print(f"[EncompassMCP] [{timestamp}] METADATA UPDATED SUCCESSFULLY")
+            return {
+                "status": "success",
+                "workflow_id": workflow_id,
+                "updated_keys": list(metadata_update.keys())
+            }
+    except Exception as e:
+        print(f"[EncompassMCP] [{timestamp}] ERROR: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }

@@ -16,7 +16,8 @@ from temporalio.common import RetryPolicy
 # Import child workflows
 with workflow.unsafe.imports_passed_through():
     from app.models.sql import LoanStage
-    from .managers import LeadCaptureWorkflow, ProcessingWorkflow
+    from .managers import LeadCaptureWorkflow, ProcessingWorkflow, UnderwritingWorkflow
+    from app.temporal.activities.mcp_encompass import update_loan_metadata
 
 
 @workflow.defn
@@ -39,6 +40,11 @@ class LoanLifecycleWorkflow:
         # THE GATE: Human decision is tracked at CEO level
         self.human_decision = None
         self.loan_data = {}  # Stores current loan data for field updates
+        # Signature Loop: Track borrower signature
+        self.borrower_signed = False
+        # Underwriting result
+        self.underwriting_decision = None
+        self.risk_evaluation = {}
 
     def _add_log(self, agent: str, message: str):
         """Add an audit log entry"""
@@ -75,6 +81,15 @@ class LoanLifecycleWorkflow:
         else:
             self.loan_data[field_name] = value
         workflow.logger.info(f"CEO: Manager updated {field_name} to {value}")
+
+    @workflow.signal
+    def borrower_signature(self, signed: bool):
+        """
+        Signal handler for borrower document signature.
+        Called when borrower signs Initial Disclosures.
+        """
+        self.borrower_signed = signed
+        workflow.logger.info(f"CEO received borrower signature: {signed}")
 
     # =========================================
     # Queries - Expose live status
@@ -136,9 +151,26 @@ class LoanLifecycleWorkflow:
         ai_recommendation = lead_capture_result.get("recommendation", "PENDING_REVIEW")
         self.loan_data = lead_capture_result.get("loan_data", input_data)
         self.loan_number = lead_capture_result.get("loan_number")
+        analysis_result = lead_capture_result.get("analysis", {})
 
         workflow.logger.info(f"Lead Capture completed with AI recommendation: {ai_recommendation}")
         self._add_log("Lead Capture", f"Phase completed. AI Recommendation: {ai_recommendation}")
+
+        # Persist analysis results to SQL for frontend display
+        if analysis_result:
+            metadata_update = {
+                "analysis": analysis_result,
+                "ai_recommendation": ai_recommendation,
+                "loan_number": self.loan_number
+            }
+            await workflow.execute_activity(
+                update_loan_metadata,
+                args=[workflow.info().workflow_id, metadata_update],
+                start_to_close_timeout=timedelta(seconds=30)
+            )
+            workflow.logger.info("Analysis results persisted to SQL")
+            self._add_log("CEO", f"AI Analysis: verified_income=${analysis_result.get('verified_income', 0):,}, mismatch={analysis_result.get('income_mismatch', False)}")
+
         self._add_log("CEO", "Waiting for human approval...")
 
         # =========================================
@@ -176,21 +208,94 @@ class LoanLifecycleWorkflow:
         self._add_log("Processing", f"Phase completed: {processing_result}")
 
         # =========================================
-        # Future Phases (Placeholder)
+        # Signature Gate: Wait for Borrower to Sign Disclosures
         # =========================================
-        # Phase 3: Underwriting
-        # self.current_stage = LoanStage.UNDERWRITING
-        # underwriting_result = await workflow.execute_child_workflow(...)
+        self.current_stage = LoanStage.UNDERWRITING  # Reusing UNDERWRITING as "Waiting for Signature"
+        self._add_log("CEO", "Initial Disclosures generated - Waiting for borrower signature")
 
+        # Update SQL status to show waiting for signature
+        await workflow.execute_activity(
+            update_loan_metadata,
+            args=[workflow.info().workflow_id, {"status": "Waiting for Signature"}],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+
+        workflow.logger.info("CEO: Waiting for borrower signature...")
+
+        await workflow.wait_condition(lambda: self.borrower_signed is True)
+
+        workflow.logger.info("CEO: Borrower signature received!")
+        self._add_log("Borrower", "Documents signed by borrower")
+
+        # =========================================
+        # Phase 3: Underwriting - Execute UnderwritingWorkflow
+        # =========================================
+        self._add_log("CEO", "Delegating to Underwriting Department")
+        workflow.logger.info("CEO: Starting underwriting review...")
+
+        # Prepare loan data with analysis for underwriting
+        underwriting_input = {
+            **self.loan_data,
+            "analysis": analysis_result,
+            "loan_number": self.loan_number
+        }
+
+        underwriting_result = await workflow.execute_child_workflow(
+            UnderwritingWorkflow.run,
+            args=[underwriting_input],
+            id=f"{workflow.info().workflow_id}-underwriting",
+            retry_policy=RetryPolicy(maximum_attempts=1)
+        )
+
+        self.underwriting_decision = underwriting_result.get("decision", "REFER_TO_HUMAN")
+        self.risk_evaluation = underwriting_result.get("risk_evaluation", {})
+
+        workflow.logger.info(f"Underwriting completed with decision: {self.underwriting_decision}")
+        self._add_log("Underwriting", f"Decision: {self.underwriting_decision}")
+
+        # Persist underwriting results to SQL
+        await workflow.execute_activity(
+            update_loan_metadata,
+            args=[workflow.info().workflow_id, {
+                "underwriting_decision": self.underwriting_decision,
+                "risk_evaluation": self.risk_evaluation
+            }],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+
+        # Check underwriting decision
+        if self.underwriting_decision == "REFER_TO_HUMAN":
+            self._add_log("CEO", "Underwriting referred for additional human review")
+            # For now, we'll still proceed to closing but mark for review
+            # In production, might wait for another human gate here
+
+        # =========================================
         # Phase 4: Closing
-        # self.current_stage = LoanStage.CLOSING
-        # closing_result = await workflow.execute_child_workflow(...)
+        # =========================================
+        if self.underwriting_decision == "CLEAR_TO_CLOSE":
+            self.current_stage = LoanStage.CLOSING
+            self._add_log("CEO", "CLEAR TO CLOSE - Moving to closing phase")
+            workflow.logger.info("CEO: Loan is Clear to Close!")
+        else:
+            self.current_stage = LoanStage.CLOSING
+            self._add_log("CEO", "Moving to closing with conditions")
+            workflow.logger.info("CEO: Moving to closing with conditions")
 
         # =========================================
         # Final: Archive Completed Loan
         # =========================================
         self.current_stage = LoanStage.ARCHIVED
         self._add_log("CEO", "Loan lifecycle COMPLETED - Archiving")
+
+        # Final status update
+        await workflow.execute_activity(
+            update_loan_metadata,
+            args=[workflow.info().workflow_id, {
+                "final_status": "COMPLETED",
+                "underwriting_decision": self.underwriting_decision
+            }],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
 
         workflow.logger.info(f"CEO Workflow completed for {applicant_name}")
         return "COMPLETED"

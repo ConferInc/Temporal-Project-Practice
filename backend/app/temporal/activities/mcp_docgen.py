@@ -166,8 +166,7 @@ class DocGenMCP:
 
         # Create safe filename
         safe_doc_type = doc_type.replace(" ", "_")
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        filename = f"{safe_doc_type}_{timestamp}.pdf"
+        filename = f"{safe_doc_type}.pdf"
         file_path = os.path.join(app_dir, filename)
 
         # Save PDF

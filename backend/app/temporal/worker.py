@@ -9,12 +9,13 @@ from app.temporal.workflows import LoanProcessWorkflow
 
 # Pyramid Architecture: New Workflows (Level 1 & 2)
 from app.temporal.workflows.ceo import LoanLifecycleWorkflow
-from app.temporal.workflows.managers import LeadCaptureWorkflow, ProcessingWorkflow
+from app.temporal.workflows.managers import LeadCaptureWorkflow, ProcessingWorkflow, UnderwritingWorkflow
 
 # Pyramid Architecture: New Activities (Level 3 - MCP Workers)
 from app.temporal.activities.mcp_comms import send_email, send_sms
-from app.temporal.activities.mcp_encompass import create_loan_file, push_field_update
+from app.temporal.activities.mcp_encompass import create_loan_file, push_field_update, update_loan_metadata
 from app.temporal.activities.mcp_docgen import generate_document
+from app.temporal.activities.mcp_underwriting import verify_signature, evaluate_risk
 
 async def main():
     # 1. Connect to the Temporal Server
@@ -44,6 +45,7 @@ async def main():
             LoanLifecycleWorkflow,    # Level 1: CEO
             LeadCaptureWorkflow,      # Level 2: Manager
             ProcessingWorkflow,       # Level 2: Manager
+            UnderwritingWorkflow,     # Level 2: Manager
         ],
         activities=[
             # Original activities
@@ -56,7 +58,11 @@ async def main():
             send_sms,
             create_loan_file,
             push_field_update,
+            update_loan_metadata,
             generate_document,
+            # Underwriting Activities
+            verify_signature,
+            evaluate_risk,
         ],
     )
 

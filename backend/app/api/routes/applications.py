@@ -30,7 +30,7 @@ async def apply_for_loan(
     tax_document: UploadFile = File(...),
     pay_stub: UploadFile = File(...),
     credit_document: UploadFile = File(...),
-    use_pyramid: bool = Form(default=False),
+    use_pyramid: bool = Form(default=True),
     current_user: User = Depends(deps.get_current_user),
     session: Session = Depends(deps.get_session)
 ):
@@ -152,8 +152,20 @@ async def list_applications(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/status/{workflow_id}")
-async def get_status(workflow_id: str):
+async def get_status(
+    workflow_id: str,
+    session: Session = Depends(deps.get_session)
+):
     client = await temporal.get_client()
+
+    # Fetch SQL record for loan_metadata
+    app_record = session.exec(
+        select(Application).where(Application.workflow_id == workflow_id)
+    ).first()
+
+    loan_metadata = app_record.loan_metadata if app_record else {}
+    sql_status = app_record.status if app_record else "Unknown"
+
     try:
         handle = client.get_workflow_handle(workflow_id)
 
@@ -166,6 +178,9 @@ async def get_status(workflow_id: str):
                 "workflow_type": "Pyramid",
                 "loan_stage": stage,
                 "logs": logs,
+                "status": sql_status,
+                "data": loan_metadata,  # Include loan_metadata as 'data' for frontend compatibility
+                "loan_metadata": loan_metadata,
             }
         except Exception:
             pass
@@ -181,6 +196,16 @@ async def get_status(workflow_id: str):
             "data": data,
         }
     except Exception as e:
+        # Even if Temporal fails, return SQL data if available
+        if app_record:
+            return {
+                "workflow_id": workflow_id,
+                "workflow_type": "Unknown",
+                "status": sql_status,
+                "data": loan_metadata,
+                "loan_metadata": loan_metadata,
+                "error": str(e)
+            }
         return {"status": "Unknown", "error": str(e)}
 
 @router.get("/applications/{workflow_id}/structure")
@@ -398,19 +423,153 @@ async def get_application_history(
         print(f"History Error: {e}")
         return []
 
+@router.post("/applications/{workflow_id}/sign")
+async def sign_documents(
+    workflow_id: str,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Borrower signs the Initial Disclosures document.
+
+    1. Locates the Initial Disclosures PDF
+    2. Creates a signed copy: Initial Disclosures_SIGNED.pdf
+    3. Signals the CEO Workflow with borrower_signature
+    """
+    import shutil
+
+    # 1. Find the Initial Disclosures document
+    app_dir = os.path.join(files.get_upload_root(), workflow_id)
+    if not os.path.exists(app_dir):
+        raise HTTPException(status_code=404, detail="Application files not found")
+
+    # Look for Initial Disclosures PDF
+    disclosure_path = None
+    for filename in os.listdir(app_dir):
+        if "Initial_Disclosures" in filename and filename.endswith(".pdf"):
+            disclosure_path = os.path.join(app_dir, filename)
+            break
+
+    if not disclosure_path:
+        raise HTTPException(
+            status_code=404,
+            detail="Initial Disclosures document not found. Please wait for processing to complete."
+        )
+
+    # 2. Create signed copy
+    signed_filename = disclosure_path.replace(".pdf", "_SIGNED.pdf")
+    shutil.copy2(disclosure_path, signed_filename)
+
+    # 3. Update database
+    app_record = session.exec(
+        select(Application).where(Application.workflow_id == workflow_id)
+    ).first()
+
+    if app_record:
+        app_record.status = "Documents Signed"
+        app_record.loan_stage = LoanStage.CLOSING.value  # Move to CLOSING after signature
+        session.add(app_record)
+        session.commit()
+
+    # 4. Signal Temporal Workflow
+    try:
+        client = await temporal.get_client()
+        handle = client.get_workflow_handle(workflow_id)
+        await handle.signal("borrower_signature", True)
+    except Exception as e:
+        print(f"Warning: Failed to signal workflow {workflow_id}: {e}")
+        # DB update succeeded, workflow signal is best-effort
+
+    return {
+        "message": "Documents signed successfully",
+        "workflow_id": workflow_id,
+        "signed_document": f"/static/{workflow_id}/{os.path.basename(signed_filename)}"
+    }
+
+
 @router.delete("/application/{workflow_id}")
 async def delete_application(workflow_id: str):
     client = await temporal.get_client()
     try:
         handle = client.get_workflow_handle(workflow_id)
-        
+
         try:
             await handle.terminate("User requested deletion")
         except:
             pass
 
         files.delete_application_files(workflow_id)
-            
+
         return {"status": "deleted", "workflow_id": workflow_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/recent_logs")
+async def get_recent_logs(
+    limit: int = 10,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Get recent system logs across all active loan applications.
+    Used for the Mission Control live activity stream.
+
+    Returns aggregated logs from all running workflows, sorted by timestamp.
+    """
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view system logs")
+
+    all_logs = []
+    client = await temporal.get_client()
+
+    # Get recent applications
+    apps = session.query(Application).order_by(Application.created_at.desc()).limit(20).all()
+
+    for app in apps:
+        try:
+            handle = client.get_workflow_handle(app.workflow_id)
+
+            # Try to get logs from Pyramid workflow
+            try:
+                logs = await handle.query(LoanLifecycleWorkflow.get_logs)
+                for log in logs[-5:]:  # Last 5 logs per workflow
+                    all_logs.append({
+                        **log,
+                        "workflow_id": app.workflow_id,
+                        "borrower": app.loan_metadata.get("applicant_info", {}).get("name", "Unknown") if app.loan_metadata else "Unknown"
+                    })
+            except Exception:
+                pass
+
+        except Exception:
+            continue
+
+    # Sort all logs by timestamp descending
+    all_logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+    return all_logs[:limit]
+
+
+@router.get("/system_health")
+async def get_system_health(
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Get system health status for Mission Control dashboard.
+    Shows status of AI Agent, DocGen, and Encompass workers.
+    """
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view system health")
+
+    # Mock worker status - in production, check actual queue depth/worker health
+    return {
+        "workers": [
+            {"name": "AI Analyst", "status": "online", "queue_depth": 0, "last_activity": "2s ago"},
+            {"name": "DocGen MCP", "status": "online", "queue_depth": 0, "last_activity": "5s ago"},
+            {"name": "Encompass MCP", "status": "online", "queue_depth": 0, "last_activity": "1s ago"},
+            {"name": "Underwriting", "status": "online", "queue_depth": 0, "last_activity": "3s ago"},
+        ],
+        "temporal_connected": True,
+        "database_connected": True
+    }
