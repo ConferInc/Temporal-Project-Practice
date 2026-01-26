@@ -11,6 +11,7 @@ This is a mock implementation for development.
 In production, integrate with actual underwriting systems.
 """
 import os
+import asyncio
 from dataclasses import dataclass
 from temporalio import activity
 from datetime import datetime
@@ -142,5 +143,26 @@ async def verify_signature(workflow_id: str) -> dict:
 
 @activity.defn
 async def evaluate_risk(loan_data: dict) -> dict:
-    """Temporal Activity: Evaluate loan risk via UnderwritingMCP"""
+    """
+    Temporal Activity: Evaluate loan risk via UnderwritingMCP
+
+    Simulates external API calls with detailed logging for visibility.
+    """
+    timestamp = datetime.utcnow().isoformat()
+
+    # Simulate checking credit score (external API call)
+    print(f"[UnderwritingMCP] [{timestamp}] Checking Credit Score...")
+    await asyncio.sleep(2)  # Simulate external credit bureau API
+
+    # Simulate calculating DTI (processing step)
+    print(f"[UnderwritingMCP] [{timestamp}] Calculating DTI...")
+    await asyncio.sleep(2)  # Simulate DTI calculation with income verification
+
+    # Simulate final risk assessment (decision engine)
+    print(f"[UnderwritingMCP] [{timestamp}] Running Risk Assessment Engine...")
+    await asyncio.sleep(1)  # Simulate decision engine processing
+
+    print(f"[UnderwritingMCP] [{timestamp}] Risk Assessment Complete")
+
+    # Now perform the actual evaluation
     return UnderwritingMCP.evaluate_risk(loan_data)

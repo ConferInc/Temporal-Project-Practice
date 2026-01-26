@@ -307,8 +307,11 @@ async def review_application(
     if not app_record:
         raise HTTPException(status_code=404, detail="Application not found")
 
-    status_msg = "Approved" if request.approved else "Rejected"
-    app_record.status = f"{status_msg} by Manager"
+    # Set specific status based on decision (Golden Path alignment)
+    if request.approved:
+        app_record.status = "Processing"  # More specific than "Approved by Manager"
+    else:
+        app_record.status = "Rejected by Manager"
     app_record.decision_reason = request.reason
 
     # Update loan_stage for Pyramid workflows
@@ -320,6 +323,8 @@ async def review_application(
 
     session.add(app_record)
     session.commit()
+
+    status_msg = "Approved" if request.approved else "Rejected"
 
     # 2. Signal Temporal Workflow
     try:
@@ -467,10 +472,8 @@ async def sign_documents(
 
     if app_record:
         app_record.status = "Documents Signed"
-        app_record.loan_stage = LoanStage.CLOSING.value  # Move to CLOSING after signature
         session.add(app_record)
         session.commit()
-
     # 4. Signal Temporal Workflow
     try:
         client = await temporal.get_client()

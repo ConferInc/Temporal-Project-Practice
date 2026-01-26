@@ -322,7 +322,26 @@ class ProcessingWorkflow:
         workflow.logger.info(f"Initial Disclosures generated: {doc_result.get('public_url')}")
         self._log("DocGen MCP", f"Initial Disclosures generated: {doc_result.get('public_url')}")
 
-        # Step 3: Document verification placeholder
+        # Step 3: Send email notification that disclosures are ready
+        applicant_email = applicant_info.get("email", "")
+        if applicant_email:
+            workflow.logger.info("Sending disclosures ready email...")
+            self._log("Comms MCP", "Sending disclosures ready notification...")
+
+            await workflow.execute_activity(
+                send_email,
+                args=["disclosures_ready", applicant_email, {
+                    "name": applicant_info.get("name", "Borrower"),
+                    "document_url": doc_result.get("public_url"),
+                    "subject": "Action Required: Your Loan Disclosures are Ready"
+                }],
+                start_to_close_timeout=timedelta(seconds=30)
+            )
+
+            workflow.logger.info(f"Disclosures ready email sent to {applicant_email}")
+            self._log("Comms MCP", f"Email sent to {applicant_email}: Your disclosures are ready for review and signature")
+
+        # Step 4: Document verification placeholder
         workflow.logger.info("Verifying documents...")
         self.status = "Verifying Documents"
         self._log("Processing Manager", "Document verification in progress...")

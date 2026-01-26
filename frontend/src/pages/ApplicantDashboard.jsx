@@ -27,15 +27,23 @@ function ProgressStepper({ currentStage, status }) {
         const s = status?.toLowerCase() || "";
         const stage = currentStage?.toUpperCase() || "";
 
-        if (s.includes("rejected")) return -1; // Rejected
+        if (s.includes("rejected")) return -1;
         if (stage === "ARCHIVED" && !s.includes("rejected")) return 5; // Funded
-        if (stage === "CLOSING") return 4; // Underwriting complete
-        if (s.includes("signed") || stage === "CLOSING") return 4;
-        if (stage === "UNDERWRITING") return 3; // Waiting for signature
-        if (stage === "PROCESSING") return 2; // Manager approved
-        if (s.includes("approved")) return 2;
-        if (s.includes("submitted")) return 1; // AI Review
-        return 0; // Applied
+
+        // Step 4: Closing / Funded
+        if (stage === "CLOSING" || s.includes("signed")) return 4;
+
+        // Step 3: Sign Docs / Underwriting
+        // FIX: If status explicitly says "waiting" or "signature", FORCE Step 3
+        if (stage === "UNDERWRITING" || s.includes("waiting") || s.includes("signature")) return 3;
+
+        // Step 2: Manager Review / Processing
+        if (stage === "PROCESSING" || s.includes("approved")) return 2;
+
+        // Step 1: AI Review
+        if (s.includes("submitted")) return 1;
+
+        return 0; // Step 0: Applied
     };
 
     const currentStep = getStepIndex();
@@ -124,10 +132,25 @@ function ActionCard({ title, description, icon: Icon, action, actionLabel, varia
 
 // Application Card Component
 function ApplicationCard({ app, onSign, signingId, onRefresh }) {
+    // Track whether user has viewed the disclosures (required before signing)
+    const [hasViewed, setHasViewed] = useState(false);
+
     const needsSignature = () => {
         const s = app.status?.toLowerCase() || "";
         const stage = app.loan_stage?.toUpperCase() || "";
-        return s.includes("approved") && stage === "UNDERWRITING";
+
+        // ✅ FIX: Show button if status mentions 'signature' or 'waiting'
+        // OR if we are technically in Underwriting.
+        return (
+            s.includes("signature") ||
+            s.includes("waiting") ||
+            (s.includes("approved") && stage === "UNDERWRITING")
+        );
+    };
+
+    const handleViewDisclosures = () => {
+        window.open(`${API_URL}/static/${app.workflow_id}/Initial_Disclosures.pdf`, '_blank');
+        setHasViewed(true);
     };
 
     const formatCurrency = (amount) => {
@@ -144,13 +167,24 @@ function ApplicationCard({ app, onSign, signingId, onRefresh }) {
         const s = app.status?.toLowerCase() || "";
         const stage = app.loan_stage?.toUpperCase() || "";
 
+        // Negative state
         if (s.includes("rejected")) return { color: "red", label: "Rejected", icon: AlertCircle };
-        if (stage === "ARCHIVED") return { color: "green", label: "Completed", icon: CheckCircle };
+
+        // Final states
+        if (s.includes("funded") || (stage === "ARCHIVED" && !s.includes("rejected"))) return { color: "green", label: "Funded", icon: CheckCircle };
         if (stage === "CLOSING") return { color: "green", label: "Closing", icon: Building };
+
+        // Signature states
         if (s.includes("signed")) return { color: "green", label: "Signed", icon: CheckCircle };
-        if (stage === "UNDERWRITING") return { color: "orange", label: "Sign Required", icon: PenTool };
+        if (stage === "UNDERWRITING" || s.includes("waiting") || s.includes("signature")) return { color: "orange", label: "Sign Required", icon: PenTool };
+
+        // Processing states
+        if (s.includes("processing") || stage === "PROCESSING") return { color: "blue", label: "Processing", icon: Loader };
         if (s.includes("approved")) return { color: "green", label: "Approved", icon: CheckCircle };
-        if (s.includes("submitted")) return { color: "blue", label: "In Review", icon: Clock };
+
+        // Initial state
+        if (s.includes("submitted") || stage === "LEAD_CAPTURE") return { color: "blue", label: "In Review", icon: Clock };
+
         return { color: "gray", label: "Processing", icon: Loader };
     };
 
@@ -204,17 +238,57 @@ function ApplicationCard({ app, onSign, signingId, onRefresh }) {
                     </button>
                 </div>
 
-                {/* Action Required Card */}
+                {/* Action Required Card - Read before Signing UX */}
                 {needsSignature() && (
-                    <ActionCard
-                        title="Action Required: Sign Your Documents"
-                        description="Your Initial Disclosures are ready. Please review and sign to proceed to underwriting."
-                        icon={PenTool}
-                        action={() => onSign(app.workflow_id)}
-                        actionLabel={signingId === app.workflow_id ? "Signing..." : "Sign Documents Now"}
-                        variant="warning"
-                        loading={signingId === app.workflow_id}
-                    />
+                    <div className="space-y-4">
+                        {/* Step 1: View Disclosures Button */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleViewDisclosures}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                                    hasViewed
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
+                            >
+                                {hasViewed ? <CheckCircle size={16} /> : <Eye size={16} />}
+                                {hasViewed ? 'Disclosures Viewed' : 'View Disclosures First'}
+                            </button>
+                            {hasViewed && (
+                                <span className="text-green-600 text-sm font-medium flex items-center gap-1">
+                                    <CheckCircle size={14} />
+                                    Ready to sign
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Step 2: Sign Documents - Only enabled after viewing */}
+                        {hasViewed ? (
+                            <ActionCard
+                                title="Action Required: Sign Your Documents"
+                                description="You've reviewed the disclosures. Click below to sign and proceed to underwriting."
+                                icon={PenTool}
+                                action={() => onSign(app.workflow_id)}
+                                actionLabel={signingId === app.workflow_id ? "Signing..." : "Sign Documents Now"}
+                                variant="warning"
+                                loading={signingId === app.workflow_id}
+                            />
+                        ) : (
+                            <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-14 h-14 bg-orange-400 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <AlertCircle size={28} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-gray-900">⚠️ Please View Disclosures First</h3>
+                                        <p className="text-gray-600 mt-1">
+                                            You must review your Initial Disclosures before signing. Click the "View Disclosures First" button above to continue.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {/* View Documents */}
@@ -242,8 +316,8 @@ function ApplicationCard({ app, onSign, signingId, onRefresh }) {
                 {/* Decision Reason */}
                 {app.decision_reason && (
                     <div className={`mt-4 p-3 rounded-lg text-sm ${app.status?.toLowerCase().includes('approved')
-                            ? 'bg-green-50 border border-green-200 text-green-800'
-                            : 'bg-red-50 border border-red-200 text-red-800'
+                        ? 'bg-green-50 border border-green-200 text-green-800'
+                        : 'bg-red-50 border border-red-200 text-red-800'
                         }`}>
                         <strong>Manager Note:</strong> {app.decision_reason}
                     </div>

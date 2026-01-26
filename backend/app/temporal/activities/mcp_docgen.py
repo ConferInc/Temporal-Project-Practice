@@ -62,6 +62,41 @@ Monthly P&I:    ${monthly_payment:,.2f}
 
 This estimate is valid for 10 business days.
 """,
+    "Final Approval Letter": """
+FINAL APPROVAL LETTER
+
+Date: {date}
+
+Dear {name},
+
+CONGRATULATIONS! YOUR LOAN HAS BEEN APPROVED!
+=========================================================
+
+We are pleased to inform you that your mortgage loan
+application has been approved and is now funded.
+
+LOAN DETAILS
+---------------------------------------------------------
+Property Value:      ${property_value:,.2f}
+Down Payment:        ${down_payment:,.2f}
+Loan Amount:         ${loan_amount:,.2f}
+Interest Rate:       {rate}% Fixed
+Loan Term:           {term} years
+Monthly Payment:     ${monthly_payment:,.2f}
+
+NEXT STEPS
+---------------------------------------------------------
+1. Your funds have been disbursed
+2. Your first payment is due in 30 days
+3. You will receive your payment book shortly
+
+Thank you for choosing Moxi Mortgage!
+
+Best regards,
+The Moxi Mortgage Team
+
+Equal Housing Lender. NMLS #12345
+""",
 }
 
 

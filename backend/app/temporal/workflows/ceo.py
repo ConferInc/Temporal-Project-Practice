@@ -18,6 +18,8 @@ with workflow.unsafe.imports_passed_through():
     from app.models.sql import LoanStage
     from .managers import LeadCaptureWorkflow, ProcessingWorkflow, UnderwritingWorkflow
     from app.temporal.activities.mcp_encompass import update_loan_metadata
+    from app.temporal.activities.mcp_docgen import generate_document
+    from app.temporal.activities.mcp_comms import send_email
 
 
 @workflow.defn
@@ -213,10 +215,14 @@ class LoanLifecycleWorkflow:
         self.current_stage = LoanStage.UNDERWRITING  # Reusing UNDERWRITING as "Waiting for Signature"
         self._add_log("CEO", "Initial Disclosures generated - Waiting for borrower signature")
 
-        # Update SQL status to show waiting for signature
+        # Update SQL status AND loan_stage to show waiting for signature
+        # CRITICAL: These special keys are extracted by update_loan_metadata and written to SQL columns
         await workflow.execute_activity(
             update_loan_metadata,
-            args=[workflow.info().workflow_id, {"status": "Waiting for Signature"}],
+            args=[workflow.info().workflow_id, {
+                "status": "Waiting for Signature",
+                "loan_stage": LoanStage.UNDERWRITING.value
+            }],
             start_to_close_timeout=timedelta(seconds=30)
         )
 
@@ -253,12 +259,13 @@ class LoanLifecycleWorkflow:
         workflow.logger.info(f"Underwriting completed with decision: {self.underwriting_decision}")
         self._add_log("Underwriting", f"Decision: {self.underwriting_decision}")
 
-        # Persist underwriting results to SQL
+        # Persist underwriting results to SQL (including status update)
         await workflow.execute_activity(
             update_loan_metadata,
             args=[workflow.info().workflow_id, {
                 "underwriting_decision": self.underwriting_decision,
-                "risk_evaluation": self.risk_evaluation
+                "risk_evaluation": self.risk_evaluation,
+                "status": "Underwriting Complete"
             }],
             start_to_close_timeout=timedelta(seconds=30)
         )
@@ -281,16 +288,73 @@ class LoanLifecycleWorkflow:
             self._add_log("CEO", "Moving to closing with conditions")
             workflow.logger.info("CEO: Moving to closing with conditions")
 
+        # Update SQL to reflect CLOSING stage
+        await workflow.execute_activity(
+            update_loan_metadata,
+            args=[workflow.info().workflow_id, {
+                "status": "Clear to Close" if self.underwriting_decision == "CLEAR_TO_CLOSE" else "Closing with Conditions",
+                "loan_stage": LoanStage.CLOSING.value
+            }],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+
+        # Generate Final Approval Letter
+        workflow.logger.info("CEO: Generating Final Approval Letter...")
+        self._add_log("DocGen MCP", "Generating Final Approval Letter...")
+
+        applicant_info = self.loan_data.get("applicant_info", {})
+        doc_data = {
+            "workflow_id": workflow.info().workflow_id,
+            "name": applicant_info.get("name", applicant_name),
+            "email": applicant_info.get("email", ""),
+            "property_value": self.loan_data.get("property_value", 0),
+            "down_payment": self.loan_data.get("down_payment", 0),
+            "loan_amount": self.loan_data.get("loan_amount", 0),
+            "rate": 6.5,
+            "term": 30
+        }
+
+        approval_doc = await workflow.execute_activity(
+            generate_document,
+            args=["Final Approval Letter", doc_data, {}],
+            start_to_close_timeout=timedelta(seconds=60)
+        )
+
+        workflow.logger.info(f"Final Approval Letter generated: {approval_doc.get('public_url')}")
+        self._add_log("DocGen MCP", f"Final Approval Letter generated: {approval_doc.get('public_url')}")
+
+        # Send congratulations email
+        applicant_email = applicant_info.get("email", "")
+        if applicant_email:
+            workflow.logger.info("CEO: Sending congratulations email...")
+            self._add_log("Comms MCP", "Sending congratulations notification...")
+
+            await workflow.execute_activity(
+                send_email,
+                args=["loan_funded", applicant_email, {
+                    "name": applicant_info.get("name", applicant_name),
+                    "loan_amount": self.loan_data.get("loan_amount", 0),
+                    "approval_letter_url": approval_doc.get("public_url"),
+                    "subject": "Congratulations! Your Loan is Funded"
+                }],
+                start_to_close_timeout=timedelta(seconds=30)
+            )
+
+            workflow.logger.info(f"Congratulations email sent to {applicant_email}")
+            self._add_log("Comms MCP", f"Email sent to {applicant_email}: Congratulations! Your loan is funded")
+
         # =========================================
         # Final: Archive Completed Loan
         # =========================================
         self.current_stage = LoanStage.ARCHIVED
         self._add_log("CEO", "Loan lifecycle COMPLETED - Archiving")
 
-        # Final status update
+        # Final status update - persist to SQL columns
         await workflow.execute_activity(
             update_loan_metadata,
             args=[workflow.info().workflow_id, {
+                "status": "Funded",
+                "loan_stage": LoanStage.ARCHIVED.value,
                 "final_status": "COMPLETED",
                 "underwriting_decision": self.underwriting_decision
             }],

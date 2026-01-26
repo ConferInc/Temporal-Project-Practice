@@ -96,6 +96,11 @@ async def update_loan_metadata(workflow_id: str, metadata_update: dict) -> dict:
     This activity persists AI analysis results and other workflow data
     to the Application SQL record so the frontend can display it.
 
+    IMPORTANT: Special keys are extracted and written to SQL columns directly:
+    - "status" -> Application.status column
+    - "loan_stage" -> Application.loan_stage column
+    All other keys go into the loan_metadata JSON field.
+
     Args:
         workflow_id: The workflow/application ID
         metadata_update: Dict of fields to merge into loan_metadata
@@ -120,7 +125,20 @@ async def update_loan_metadata(workflow_id: str, metadata_update: dict) -> dict:
                     "message": f"Application not found: {workflow_id}"
                 }
 
-            # Merge new data into existing loan_metadata
+            # Extract special SQL column fields from metadata_update
+            sql_status = metadata_update.pop("status", None)
+            sql_loan_stage = metadata_update.pop("loan_stage", None)
+
+            # Update SQL columns directly if provided
+            if sql_status:
+                app_record.status = sql_status
+                print(f"  [SQL Column] status = {sql_status}")
+
+            if sql_loan_stage:
+                app_record.loan_stage = sql_loan_stage
+                print(f"  [SQL Column] loan_stage = {sql_loan_stage}")
+
+            # Merge remaining data into existing loan_metadata JSON
             current_metadata = app_record.loan_metadata or {}
             current_metadata.update(metadata_update)
             app_record.loan_metadata = current_metadata
@@ -132,7 +150,9 @@ async def update_loan_metadata(workflow_id: str, metadata_update: dict) -> dict:
             return {
                 "status": "success",
                 "workflow_id": workflow_id,
-                "updated_keys": list(metadata_update.keys())
+                "updated_keys": list(metadata_update.keys()),
+                "sql_status": sql_status,
+                "sql_loan_stage": sql_loan_stage
             }
     except Exception as e:
         print(f"[EncompassMCP] [{timestamp}] ERROR: {e}")

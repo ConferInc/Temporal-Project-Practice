@@ -1,603 +1,421 @@
-read this md file this is your task now and implement this after reading your current upto date @CLAUDE.md file, this is your TASK: @docs/prompts/FixingWholePrompt.MD
-  ⎿  Read CLAUDE.md (118 lines)
-  ⎿  Read docs\prompts\FixingWholePrompt.MD (54 lines)
+❯ /compact
+  Context: The system works, but feels "empty" in later stages, and the UX allows signing without reading.
 
-● I'll implement the fixes from the prompt. Let me first read the current state of all the target files to understand the existing code.
+  ## Mission 1: UX Fix - "Read before Signing"
+  **Target:** `frontend/src/pages/ApplicantDashboard.jsx`
+  1.  **Add State:** `const [hasViewed, setHasViewed] = useState(false)`.
+  2.  **Update "View Disclosures" Button:**
+  * `onClick`: Open the PDF URL **AND** `setHasViewed(true)`.
+  3.  **Update "Sign Documents" Button:**
+  * **Condition:** Only show (or enable) if `needsSignature()` AND `hasViewed` are both true.
+  * **UI:** If `needsSignature()` is true but `!hasViewed`, show a message: "⚠️ Please view disclosures to
+  enable signing."
 
-● Read(backend\app\temporal\workflows\managers.py)
-  ⎿  Read 286 lines
+  ## Mission 2: Activate "Processing" Phase Tools
+  **Target:** `backend/app/temporal/workflows/managers.py` (`ProcessingWorkflow`)
+  1.  **Add Activity:** Call `send_email` (from `mcp_comms`).
+  * Trigger: After `generate_document` succeeds.
+  * Subject: "Action Required: Your Loan Disclosures are Ready".
+  * Body: "Please log in to sign your documents."
 
-● Read(backend\app\temporal\workflows\ceo.py)
-  ⎿  Read 221 lines
+  ## Mission 3: Activate "Underwriting" Phase Tools
+  **Target:** `backend/app/temporal/workflows/managers.py` (`UnderwritingWorkflow`)
+  1.  **Add Activity:** Call `evaluate_risk` (from `mcp_underwriting` or `legacy`).
+  * **Simulation:** Add a 5-second sleep inside this activity (in `mcp_underwriting.py`) to simulate a heavy
+  external API call.
+  * **Logs:** Ensure it logs "Checking Credit Score...", "Calculating DTI...", "Risk Assessment Complete".
 
-● Read(backend\app\api\routes\applications.py)
-  ⎿  Read 481 lines
+  ## Mission 4: Activate "Closing" Phase Tools
+  **Target:** `backend/app/temporal/workflows/ceo.py` (Closing Section)
+  1.  **Add Activity:** Call `generate_document` to create `Final_Approval_Letter.pdf`.
+  2.  **Add Activity:** Call `send_email` ("Congratulations! Your Loan is Funded.").
 
-● Now let me read the frontend files.
+  ## Execution
+  1. Fix the React UX to enforce document viewing.
+  2. Add the `send_email` and `evaluate_risk` calls to the backend workflows to populate the logs.
+
+● I'll start by reading the relevant files to understand the current implementation before making changes.
 
 ● Read(frontend\src\pages\ApplicantDashboard.jsx)
-  ⎿  Read 308 lines
+  ⎿  Read 407 lines
 
-● Search(pattern: "**/ManagerDashboard.jsx")
-  ⎿  Found 2 files (ctrl+o to expand)
+● Read(backend\app\temporal\workflows\managers.py)
+  ⎿  Read 472 lines
 
-● Read(frontend\src\pages\ManagerDashboard.jsx)
-  ⎿  Read 209 lines
+● Read(backend\app\temporal\workflows\ceo.py)
+  ⎿  Read 319 lines
 
-● I see that the ManagerDashboard navigates to a detail page. Let me find that page.
+● Now I'll read the mcp_underwriting.py file to understand the current activities and add the simulation for
+  evaluate_risk.
 
-● Search(pattern: "**/pages/*Application*.jsx")
-  ⎿  Found 1 file (ctrl+o to expand)
+● Read(backend\app\temporal\activities\mcp_underwriting.py)
+  ⎿  Read 147 lines
 
-● Search(pattern: "/manager/application/", glob: "*.jsx")
-  ⎿  Found 2 files (ctrl+o to expand)
+● Now let me also check the mcp_docgen.py to understand the generate_document activity for the Closing phase:
 
-● Read(frontend\src\pages\ApplicationDetail.jsx)
-  ⎿  Read 477 lines
+● Read(backend\app\temporal\activities\mcp_docgen.py)
+  ⎿  Read 197 lines
 
-● Now I have a complete picture of the issues. Let me create a task list and implement the fixes.
-✔ Task #1 created: Fix LeadCaptureWorkflow to return AI analysis data
-✔ Task #2 created: Fix /status endpoint to return loan_metadata for Pyramid workflows
-✔ Task #3 created: Fix ApplicantDashboard View Docs button to open correct PDF
-✔ Task #4 created: Fix ApplicationDetail.jsx to read from correct data paths
-✔ Task #5 created: Update CEO workflow to persist analysis results to SQL
-✔ Task #1 updated: status → in progress
+● Read(backend\app\temporal\activities\mcp_comms.py)
+  ⎿  Read 73 lines
 
-● Search(pattern: "DocumentAnalysisResult", glob: "*.py")
-  ⎿  Found 0 files
+● Now I have a complete understanding of the codebase. Let me implement all four missions.
 
-● Read(backend\app\temporal\activities\legacy.py)
-  ⎿  Read 171 lines
+● Update(frontend\src\pages\ApplicantDashboard.jsx)
+  ⎿  Added 8 lines
+      132
+      133  // Application Card Component
+      134  function ApplicationCard({ app, onSign, signingId, onRefresh }) {
+      135 +    // Track whether user has viewed the disclosures (required before signing)
+      136 +    const [hasViewed, setHasViewed] = useState(false);
+      137 +
+      138      const needsSignature = () => {
+      139          const s = app.status?.toLowerCase() || "";
+      140          const stage = app.loan_stage?.toUpperCase() || "";
+     ...
+      148          );
+      149      };
+      150
+      151 +    const handleViewDisclosures = () => {
+      152 +        window.open(`${API_URL}/static/${app.workflow_id}/Initial_Disclosures.pdf`, '_blank');
+      153 +        setHasViewed(true);
+      154 +    };
+      155 +
+      156      const formatCurrency = (amount) => {
+      157          const num = parseFloat(amount) || 0;
+      158          return new Intl.NumberFormat('en-US', {
 
-● Now I understand the structure. Let me fix the LeadCaptureWorkflow to return the AI analysis data.
+● Update(frontend\src\pages\ApplicantDashboard.jsx)
+  ⎿  Added 50 lines, removed 10 lines
+      238                      </button>
+      239                  </div>
+      240
+      241 -                {/* Action Required Card */}
+      241 +                {/* Action Required Card - Read before Signing UX */}
+      242                  {needsSignature() && (
+      243 -                    <ActionCard
+      244 -                        title="Action Required: Sign Your Documents"
+      245 -                        description="Your Initial Disclosures are ready. Please review and sign to pro
+          -ceed to underwriting."
+      246 -                        icon={PenTool}
+      247 -                        action={() => onSign(app.workflow_id)}
+      248 -                        actionLabel={signingId === app.workflow_id ? "Signing..." : "Sign Documents No
+          -w"}
+      249 -                        variant="warning"
+      250 -                        loading={signingId === app.workflow_id}
+      251 -                    />
+      243 +                    <div className="space-y-4">
+      244 +                        {/* Step 1: View Disclosures Button */}
+      245 +                        <div className="flex items-center gap-3">
+      246 +                            <button
+      247 +                                onClick={handleViewDisclosures}
+      248 +                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium t
+          +ransition ${
+      249 +                                    hasViewed
+      250 +                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+      251 +                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+      252 +                                }`}
+      253 +                            >
+      254 +                                {hasViewed ? <CheckCircle size={16} /> : <Eye size={16} />}
+      255 +                                {hasViewed ? 'Disclosures Viewed' : 'View Disclosures First'}
+      256 +                            </button>
+      257 +                            {hasViewed && (
+      258 +                                <span className="text-green-600 text-sm font-medium flex items-center
+          +gap-1">
+      259 +                                    <CheckCircle size={14} />
+      260 +                                    Ready to sign
+      261 +                                </span>
+      262 +                            )}
+      263 +                        </div>
+      264 +
+      265 +                        {/* Step 2: Sign Documents - Only enabled after viewing */}
+      266 +                        {hasViewed ? (
+      267 +                            <ActionCard
+      268 +                                title="Action Required: Sign Your Documents"
+      269 +                                description="You've reviewed the disclosures. Click below to sign and
+          +proceed to underwriting."
+      270 +                                icon={PenTool}
+      271 +                                action={() => onSign(app.workflow_id)}
+      272 +                                actionLabel={signingId === app.workflow_id ? "Signing..." : "Sign Docu
+          +ments Now"}
+      273 +                                variant="warning"
+      274 +                                loading={signingId === app.workflow_id}
+      275 +                            />
+      276 +                        ) : (
+      277 +                            <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
+      278 +                                <div className="flex items-start gap-4">
+      279 +                                    <div className="w-14 h-14 bg-orange-400 text-white rounded-xl flex
+          + items-center justify-center flex-shrink-0">
+      280 +                                        <AlertCircle size={28} />
+      281 +                                    </div>
+      282 +                                    <div className="flex-1">
+      283 +                                        <h3 className="text-lg font-bold text-gray-900">⚠️ Please View
+          +Disclosures First</h3>
+      284 +                                        <p className="text-gray-600 mt-1">
+      285 +                                            You must review your Initial Disclosures before signing. C
+          +lick the "View Disclosures First" button above to continue.
+      286 +                                        </p>
+      287 +                                    </div>
+      288 +                                </div>
+      289 +                            </div>
+      290 +                        )}
+      291 +                    </div>
+      292                  )}
+      293
+      294                  {/* View Documents */}
+
+● Now let me update the ProcessingWorkflow to add the email notification after generating documents (Mission 2):
 
 ● Update(backend\app\temporal\workflows\managers.py)
-  ⎿  Added 54 lines, removed 3 lines
-      62              applicant_data: Dict containing applicant_info and file_paths
-      63
-      64          Returns:
-      65 -            Dict with 'recommendation', 'loan_data', 'loan_number'
-      65 +            Dict with 'recommendation', 'loan_data', 'loan_number', 'analysis'
-      66              NOTE: No gate here - CEO handles the human approval gate
-      67          """
-      68          # Initialize loan_data with input args
-     ...
-       98          total_confidence = 0.0
-       99          analysis_count = 0
-      100
-      101 +        # Track AI extracted data for return
-      102 +        ai_extracted_income = 0
-      103 +        pay_stub_income = 0
-      104 +        tax_income = 0
-      105 +        extracted_name = None
-      106 +        extracted_credit_score = 0
-      107 +
-      108          # Analyze Pay Stub (for income verification)
-      109          pay_stub_path = file_paths.get("pay_stub")
-      110          if pay_stub_path:
-     ...
-      119                      args=[pay_stub_text, "financial_auditor"],
-      120                      start_to_close_timeout=timedelta(seconds=60)
-      121                  )
-      122 +                # Capture the extracted data
-      123 +                pay_stub_income = pay_analysis.annual_income or 0
-      124 +                if pay_analysis.applicant_name and pay_analysis.applicant_name != "Unknown":
-      125 +                    extracted_name = pay_analysis.applicant_name
-      126 +
-      127                  # Confidence based on whether income was extracted
-      128                  if pay_analysis.annual_income > 0:
-      129                      total_confidence += 0.9
-     ...
-      150                      args=[tax_text, "financial_auditor"],
-      151                      start_to_close_timeout=timedelta(seconds=60)
-      152                  )
-      153 +                # Capture the extracted data
-      154 +                tax_income = tax_analysis.annual_income or 0
-      155 +                if tax_analysis.applicant_name and tax_analysis.applicant_name != "Unknown":
-      156 +                    extracted_name = tax_analysis.applicant_name
-      157 +
-      158                  # Confidence based on whether income was extracted
-      159                  if tax_analysis.annual_income > 0:
-      160                      total_confidence += 0.9
-     ...
-      167                  total_confidence += 0.5
-      168                  analysis_count += 1
-      169
-      170 +        # Use the highest extracted income (more reliable)
-      171 +        ai_extracted_income = max(pay_stub_income, tax_income)
-      172 +
-      173 +        # Check for income mismatch
-      174 +        stated_income_raw = applicant_data.get("applicant_info", {}).get("stated_income", "0")
-      175 +        try:
-      176 +            # Handle income as string (from form) or number
-      177 +            stated_income = int(str(stated_income_raw).replace(",", "").replace("$", ""))
-      178 +        except (ValueError, TypeError):
-      179 +            stated_income = 0
-      180 +
-      181 +        # Calculate mismatch - flag if difference > 20%
-      182 +        income_mismatch = False
-      183 +        if ai_extracted_income > 0 and stated_income > 0:
-      184 +            diff_pct = abs(ai_extracted_income - stated_income) / stated_income
-      185 +            income_mismatch = diff_pct > 0.20
-      186 +            workflow.logger.info(f"Income comparison: stated={stated_income}, verified={ai_extracted_income}, mismatch={income_mismatch}")
-      187 +
-      188          # Calculate average confidence and set recommendation
-      189          avg_confidence = total_confidence / max(analysis_count, 1)
-      190          workflow.logger.info(f"AI analysis complete. Average confidence: {avg_confidence:.2f}")
-      191
-      157 -        if avg_confidence > 0.8:
-      192 +        if income_mismatch:
-      193 +            self.ai_recommendation = "MANUAL_REVIEW"
-      194 +            workflow.logger.info("AI recommends: MANUAL_REVIEW (income mismatch detected)")
-      195 +        elif avg_confidence > 0.8:
-      196              self.ai_recommendation = "APPROVED"
-      197              workflow.logger.info("AI recommends: APPROVED (high confidence)")
-      198          else:
-     ...
-      201
-      202          workflow.logger.info("Lead Capture complete - returning to CEO for human approval gate")
-      203
-      204 +        # Build analysis result object
-      205 +        analysis_result = {
-      206 +            "verified_income": ai_extracted_income,
-      207 +            "pay_stub_income": pay_stub_income,
-      208 +            "tax_income": tax_income,
-      209 +            "stated_income": stated_income,
-      210 +            "income_mismatch": income_mismatch,
-      211 +            "confidence": round(avg_confidence, 2),
-      212 +            "extracted_name": extracted_name,
-      213 +            "credit_score": extracted_credit_score,
-      214 +        }
-      215 +
-      216          # Return immediately - NO GATE HERE
-      217          # The CEO workflow handles the human approval gate
-      218          return {
-      219              "recommendation": self.ai_recommendation,
-      220              "loan_data": self.loan_data,
-      171 -            "loan_number": self.loan_number
-      221 +            "loan_number": self.loan_number,
-      222 +            "analysis": analysis_result
-      223          }
-      224
-      225
-✔ Task #1 updated: status → completed
-✔ Task #2 updated: status → in progress
+  ⎿  Added 20 lines, removed 1 line
+      322          workflow.logger.info(f"Initial Disclosures generated: {doc_result.get('public_url')}")
+      323          self._log("DocGen MCP", f"Initial Disclosures generated: {doc_result.get('public_url')}")
+      324
+      325 -        # Step 3: Document verification placeholder
+      325 +        # Step 3: Send email notification that disclosures are ready
+      326 +        applicant_email = applicant_info.get("email", "")
+      327 +        if applicant_email:
+      328 +            workflow.logger.info("Sending disclosures ready email...")
+      329 +            self._log("Comms MCP", "Sending disclosures ready notification...")
+      330 +
+      331 +            await workflow.execute_activity(
+      332 +                send_email,
+      333 +                args=["disclosures_ready", applicant_email, {
+      334 +                    "name": applicant_info.get("name", "Borrower"),
+      335 +                    "document_url": doc_result.get("public_url"),
+      336 +                    "subject": "Action Required: Your Loan Disclosures are Ready"
+      337 +                }],
+      338 +                start_to_close_timeout=timedelta(seconds=30)
+      339 +            )
+      340 +
+      341 +            workflow.logger.info(f"Disclosures ready email sent to {applicant_email}")
+      342 +            self._log("Comms MCP", f"Email sent to {applicant_email}: Your disclosures are ready for r
+          +eview and signature")
+      343 +
+      344 +        # Step 4: Document verification placeholder
+      345          workflow.logger.info("Verifying documents...")
+      346          self.status = "Verifying Documents"
+      347          self._log("Processing Manager", "Document verification in progress...")
 
-● Now I need to fix the /status endpoint to include loan_metadata from SQL.
+● Now let me update the mcp_underwriting.py to add the 5-second simulation with proper logging for evaluate_risk
+  (Mission 3):
 
-● Update(backend\app\api\routes\applications.py)
-  ⎿  Added 26 lines, removed 1 line
-      152          raise HTTPException(status_code=500, detail=str(e))
-      153
-      154  @router.get("/status/{workflow_id}")
-      155 -async def get_status(workflow_id: str):
-      155 +async def get_status(
-      156 +    workflow_id: str,
-      157 +    session: Session = Depends(deps.get_session)
-      158 +):
-      159      client = await temporal.get_client()
+● Update(backend\app\temporal\activities\mcp_underwriting.py)
+  ⎿  Added 1 line
+      11  In production, integrate with actual underwriting systems.
+      12  """
+      13  import os
+      14 +import asyncio
+      15  from dataclasses import dataclass
+      16  from temporalio import activity
+      17  from datetime import datetime
+
+● Update(backend\app\temporal\activities\mcp_underwriting.py)
+  ⎿  Added 22 lines, removed 1 line
+      143
+      144  @activity.defn
+      145  async def evaluate_risk(loan_data: dict) -> dict:
+      146 -    """Temporal Activity: Evaluate loan risk via UnderwritingMCP"""
+      146 +    """
+      147 +    Temporal Activity: Evaluate loan risk via UnderwritingMCP
+      148 +
+      149 +    Simulates external API calls with detailed logging for visibility.
+      150 +    """
+      151 +    timestamp = datetime.utcnow().isoformat()
+      152 +
+      153 +    # Simulate checking credit score (external API call)
+      154 +    print(f"[UnderwritingMCP] [{timestamp}] Checking Credit Score...")
+      155 +    await asyncio.sleep(2)  # Simulate external credit bureau API
+      156 +
+      157 +    # Simulate calculating DTI (processing step)
+      158 +    print(f"[UnderwritingMCP] [{timestamp}] Calculating DTI...")
+      159 +    await asyncio.sleep(2)  # Simulate DTI calculation with income verification
       160 +
-      161 +    # Fetch SQL record for loan_metadata
-      162 +    app_record = session.exec(
-      163 +        select(Application).where(Application.workflow_id == workflow_id)
-      164 +    ).first()
-      165 +
-      166 +    loan_metadata = app_record.loan_metadata if app_record else {}
-      167 +    sql_status = app_record.status if app_record else "Unknown"
-      168 +
-      169      try:
-      170          handle = client.get_workflow_handle(workflow_id)
-      171
-     ...
-      178                  "workflow_type": "Pyramid",
-      179                  "loan_stage": stage,
-      180                  "logs": logs,
-      181 +                "status": sql_status,
-      182 +                "data": loan_metadata,  # Include loan_metadata as 'data' for frontend compatibility
-      183 +                "loan_metadata": loan_metadata,
-      184              }
-      185          except Exception:
-      186              pass
-     ...
-      196              "data": data,
-      197          }
-      198      except Exception as e:
-      199 +        # Even if Temporal fails, return SQL data if available
-      200 +        if app_record:
-      201 +            return {
-      202 +                "workflow_id": workflow_id,
-      203 +                "workflow_type": "Unknown",
-      204 +                "status": sql_status,
-      205 +                "data": loan_metadata,
-      206 +                "loan_metadata": loan_metadata,
-      207 +                "error": str(e)
-      208 +            }
-      209          return {"status": "Unknown", "error": str(e)}
-      210
-      211  @router.get("/applications/{workflow_id}/structure")
-✔ Task #2 updated: status → completed
-✔ Task #5 updated: status → in progress
+      161 +    # Simulate final risk assessment (decision engine)
+      162 +    print(f"[UnderwritingMCP] [{timestamp}] Running Risk Assessment Engine...")
+      163 +    await asyncio.sleep(1)  # Simulate decision engine processing
+      164 +
+      165 +    print(f"[UnderwritingMCP] [{timestamp}] Risk Assessment Complete")
+      166 +
+      167 +    # Now perform the actual evaluation
+      168      return UnderwritingMCP.evaluate_risk(loan_data)
 
-● Search(pattern: "**/temporal/activities/*.py")
-  ⎿  Found 5 files (ctrl+o to expand)
-
-● Read(backend\app\temporal\activities\mcp_encompass.py)
-  ⎿  Read 83 lines
-
-● Update(backend\app\temporal\activities\mcp_encompass.py)
-  ⎿  Added 6 lines
-       5  - Creating loan files in Encompass
-       6  - Pushing field updates
-       7  - Syncing loan data
-       8 +- Updating loan metadata in SQL
-       9
-      10  This is a mock implementation with print logs for development.
-      11  In production, integrate with Encompass API via ICE Mortgage Technology SDK.
-     ...
-      15  from datetime import datetime
-      16  import uuid
-      17
-      18 +# Database imports for update_loan_metadata activity
-      19 +from sqlmodel import Session, select
-      20 +from app.core.database import engine
-      21 +from app.models.sql import Application
-      22
-      23 +
-      24  @dataclass
-      25  class EncompassMCP:
-      26      """Encompass MCP - handles LOS operations"""
-
-● Update(backend\app\temporal\activities\mcp_encompass.py)
-  ⎿  Added 54 lines
-       86  async def push_field_update(loan_number: str, field_id: str, value: str) -> str:
-       87      """Temporal Activity: Push field update via EncompassMCP"""
-       88      return EncompassMCP.push_field_update(loan_number, field_id, value)
-       89 +
-       90 +
-       91 +@activity.defn
-       92 +async def update_loan_metadata(workflow_id: str, metadata_update: dict) -> dict:
-       93 +    """
-       94 +    Temporal Activity: Update loan_metadata in SQL database.
-       95 +
-       96 +    This activity persists AI analysis results and other workflow data
-       97 +    to the Application SQL record so the frontend can display it.
-       98 +
-       99 +    Args:
-      100 +        workflow_id: The workflow/application ID
-      101 +        metadata_update: Dict of fields to merge into loan_metadata
-      102 +
-      103 +    Returns:
-      104 +        Dict with status and updated fields
-      105 +    """
-      106 +    timestamp = datetime.utcnow().isoformat()
-      107 +    print(f"[EncompassMCP] [{timestamp}] UPDATE LOAN METADATA")
-      108 +    print(f"  Workflow ID: {workflow_id}")
-      109 +    print(f"  Update Keys: {list(metadata_update.keys())}")
-      110 +
-      111 +    try:
-      112 +        with Session(engine) as session:
-      113 +            app_record = session.exec(
-      114 +                select(Application).where(Application.workflow_id == workflow_id)
-      115 +            ).first()
-      116 +
-      117 +            if not app_record:
-      118 +                return {
-      119 +                    "status": "error",
-      120 +                    "message": f"Application not found: {workflow_id}"
-      121 +                }
-      122 +
-      123 +            # Merge new data into existing loan_metadata
-      124 +            current_metadata = app_record.loan_metadata or {}
-      125 +            current_metadata.update(metadata_update)
-      126 +            app_record.loan_metadata = current_metadata
-      127 +
-      128 +            session.add(app_record)
-      129 +            session.commit()
-      130 +
-      131 +            print(f"[EncompassMCP] [{timestamp}] METADATA UPDATED SUCCESSFULLY")
-      132 +            return {
-      133 +                "status": "success",
-      134 +                "workflow_id": workflow_id,
-      135 +                "updated_keys": list(metadata_update.keys())
-      136 +            }
-      137 +    except Exception as e:
-      138 +        print(f"[EncompassMCP] [{timestamp}] ERROR: {e}")
-      139 +        return {
-      140 +            "status": "error",
-      141 +            "message": str(e)
-      142 +        }
-
-● Now let me update the CEO workflow to call this activity after LeadCaptureWorkflow completes.
+● Now let me update the CEO workflow to add the Closing phase activities (Mission 4) - generate Final Approval Letter
+  and send congratulations email:
 
 ● Update(backend\app\temporal\workflows\ceo.py)
-  ⎿  Added 1 line
-      17  with workflow.unsafe.imports_passed_through():
-      18      from app.models.sql import LoanStage
-      19      from .managers import LeadCaptureWorkflow, ProcessingWorkflow
-      20 +    from app.temporal.activities.mcp_encompass import update_loan_metadata
-      21
-      22
-      23  @workflow.defn
-
-● Update(backend\app\temporal\workflows\ceo.py)
-  ⎿  Added 17 lines
-      148          ai_recommendation = lead_capture_result.get("recommendation", "PENDING_REVIEW")
-      149          self.loan_data = lead_capture_result.get("loan_data", input_data)
-      150          self.loan_number = lead_capture_result.get("loan_number")
-      151 +        analysis_result = lead_capture_result.get("analysis", {})
-      152
-      153          workflow.logger.info(f"Lead Capture completed with AI recommendation: {ai_recommendation}")
-      154          self._add_log("Lead Capture", f"Phase completed. AI Recommendation: {ai_recommendation}")
-      155 +
-      156 +        # Persist analysis results to SQL for frontend display
-      157 +        if analysis_result:
-      158 +            metadata_update = {
-      159 +                "analysis": analysis_result,
-      160 +                "ai_recommendation": ai_recommendation,
-      161 +                "loan_number": self.loan_number
-      162 +            }
-      163 +            await workflow.execute_activity(
-      164 +                update_loan_metadata,
-      165 +                args=[workflow.info().workflow_id, metadata_update],
-      166 +                start_to_close_timeout=timedelta(seconds=30)
-      167 +            )
-      168 +            workflow.logger.info("Analysis results persisted to SQL")
-      169 +            self._add_log("CEO", f"AI Analysis: verified_income=${analysis_result.get('verified_income', 0):,}, mismatch={analysis_result.get('income_mismatch', False)}")
-      170 +
-      171          self._add_log("CEO", "Waiting for human approval...")
-      172
-      173          # =========================================
-
-● Read(backend\app\temporal\worker.py)
-  ⎿  Read 69 lines
-
-● Update(backend\app\temporal\worker.py)
-  ⎿  Added 1 line, removed 1 line
-      13
-      14  # Pyramid Architecture: New Activities (Level 3 - MCP Workers)
-      15  from app.temporal.activities.mcp_comms import send_email, send_sms
-      16 -from app.temporal.activities.mcp_encompass import create_loan_file, push_field_update
-      16 +from app.temporal.activities.mcp_encompass import create_loan_file, push_field_update, update_loan_metadata
-      17  from app.temporal.activities.mcp_docgen import generate_document
-      18
-      19  async def main():
-
-● Update(backend\app\temporal\worker.py)
-  ⎿  Added 1 line
-      56              send_sms,
-      57              create_loan_file,
-      58              push_field_update,
-      59 +            update_loan_metadata,
-      60              generate_document,
-      61          ],
-      62      )
-✔ Task #5 updated: status → completed
-✔ Task #3 updated: status → in progress
-
-● Now let me fix the ApplicantDashboard "View Docs" button.
-
-● Update(frontend\src\pages\ApplicantDashboard.jsx)
-  ⎿  Added 2 lines, removed 2 lines
-      276                                                              </button>
-      277                                                          ) : (
-      278                                                              <button
-      279 -                                                                onClick={() => window.open(`/static/${app.workflow_id}/`, '_blank')}
-      279 +                                                                onClick={() => window.open(`http://localhost:3001/static/${app.workflow_id}/Initial_Disclosures.pdf`, '_blank')}
-      280                                                                  className={`
-      281                                                                      flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition
-      282                                                                      ${app.status.toLowerCase().includes('approved') || app.status.toLowerCase().includes('signed')
-     ...
-      285                                                                      }
-      286                                                                  `}
-      287                                                                  disabled={!app.status.toLowerCase().includes('approved') && !app.status.toLowerCase().includes('signed')}
-      288 -                                                                title={app.status.toLowerCase().includes('approved') || app.status.toLowerCase().includes('signed') ? 'View generated documents'
-          - : 'Documents available after approval'}
-      288 +                                                                title={app.status.toLowerCase().includes('approved') || app.status.toLowerCase().includes('signed') ? 'View Initial Disclosures
-          +PDF' : 'Documents available after approval'}
-      289                                                              >
-      290                                                                  <FolderOpen size={14} />
-      291                                                                  View Docs
-
-● Search(pattern: "VITE_API_URL|API_URL", glob: "*.jsx", output_mode: "content")
-  ⎿  Found 10 lines (ctrl+o to expand)
-
-● Update(frontend\src\pages\ApplicantDashboard.jsx)
   ⎿  Added 2 lines
-       4  import { useAuth } from '../context/AuthContext';
-       5  import { PlusCircle, FileText, Calendar, DollarSign, Loader, RefreshCw, CheckCircle, Circle, ArrowRight, Eye, FolderOpen, PenTool } from 'lucide-react';
-       6
-       7 +const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-       8 +
-       9  // Task Item Component for the getting started checklist
-      10  function TaskItem({ number, title, description, completed, isNext }) {
-      11      return (
+      18      from app.models.sql import LoanStage
+      19      from .managers import LeadCaptureWorkflow, ProcessingWorkflow, UnderwritingWorkflow
+      20      from app.temporal.activities.mcp_encompass import update_loan_metadata
+      21 +    from app.temporal.activities.mcp_docgen import generate_document
+      22 +    from app.temporal.activities.mcp_comms import send_email
+      23
+      24
+      25  @workflow.defn
 
-● Update(frontend\src\pages\ApplicantDashboard.jsx)
-  ⎿  Added 1 line, removed 1 line
-      278                                                              </button>
-      279                                                          ) : (
-      280                                                              <button
-      281 -                                                                onClick={() => window.open(`http://localhost:3001/static/${app.workflow_id}/Initial_Disclosures.pdf`, '_blank')}
-      281 +                                                                onClick={() => window.open(`${API_URL}/static/${app.workflow_id}/Initial_Disclosures.pdf`, '_blank')}
-      282                                                                  className={`
-      283                                                                      flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition
-      284                                                                      ${app.status.toLowerCase().includes('approved') || app.status.toLowerCase().includes('signed')
-✔ Task #3 updated: status → completed
-✔ Task #4 updated: status → in progress
+● Now let me add the Final Approval Letter template to mcp_docgen.py:
 
-● Now let me fix the ApplicationDetail.jsx to read from the correct data paths and display AI analysis.
+● Update(backend\app\temporal\activities\mcp_docgen.py)
+  ⎿  Added 35 lines
+       62
+       63  This estimate is valid for 10 business days.
+       64  """,
+       65 +    "Final Approval Letter": """
+       66 +FINAL APPROVAL LETTER
+       67 +
+       68 +Date: {date}
+       69 +
+       70 +Dear {name},
+       71 +
+       72 +CONGRATULATIONS! YOUR LOAN HAS BEEN APPROVED!
+       73 +=========================================================
+       74 +
+       75 +We are pleased to inform you that your mortgage loan
+       76 +application has been approved and is now funded.
+       77 +
+       78 +LOAN DETAILS
+       79 +---------------------------------------------------------
+       80 +Property Value:      ${property_value:,.2f}
+       81 +Down Payment:        ${down_payment:,.2f}
+       82 +Loan Amount:         ${loan_amount:,.2f}
+       83 +Interest Rate:       {rate}% Fixed
+       84 +Loan Term:           {term} years
+       85 +Monthly Payment:     ${monthly_payment:,.2f}
+       86 +
+       87 +NEXT STEPS
+       88 +---------------------------------------------------------
+       89 +1. Your funds have been disbursed
+       90 +2. Your first payment is due in 30 days
+       91 +3. You will receive your payment book shortly
+       92 +
+       93 +Thank you for choosing Moxi Mortgage!
+       94 +
+       95 +Best regards,
+       96 +The Moxi Mortgage Team
+       97 +
+       98 +Equal Housing Lender. NMLS #12345
+       99 +""",
+      100  }
+      101
+      102
 
-● Update(frontend\src\pages\ApplicationDetail.jsx)
-  ⎿  Added 3 lines, removed 2 lines
-      51              const statusRes = await api.get(`/status/${id}`);
-      52              setDetails(statusRes.data);
-      53
-      54 -            // Initialize form data from applicant_info
-      55 -            const info = statusRes.data?.data?.applicant_info || {};
-      54 +            // Initialize form data from loan_metadata.applicant_info (Pyramid) or data.applicant_info (Original)
-      55 +            const loanMetadata = statusRes.data?.loan_metadata || statusRes.data?.data || {};
-      56 +            const info = loanMetadata.applicant_info || {};
-      57              setFormData(info);
-      58
-      59              try {
+● Now let me update the CEO workflow to add the closing phase activities (generate Final Approval Letter and send
+  congratulations email):
 
-● Update(frontend\src\pages\ApplicationDetail.jsx)
-  ⎿  Added 6 lines, removed 2 lines
-      146          </div>
-      147      );
-      148
-      149 -    const info = details?.data?.applicant_info || formData;
-      150 -    const verify = details?.data?.verification || {};
-      149 +    // Read from loan_metadata (Pyramid) or data (Original workflow)
-      150 +    const loanMetadata = details?.loan_metadata || details?.data || {};
-      151 +    const info = loanMetadata.applicant_info || formData;
-      152 +    const analysis = loanMetadata.analysis || {};
-      153 +    const verify = details?.data?.verification || {};  // Keep for backward compatibility
-      154      const status = details?.status || "Unknown";
-      155      const loanStage = details?.loan_stage || "LEAD_CAPTURE";
-      156 +    const aiRecommendation = loanMetadata.ai_recommendation || "";
-      157
-      158      const getStatusBadgeColor = () => {
-      159          const s = status.toLowerCase();
+● Update(backend\app\temporal\workflows\ceo.py)
+  ⎿  Added 45 lines
+      298              start_to_close_timeout=timedelta(seconds=30)
+      299          )
+      300
+      301 +        # Generate Final Approval Letter
+      302 +        workflow.logger.info("CEO: Generating Final Approval Letter...")
+      303 +        self._add_log("DocGen MCP", "Generating Final Approval Letter...")
+      304 +
+      305 +        applicant_info = self.loan_data.get("applicant_info", {})
+      306 +        doc_data = {
+      307 +            "workflow_id": workflow.info().workflow_id,
+      308 +            "name": applicant_info.get("name", applicant_name),
+      309 +            "email": applicant_info.get("email", ""),
+      310 +            "property_value": self.loan_data.get("property_value", 0),
+      311 +            "down_payment": self.loan_data.get("down_payment", 0),
+      312 +            "loan_amount": self.loan_data.get("loan_amount", 0),
+      313 +            "rate": 6.5,
+      314 +            "term": 30
+      315 +        }
+      316 +
+      317 +        approval_doc = await workflow.execute_activity(
+      318 +            generate_document,
+      319 +            args=["Final Approval Letter", doc_data, {}],
+      320 +            start_to_close_timeout=timedelta(seconds=60)
+      321 +        )
+      322 +
+      323 +        workflow.logger.info(f"Final Approval Letter generated: {approval_doc.get('public_url')}")
+      324 +        self._add_log("DocGen MCP", f"Final Approval Letter generated: {approval_doc.get('public_url')
+          +}")
+      325 +
+      326 +        # Send congratulations email
+      327 +        applicant_email = applicant_info.get("email", "")
+      328 +        if applicant_email:
+      329 +            workflow.logger.info("CEO: Sending congratulations email...")
+      330 +            self._add_log("Comms MCP", "Sending congratulations notification...")
+      331 +
+      332 +            await workflow.execute_activity(
+      333 +                send_email,
+      334 +                args=["loan_funded", applicant_email, {
+      335 +                    "name": applicant_info.get("name", applicant_name),
+      336 +                    "loan_amount": self.loan_data.get("loan_amount", 0),
+      337 +                    "approval_letter_url": approval_doc.get("public_url"),
+      338 +                    "subject": "Congratulations! Your Loan is Funded"
+      339 +                }],
+      340 +                start_to_close_timeout=timedelta(seconds=30)
+      341 +            )
+      342 +
+      343 +            workflow.logger.info(f"Congratulations email sent to {applicant_email}")
+      344 +            self._add_log("Comms MCP", f"Email sent to {applicant_email}: Congratulations! Your loan i
+          +s funded")
+      345 +
+      346          # =========================================
+      347          # Final: Archive Completed Loan
+      348          # =========================================
 
-● Update(frontend\src\pages\ApplicationDetail.jsx)
-  ⎿  Added 35 lines, removed 11 lines
-      289                              </div>
-      290                          ))}
-      291
-      292 -                        {/* AI Verification Section */}
-      293 -                        {verify.credit_score && (
-      292 +                        {/* AI Verification Section - New Pyramid Analysis */}
-      293 +                        {(analysis.verified_income > 0 || verify.credit_score) && (
-      294                              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      295 -                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-      295 +                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-      296                                      <h3 className="text-sm font-bold text-gray-700">AI Verification Results</h3>
-      297 +                                    {aiRecommendation && (
-      298 +                                        <span className={`text-xs px-2 py-1 rounded font-medium ${
-      299 +                                            aiRecommendation === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-      300 +                                        }`}>
-      301 +                                            AI: {aiRecommendation}
-      302 +                                        </span>
-      303 +                                    )}
-      304                                  </div>
-      305                                  <div className="p-4 grid grid-cols-3 gap-4">
-      306 +                                    {/* Confidence Score */}
-      307                                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-      300 -                                        <div className={`text-2xl font-bold ${verify.credit_score >= 620 ? 'text-green-600' : 'text-red-600'}`}>
-      301 -                                            {verify.credit_score}
-      308 +                                        <div className={`text-2xl font-bold ${(analysis.confidence || 0) >= 0.8 ? 'text-green-600' : 'text-yellow-600'}`}>
-      309 +                                            {((analysis.confidence || 0) * 100).toFixed(0)}%
-      310                                          </div>
-      303 -                                        <div className="text-xs text-gray-500 uppercase mt-1">Credit Score</div>
-      311 +                                        <div className="text-xs text-gray-500 uppercase mt-1">AI Confidence</div>
-      312                                      </div>
-      313 +                                    {/* Verified Income */}
-      314                                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-      315                                          <div className="text-2xl font-bold text-gray-900 font-mono">
-      307 -                                            ${verify.verified_income?.toLocaleString() || '0'}
-      316 +                                            ${(analysis.verified_income || verify.verified_income || 0).toLocaleString()}
-      317                                          </div>
-      318                                          <div className="text-xs text-gray-500 uppercase mt-1">Verified Income</div>
-      319                                      </div>
-      311 -                                    <div className={`text-center p-3 rounded-lg ${verify.income_match ? 'bg-green-50' : 'bg-red-50'}`}>
-      312 -                                        <div className={`text-lg font-bold ${verify.income_match ? 'text-green-600' : 'text-red-600'}`}>
-      313 -                                            {verify.income_match ? <CheckCircle size={28} className="mx-auto" /> : <XCircle size={28} className="mx-auto" />}
-      320 +                                    {/* Income Match Status */}
-      321 +                                    <div className={`text-center p-3 rounded-lg ${!analysis.income_mismatch ? 'bg-green-50' : 'bg-red-50'}`}>
-      322 +                                        <div className={`text-lg font-bold ${!analysis.income_mismatch ? 'text-green-600' : 'text-red-600'}`}>
-      323 +                                            {!analysis.income_mismatch ? <CheckCircle size={28} className="mx-auto" /> : <XCircle size={28} className="mx-auto" />}
-      324                                          </div>
-      315 -                                        <div className="text-xs text-gray-500 uppercase mt-1">Income Match</div>
-      325 +                                        <div className="text-xs text-gray-500 uppercase mt-1">
-      326 +                                            {analysis.income_mismatch ? 'Income Mismatch!' : 'Income Verified'}
-      327 +                                        </div>
-      328                                      </div>
-      329                                  </div>
-      330 +                                {/* Detailed breakdown */}
-      331 +                                {analysis.stated_income > 0 && (
-      332 +                                    <div className="px-4 pb-4">
-      333 +                                        <div className="text-xs text-gray-500 border-t pt-3 mt-2">
-      334 +                                            <span className="font-medium">Stated:</span> ${analysis.stated_income?.toLocaleString() || 0}
-      335 +                                            <span className="mx-2">|</span>
-      336 +                                            <span className="font-medium">Pay Stub:</span> ${analysis.pay_stub_income?.toLocaleString() || 0}
-      337 +                                            <span className="mx-2">|</span>
-      338 +                                            <span className="font-medium">Tax Return:</span> ${analysis.tax_income?.toLocaleString() || 0}
-      339 +                                        </div>
-      340 +                                    </div>
-      341 +                                )}
-      342                              </div>
-      343                          )}
-      344                      </div>
-✔ Task #4 updated: status → completed
-5 tasks (5 done, 0 open)
+● Let me verify all the changes are correct by reading the modified sections:
 
-✔ #1 Fix LeadCaptureWorkflow to return AI analysis data
-✔ #2 Fix /status endpoint to return loan_metadata for Pyramid workflows
-✔ #3 Fix ApplicantDashboard View Docs button to open correct PDF
-✔ #4 Fix ApplicationDetail.jsx to read from correct data paths
-✔ #5 Update CEO workflow to persist analysis results to SQL
+● Read(frontend\src\pages\ApplicantDashboard.jsx)
+  ⎿  Read 80 lines
 
-● All tasks completed. Let me verify the changes are syntactically correct by reading the key files.
+● Read(backend\app\temporal\workflows\managers.py)
+  ⎿  Read 80 lines
 
+● Read(backend\app\temporal\activities\mcp_underwriting.py)
+  ⎿  Read 40 lines
 
-● All tasks completed. Let me verify the changes are syntactically correct by reading the key files.
+● Read(backend\app\temporal\workflows\ceo.py)
+  ⎿  Read 80 lines
 
-● Bash(cd "C:\Confer Part Time\GIT PROJECTS\Temporal Project\temporal-loan-python\backend" && python -m py_compile app/temporal/workflows/managers.py app/temporal/work…)
-  ⎿  Python syntax OK
+● All changes look correct. Let me also verify the signature card section of the ApplicantDashboard to ensure the UX
+  flow is complete:
 
-● All implementations are complete. Here's a summary of the changes:
+● Read(frontend\src\pages\ApplicantDashboard.jsx)
+  ⎿  Read 60 lines
 
-  Summary of Fixes
+● All four missions have been implemented. Here's a summary of the changes:
 
-  Mission 1: Fix Manager Dashboard Data (Blank Form Issue)
+  Summary of Changes
 
-  1. backend/app/temporal/workflows/managers.py
-  - Updated LeadCaptureWorkflow.run() to capture and return AI analysis results
-  - Now extracts: verified_income, pay_stub_income, tax_income, income_mismatch, confidence
-  - Returns full analysis object in the result
+  Mission 1: UX Fix - "Read before Signing"
 
-  2. backend/app/temporal/workflows/ceo.py
-  - Added import for update_loan_metadata activity
-  - After LeadCaptureWorkflow completes, calls activity to persist analysis to SQL
-  - Adds analysis info to audit log
+  File: frontend/src/pages/ApplicantDashboard.jsx
+  - Added hasViewed state to track whether user has viewed disclosures
+  - Created handleViewDisclosures() function that opens PDF AND sets hasViewed = true
+  - Updated the signature section:
+    - Shows a "View Disclosures First" button (blue) that turns green ("Disclosures Viewed") after clicking
+    - Sign button only appears after hasViewed is true
+    - If user hasn't viewed, shows warning message: "Please View Disclosures First"
 
-  3. backend/app/temporal/activities/mcp_encompass.py
-  - Added new update_loan_metadata activity that writes to SQL database
-  - Merges analysis results into loan_metadata JSON field
+  Mission 2: Activate "Processing" Phase Tools
 
-  4. backend/app/temporal/worker.py
-  - Registered new update_loan_metadata activity
+  File: backend/app/temporal/workflows/managers.py (ProcessingWorkflow)
+  - Added send_email activity call after generate_document succeeds
+  - Email template: disclosures_ready
+  - Subject: "Action Required: Your Loan Disclosures are Ready"
+  - Includes proper logging for audit trail
 
-  5. backend/app/api/routes/applications.py
-  - Updated /status/{workflow_id} endpoint to include loan_metadata from SQL
-  - Now returns data (for frontend compatibility) containing applicant_info and analysis
+  Mission 3: Activate "Underwriting" Phase Tools
 
-  Mission 2: Fix "View Docs" Link
+  File: backend/app/temporal/activities/mcp_underwriting.py
+  - Modified evaluate_risk activity to add 5-second simulation with staged logging:
+    - "Checking Credit Score..." (2 sec)
+    - "Calculating DTI..." (2 sec)
+    - "Running Risk Assessment Engine..." (1 sec)
+    - "Risk Assessment Complete"
 
-  6. frontend/src/pages/ApplicantDashboard.jsx
-  - Added API_URL constant
-  - Fixed "View Docs" button to open /static/{workflow_id}/Initial_Disclosures.pdf instead of directory
+  Mission 4: Activate "Closing" Phase Tools
 
-  Mission 3: Populate Borrower Information
+  Files:
+  - backend/app/temporal/workflows/ceo.py - Added closing activities
+  - backend/app/temporal/activities/mcp_docgen.py - Added "Final Approval Letter" template
 
-  7. frontend/src/pages/ApplicationDetail.jsx
-  - Updated fetchData() to read from loan_metadata.applicant_info
-  - Updated data binding to use loanMetadata from status response
-  - Enhanced AI Verification section to display:
-    - AI Confidence percentage
-    - Verified Income
-    - Income Match/Mismatch status
-    - Detailed breakdown (Stated vs Pay Stub vs Tax Return)
-    - AI Recommendation badge
-
-  Data Flow Summary
-
-  1. User submits application → Application saved to SQL with loan_metadata
-  2. LoanLifecycleWorkflow starts → LeadCaptureWorkflow runs AI analysis
-  3. AI extracts income from documents, compares to stated income
-  4. update_loan_metadata activity persists analysis to SQL
-  5. Frontend fetches /status/{workflow_id} → Gets loan_metadata with analysis
-  6. ApplicationDetail displays borrower info and AI verification results
-
-✻ Sautéed for 5m 24s
+  Activities added in closing phase:
+  1. generate_document("Final Approval Letter") - Creates Final_Approval_Letter.pdf
+  2. send_email("loan_funded") - Sends congratulations email with subject "Congratulations! Your Loan is Funded"

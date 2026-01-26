@@ -224,11 +224,27 @@ export default function ApplicationDetail() {
 
     const getStatusBadge = () => {
         const s = status.toLowerCase();
+        const stage = loanStage.toUpperCase();
+
+        // Final states
         if (underwritingDecision === "CLEAR_TO_CLOSE") return { color: "bg-green-500", text: "Clear to Close" };
-        if (s.includes("signed")) return { color: "bg-green-500", text: "Signed" };
+        if (s.includes("funded") || stage === "ARCHIVED") return { color: "bg-green-500", text: "Funded" };
+        if (stage === "CLOSING") return { color: "bg-green-500", text: "Closing" };
+
+        // Signature states
+        if (s.includes("signed")) return { color: "bg-green-500", text: "Documents Signed" };
+        if (s.includes("waiting") || s.includes("signature")) return { color: "bg-orange-500", text: "Awaiting Signature" };
+
+        // Processing states
+        if (s.includes("processing") || stage === "PROCESSING") return { color: "bg-blue-500", text: "Processing" };
         if (s.includes("approved")) return { color: "bg-green-500", text: "Approved" };
+
+        // Negative states
         if (s.includes("rejected") || s.includes("fail")) return { color: "bg-red-500", text: "Rejected" };
-        if (s.includes("review")) return { color: "bg-yellow-500", text: "In Review" };
+
+        // Review state
+        if (s.includes("review") || s.includes("submitted")) return { color: "bg-yellow-500", text: "In Review" };
+
         return { color: "bg-blue-500", text: "Processing" };
     };
 
