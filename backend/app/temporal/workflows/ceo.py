@@ -44,8 +44,16 @@ class LoanLifecycleWorkflow:
         self.loan_data = {}  # Stores current loan data for field updates
         # Signature Loop: Track borrower signature
         self.borrower_signed = False
-        # Underwriting result
-        self.underwriting_decision = None
+
+        # =========================================
+        # Underwriting Waiter Pattern State
+        # =========================================
+        self.is_underwriting_complete = False
+        self.underwriting_decision = None  # "approved" or "rejected"
+        self.underwriting_decision_reason = None
+
+        # Automated underwriting result (from UnderwritingWorkflow)
+        self.automated_uw_decision = None
         self.risk_evaluation = {}
 
     def _add_log(self, agent: str, message: str):
@@ -93,6 +101,21 @@ class LoanLifecycleWorkflow:
         self.borrower_signed = signed
         workflow.logger.info(f"CEO received borrower signature: {signed}")
 
+    @workflow.signal
+    def submit_underwriting_decision(self, approved: bool, reason: str):
+        """
+        Signal handler for human underwriting decision (Waiter Pattern).
+        Called when an underwriter approves or rejects the loan application.
+
+        Args:
+            approved: True if loan is approved, False if rejected
+            reason: Explanation for the decision
+        """
+        self.underwriting_decision = "approved" if approved else "rejected"
+        self.underwriting_decision_reason = reason
+        self.is_underwriting_complete = True
+        workflow.logger.info(f"CEO received underwriting decision: {self.underwriting_decision} - {reason}")
+
     # =========================================
     # Queries - Expose live status
     # =========================================
@@ -116,6 +139,16 @@ class LoanLifecycleWorkflow:
     def get_logs(self) -> list:
         """Query the audit log"""
         return self.logs
+
+    @workflow.query
+    def get_underwriting_status(self) -> dict:
+        """Query the underwriting decision status (Waiter Pattern)"""
+        return {
+            "is_complete": self.is_underwriting_complete,
+            "decision": self.underwriting_decision,
+            "reason": self.underwriting_decision_reason,
+            "automated_decision": self.automated_uw_decision
+        }
 
     # =========================================
     # Main Workflow Execution
@@ -210,6 +243,73 @@ class LoanLifecycleWorkflow:
         self._add_log("Processing", f"Phase completed: {processing_result}")
 
         # =========================================
+        # Underwriting Decision Gate (Waiter Pattern)
+        # Wait for human underwriter to approve/reject the application
+        # =========================================
+        self.current_stage = LoanStage.UNDERWRITING
+        self._add_log("CEO", "Waiting for underwriting decision...")
+
+        await workflow.execute_activity(
+            update_loan_metadata,
+            args=[workflow.info().workflow_id, {
+                "status": "Pending Underwriting Decision",
+                "loan_stage": LoanStage.UNDERWRITING.value
+            }],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+
+        workflow.logger.info("CEO: Waiting for underwriting decision signal (7-day timeout)...")
+
+        # Wait for underwriting decision with 7-day timeout
+        underwriting_wait_result = await workflow.wait_condition(
+            lambda: self.is_underwriting_complete,
+            timeout=timedelta(days=7)
+        )
+
+        # Handle timeout (wait_condition returns False if timed out)
+        if not underwriting_wait_result:
+            workflow.logger.warning("CEO: Underwriting decision timed out after 7 days")
+            self._add_log("CEO", "Underwriting decision TIMED OUT - Application withdrawn")
+            self.current_stage = LoanStage.ARCHIVED
+            self.decision_reason = "Underwriting decision timed out - application withdrawn"
+
+            await workflow.execute_activity(
+                update_loan_metadata,
+                args=[workflow.info().workflow_id, {
+                    "status": "Withdrawn (Timeout)",
+                    "loan_stage": LoanStage.ARCHIVED.value,
+                    "final_status": "WITHDRAWN"
+                }],
+                start_to_close_timeout=timedelta(seconds=30)
+            )
+
+            return "WITHDRAWN"
+
+        workflow.logger.info(f"CEO received underwriting decision: {self.underwriting_decision}")
+        self._add_log("Underwriter", f"Decision: {self.underwriting_decision.upper()} - {self.underwriting_decision_reason}")
+
+        # Check: If rejected, archive and end
+        if self.underwriting_decision == "rejected":
+            self.current_stage = LoanStage.ARCHIVED
+            self.decision_reason = f"Rejected by underwriter: {self.underwriting_decision_reason}"
+            self._add_log("CEO", "Application REJECTED by underwriter - Moving to Archive")
+
+            await workflow.execute_activity(
+                update_loan_metadata,
+                args=[workflow.info().workflow_id, {
+                    "status": "Rejected by Underwriter",
+                    "loan_stage": LoanStage.ARCHIVED.value,
+                    "final_status": "REJECTED",
+                    "rejection_reason": self.underwriting_decision_reason
+                }],
+                start_to_close_timeout=timedelta(seconds=30)
+            )
+
+            return "REJECTED"
+
+        self._add_log("CEO", "Underwriting APPROVED - Proceeding to signature and closing")
+
+        # =========================================
         # Signature Gate: Wait for Borrower to Sign Disclosures
         # =========================================
         self.current_stage = LoanStage.UNDERWRITING  # Reusing UNDERWRITING as "Waiting for Signature"
@@ -253,25 +353,25 @@ class LoanLifecycleWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=1)
         )
 
-        self.underwriting_decision = underwriting_result.get("decision", "REFER_TO_HUMAN")
+        self.automated_uw_decision = underwriting_result.get("decision", "REFER_TO_HUMAN")
         self.risk_evaluation = underwriting_result.get("risk_evaluation", {})
 
-        workflow.logger.info(f"Underwriting completed with decision: {self.underwriting_decision}")
-        self._add_log("Underwriting", f"Decision: {self.underwriting_decision}")
+        workflow.logger.info(f"Underwriting completed with decision: {self.automated_uw_decision}")
+        self._add_log("Underwriting", f"Decision: {self.automated_uw_decision}")
 
         # Persist underwriting results to SQL (including status update)
         await workflow.execute_activity(
             update_loan_metadata,
             args=[workflow.info().workflow_id, {
-                "underwriting_decision": self.underwriting_decision,
+                "underwriting_decision": self.automated_uw_decision,
                 "risk_evaluation": self.risk_evaluation,
                 "status": "Underwriting Complete"
             }],
             start_to_close_timeout=timedelta(seconds=30)
         )
 
-        # Check underwriting decision
-        if self.underwriting_decision == "REFER_TO_HUMAN":
+        # Check automated underwriting decision
+        if self.automated_uw_decision == "REFER_TO_HUMAN":
             self._add_log("CEO", "Underwriting referred for additional human review")
             # For now, we'll still proceed to closing but mark for review
             # In production, might wait for another human gate here
@@ -279,7 +379,7 @@ class LoanLifecycleWorkflow:
         # =========================================
         # Phase 4: Closing
         # =========================================
-        if self.underwriting_decision == "CLEAR_TO_CLOSE":
+        if self.automated_uw_decision == "CLEAR_TO_CLOSE":
             self.current_stage = LoanStage.CLOSING
             self._add_log("CEO", "CLEAR TO CLOSE - Moving to closing phase")
             workflow.logger.info("CEO: Loan is Clear to Close!")
@@ -292,7 +392,7 @@ class LoanLifecycleWorkflow:
         await workflow.execute_activity(
             update_loan_metadata,
             args=[workflow.info().workflow_id, {
-                "status": "Clear to Close" if self.underwriting_decision == "CLEAR_TO_CLOSE" else "Closing with Conditions",
+                "status": "Clear to Close" if self.automated_uw_decision == "CLEAR_TO_CLOSE" else "Closing with Conditions",
                 "loan_stage": LoanStage.CLOSING.value
             }],
             start_to_close_timeout=timedelta(seconds=30)
@@ -356,7 +456,7 @@ class LoanLifecycleWorkflow:
                 "status": "Funded",
                 "loan_stage": LoanStage.ARCHIVED.value,
                 "final_status": "COMPLETED",
-                "underwriting_decision": self.underwriting_decision
+                "underwriting_decision": self.automated_uw_decision
             }],
             start_to_close_timeout=timedelta(seconds=30)
         )
