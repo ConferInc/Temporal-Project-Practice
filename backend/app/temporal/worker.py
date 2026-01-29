@@ -17,6 +17,17 @@ from app.temporal.activities.mcp_encompass import create_loan_file, push_field_u
 from app.temporal.activities.mcp_docgen import generate_document
 from app.temporal.activities.mcp_underwriting import verify_signature, evaluate_risk
 
+# Database Activities (Waiter Pattern Wiring)
+from app.temporal.activities.db import (
+    init_loan_record,
+    update_loan_status,
+    save_underwriting_decision,
+    update_loan_ai_analysis,
+    update_automated_underwriting,
+    finalize_loan_record,
+    get_loan_record,
+)
+
 async def main():
     # 1. Connect to the Temporal Server
     # 'localhost:7233' assumes you are running Temporal locally (e.g., via Docker).
@@ -63,6 +74,14 @@ async def main():
             # Underwriting Activities
             verify_signature,
             evaluate_risk,
+            # Database Activities (Waiter Pattern Wiring)
+            init_loan_record,
+            update_loan_status,
+            save_underwriting_decision,
+            update_loan_ai_analysis,
+            update_automated_underwriting,
+            finalize_loan_record,
+            get_loan_record,
         ],
     )
 

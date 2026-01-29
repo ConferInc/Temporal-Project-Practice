@@ -20,6 +20,15 @@ with workflow.unsafe.imports_passed_through():
     from app.temporal.activities.mcp_encompass import update_loan_metadata
     from app.temporal.activities.mcp_docgen import generate_document
     from app.temporal.activities.mcp_comms import send_email
+    # Database Activities (Waiter Pattern Wiring)
+    from app.temporal.activities.db import (
+        init_loan_record,
+        update_loan_status,
+        save_underwriting_decision,
+        update_loan_ai_analysis,
+        update_automated_underwriting,
+        finalize_loan_record,
+    )
 
 
 @workflow.defn
@@ -55,6 +64,9 @@ class LoanLifecycleWorkflow:
         # Automated underwriting result (from UnderwritingWorkflow)
         self.automated_uw_decision = None
         self.risk_evaluation = {}
+
+        # Database record ID (from LoanApplication table)
+        self.db_record_id = None
 
     def _add_log(self, agent: str, message: str):
         """Add an audit log entry"""
@@ -166,8 +178,31 @@ class LoanLifecycleWorkflow:
             Final status: "APPROVED", "REJECTED", or "COMPLETED"
         """
         applicant_name = input_data.get("applicant_info", {}).get("name", "Unknown")
+        applicant_email = input_data.get("applicant_info", {}).get("email", "")
+        loan_amount = input_data.get("loan_amount", 0)
+        property_value = input_data.get("property_value", 0)
+        down_payment = input_data.get("down_payment", 0)
+
         workflow.logger.info(f"CEO Workflow started for {applicant_name}")
         self._add_log("CEO", f"Loan lifecycle initiated for {applicant_name}")
+
+        # =========================================
+        # Initialize Database Record (Waiter Pattern Wiring)
+        # =========================================
+        self.db_record_id = await workflow.execute_activity(
+            init_loan_record,
+            args=[
+                workflow.info().workflow_id,
+                applicant_name,
+                applicant_email,
+                loan_amount,
+                property_value,
+                down_payment
+            ],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+        workflow.logger.info(f"Database record created: {self.db_record_id}")
+        self._add_log("Database", f"Loan record initialized (ID: {self.db_record_id[:8]}...)")
 
         # =========================================
         # Phase 1: Lead Capture
@@ -249,6 +284,7 @@ class LoanLifecycleWorkflow:
         self.current_stage = LoanStage.UNDERWRITING
         self._add_log("CEO", "Waiting for underwriting decision...")
 
+        # Update legacy Application table
         await workflow.execute_activity(
             update_loan_metadata,
             args=[workflow.info().workflow_id, {
@@ -257,6 +293,19 @@ class LoanLifecycleWorkflow:
             }],
             start_to_close_timeout=timedelta(seconds=30)
         )
+
+        # Update LoanApplication table with LOCKED state (Waiter Pattern)
+        await workflow.execute_activity(
+            update_loan_status,
+            args=[
+                workflow.info().workflow_id,
+                "Pending Underwriting Decision",
+                LoanStage.UNDERWRITING.value,
+                True  # is_locked = True (waiting for human)
+            ],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+        self._add_log("Database", "Application LOCKED - Awaiting human underwriting decision")
 
         workflow.logger.info("CEO: Waiting for underwriting decision signal (7-day timeout)...")
 
@@ -287,6 +336,19 @@ class LoanLifecycleWorkflow:
 
         workflow.logger.info(f"CEO received underwriting decision: {self.underwriting_decision}")
         self._add_log("Underwriter", f"Decision: {self.underwriting_decision.upper()} - {self.underwriting_decision_reason}")
+
+        # Save underwriting decision to database (Waiter Pattern)
+        await workflow.execute_activity(
+            save_underwriting_decision,
+            args=[
+                workflow.info().workflow_id,
+                self.underwriting_decision,
+                self.underwriting_decision_reason or "",
+                None  # decided_by (could be populated from signal context)
+            ],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+        self._add_log("Database", f"Underwriting decision saved: {self.underwriting_decision.upper()}")
 
         # Check: If rejected, archive and end
         if self.underwriting_decision == "rejected":
@@ -449,7 +511,7 @@ class LoanLifecycleWorkflow:
         self.current_stage = LoanStage.ARCHIVED
         self._add_log("CEO", "Loan lifecycle COMPLETED - Archiving")
 
-        # Final status update - persist to SQL columns
+        # Final status update - persist to legacy Application table
         await workflow.execute_activity(
             update_loan_metadata,
             args=[workflow.info().workflow_id, {
@@ -460,6 +522,18 @@ class LoanLifecycleWorkflow:
             }],
             start_to_close_timeout=timedelta(seconds=30)
         )
+
+        # Finalize LoanApplication record (Waiter Pattern)
+        await workflow.execute_activity(
+            finalize_loan_record,
+            args=[
+                workflow.info().workflow_id,
+                "Funded",
+                LoanStage.ARCHIVED.value
+            ],
+            start_to_close_timeout=timedelta(seconds=30)
+        )
+        self._add_log("Database", "Loan record finalized - Status: Funded")
 
         workflow.logger.info(f"CEO Workflow completed for {applicant_name}")
         return "COMPLETED"

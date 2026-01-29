@@ -7,6 +7,10 @@ engine = create_engine(config.DATABASE_URL, echo=True)
 
 def init_db():
     """Creates the database tables based on the SQLModel metadata."""
+    # Import all models to ensure they're registered with SQLModel
+    from app.models.sql import User, Application, LoanStage
+    from app.models.application import LoanApplication
+
     SQLModel.metadata.create_all(engine)
 
 def get_session() -> Generator[Session, None, None]:

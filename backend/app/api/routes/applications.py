@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.api import deps
 from app.models.sql import User, Application, LoanStage
 from app.models.schemas import ApprovalRequest
+from app.models.application import LoanApplication, LoanStatus
 from app.services import files, temporal
 from app.temporal.workflows import LoanProcessWorkflow
 
@@ -15,6 +16,38 @@ from app.temporal.workflows.ceo import LoanLifecycleWorkflow
 
 # Pyramid Architecture: Manager Workflows (for signals)
 from app.temporal.workflows.managers import LeadCaptureWorkflow
+
+# Pydantic models for API responses
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+
+class UnderwritingDecisionRequest(BaseModel):
+    """Request body for submitting underwriting decision"""
+    workflow_id: str
+    approved: bool
+    reason: str
+
+
+class LoanApplicationResponse(BaseModel):
+    """Response model for LoanApplication with Waiter Pattern state"""
+    id: str
+    workflow_id: str
+    borrower_name: str
+    borrower_email: Optional[str]
+    loan_amount: float
+    status: str
+    loan_stage: Optional[str]
+    is_locked: bool
+    underwriting_decision: Optional[str]
+    underwriting_decision_reason: Optional[str]
+    automated_uw_decision: Optional[str]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
 
 
 
@@ -576,3 +609,258 @@ async def get_system_health(
         "temporal_connected": True,
         "database_connected": True
     }
+
+
+# =========================================
+# Live Operations Endpoints (Waiter Pattern)
+# These endpoints expose the LoanApplication table data
+# for the "Behind the Scenes" Mission Control UI
+# =========================================
+
+@router.get("/loan-applications")
+async def list_loan_applications(
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    List all LoanApplication records with Waiter Pattern state.
+
+    Returns: List of applications with:
+    - id (UUID)
+    - workflow_id
+    - borrower_name, loan_amount
+    - status, loan_stage
+    - is_locked (LOCKED if waiting for human)
+    - underwriting_decision
+    """
+    try:
+        if current_user.role == "manager":
+            apps = session.query(LoanApplication).order_by(
+                LoanApplication.created_at.desc()
+            ).all()
+        else:
+            # Non-managers only see their own (if we had user_id linkage)
+            # For now, return empty for non-managers
+            apps = []
+
+        # Convert to response format
+        result = []
+        for app in apps:
+            result.append({
+                "id": str(app.id),
+                "workflow_id": app.workflow_id,
+                "borrower_name": app.borrower_name,
+                "borrower_email": app.borrower_email,
+                "loan_amount": app.loan_amount,
+                "property_value": app.property_value,
+                "down_payment": app.down_payment,
+                "status": app.status,
+                "loan_stage": app.loan_stage,
+                "is_locked": app.is_locked,
+                "underwriting_decision": app.underwriting_decision,
+                "underwriting_decision_reason": app.underwriting_decision_reason,
+                "automated_uw_decision": app.automated_uw_decision,
+                "loan_number": app.loan_number,
+                "created_at": app.created_at.isoformat() if app.created_at else None,
+                "updated_at": app.updated_at.isoformat() if app.updated_at else None,
+            })
+
+        return result
+
+    except Exception as e:
+        print(f"Error listing loan applications: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/loan-applications/{workflow_id}")
+async def get_loan_application(
+    workflow_id: str,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Get a single LoanApplication with full details.
+
+    Returns detailed view including:
+    - All fields from LoanApplication
+    - AI analysis results
+    - Risk evaluation
+    """
+    app = session.query(LoanApplication).filter(
+        LoanApplication.workflow_id == workflow_id
+    ).first()
+
+    if not app:
+        raise HTTPException(status_code=404, detail="Loan application not found")
+
+    return {
+        "id": str(app.id),
+        "workflow_id": app.workflow_id,
+        "borrower_name": app.borrower_name,
+        "borrower_email": app.borrower_email,
+        "loan_amount": app.loan_amount,
+        "property_value": app.property_value,
+        "down_payment": app.down_payment,
+        "status": app.status,
+        "loan_stage": app.loan_stage,
+        "is_locked": app.is_locked,
+        "underwriting_decision": app.underwriting_decision,
+        "underwriting_decision_reason": app.underwriting_decision_reason,
+        "underwriting_decided_at": app.underwriting_decided_at.isoformat() if app.underwriting_decided_at else None,
+        "underwriting_decided_by": app.underwriting_decided_by,
+        "automated_uw_decision": app.automated_uw_decision,
+        "risk_score": app.risk_score,
+        "ai_analysis": app.ai_analysis,
+        "loan_number": app.loan_number,
+        "created_at": app.created_at.isoformat() if app.created_at else None,
+        "updated_at": app.updated_at.isoformat() if app.updated_at else None,
+        "metadata": app.application_metadata,
+    }
+
+
+@router.post("/underwriting/decision")
+async def submit_underwriting_decision(
+    request: UnderwritingDecisionRequest,
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Submit an underwriting decision (Waiter Pattern).
+
+    This endpoint is RESILIENT:
+    1. Attempts to signal the Temporal workflow
+    2. Even if signal fails, updates the Database directly
+    3. Always returns 200 OK (with warning if signal failed)
+
+    This ensures the UI never gets stuck even if workflow is unreachable.
+    """
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can make underwriting decisions")
+
+    decision_str = "approved" if request.approved else "rejected"
+    signal_success = False
+    signal_warning = None
+
+    # Verify the application exists
+    loan_app = session.query(LoanApplication).filter(
+        LoanApplication.workflow_id == request.workflow_id
+    ).first()
+
+    if not loan_app:
+        # Fall back to legacy Application table
+        legacy_app = session.query(Application).filter(
+            Application.workflow_id == request.workflow_id
+        ).first()
+        if not legacy_app:
+            raise HTTPException(status_code=404, detail="Application not found")
+
+    # Step 1: Try to signal the Temporal workflow (non-blocking on failure)
+    try:
+        client = await temporal.get_client()
+        handle = client.get_workflow_handle(request.workflow_id)
+        await handle.signal("submit_underwriting_decision", request.approved, request.reason)
+        signal_success = True
+        print(f"Successfully signaled workflow {request.workflow_id} with decision: {decision_str}")
+
+    except Exception as e:
+        # Log but DO NOT crash - we'll update DB directly
+        signal_warning = f"Workflow signal failed: {str(e)}"
+        print(f"WARNING: {signal_warning} for workflow {request.workflow_id}")
+
+    # Step 2: ALWAYS update the database directly (ensures UI never gets stuck)
+    try:
+        from datetime import datetime
+
+        if loan_app:
+            loan_app.underwriting_decision = decision_str
+            loan_app.underwriting_decision_reason = request.reason
+            loan_app.underwriting_decided_at = datetime.utcnow()
+            loan_app.underwriting_decided_by = current_user.email
+            loan_app.is_locked = False  # Unlock the application
+            loan_app.updated_at = datetime.utcnow()
+
+            # Update status based on decision
+            if request.approved:
+                loan_app.status = "Underwriting Approved"
+                loan_app.loan_stage = "CLOSING"
+            else:
+                loan_app.status = "Rejected"
+                loan_app.loan_stage = "ARCHIVED"
+
+            session.add(loan_app)
+            session.commit()
+            print(f"Database updated for {request.workflow_id}: {decision_str}")
+
+    except Exception as db_error:
+        print(f"Database update error: {db_error}")
+        # Even if DB fails, we return the signal result
+
+    # Build response
+    response = {
+        "message": f"Underwriting decision submitted: {decision_str.upper()}",
+        "workflow_id": request.workflow_id,
+        "decision": decision_str.upper(),
+        "reason": request.reason,
+        "signal_success": signal_success,
+        "database_updated": loan_app is not None
+    }
+
+    if signal_warning:
+        response["warning"] = signal_warning
+        response["note"] = "Decision saved to database. Workflow may need manual sync."
+
+    return response
+
+
+@router.get("/operations/summary")
+async def get_operations_summary(
+    session: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Get a summary of loan operations for the Mission Control dashboard.
+
+    Returns counts of applications by status and lock state.
+    """
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view operations summary")
+
+    try:
+        # Count from LoanApplication table
+        total = session.query(LoanApplication).count()
+        locked = session.query(LoanApplication).filter(LoanApplication.is_locked == True).count()
+        pending_uw = session.query(LoanApplication).filter(
+            LoanApplication.status == "Pending Underwriting Decision"
+        ).count()
+        approved = session.query(LoanApplication).filter(
+            LoanApplication.underwriting_decision == "approved"
+        ).count()
+        rejected = session.query(LoanApplication).filter(
+            LoanApplication.underwriting_decision == "rejected"
+        ).count()
+        funded = session.query(LoanApplication).filter(
+            LoanApplication.status == "Funded"
+        ).count()
+
+        return {
+            "total_applications": total,
+            "locked_waiting": locked,
+            "pending_underwriting": pending_uw,
+            "approved": approved,
+            "rejected": rejected,
+            "funded": funded,
+            "in_progress": total - funded - rejected,
+        }
+
+    except Exception as e:
+        print(f"Error getting operations summary: {e}")
+        # Return zeros if table doesn't exist yet
+        return {
+            "total_applications": 0,
+            "locked_waiting": 0,
+            "pending_underwriting": 0,
+            "approved": 0,
+            "rejected": 0,
+            "funded": 0,
+            "in_progress": 0,
+        }

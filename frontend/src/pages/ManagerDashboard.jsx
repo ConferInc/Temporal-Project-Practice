@@ -1,392 +1,628 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import {
-    LayoutDashboard, RefreshCw, Trash2, Calendar,
-    FolderOpen, FileText, CheckSquare, History,
-    ChevronRight, Users, Clock, CheckCircle, XCircle, AlertTriangle,
-    Activity, Cpu, Server, Database, Zap, Terminal, Settings, BarChart3
+    Folder, FolderOpen, FileText, CheckCircle, XCircle,
+    AlertTriangle, RefreshCw, Shield, Lock, Unlock,
+    Database, Gavel, ExternalLink, Terminal, Activity,
+    Users, Clock, TrendingUp, Archive, PenTool, ChevronRight
 } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// =========================================
+// PIPELINE STAGES (Encompass-style Folders)
+// =========================================
 const PIPELINE_STAGES = [
-    { key: 'all', label: 'All Applications', icon: FolderOpen },
-    { key: 'LEAD_CAPTURE', label: 'Lead Capture', icon: Users },
-    { key: 'PROCESSING', label: 'Processing', icon: Clock },
-    { key: 'UNDERWRITING', label: 'Underwriting', icon: FileText },
-    { key: 'CLOSING', label: 'Closing', icon: CheckSquare },
-    { key: 'ARCHIVED', label: 'Archived', icon: History },
+    { id: 'LEAD_CAPTURE', label: 'Lead Capture', icon: Users, color: 'blue' },
+    { id: 'PROCESSING', label: 'Processing', icon: Activity, color: 'indigo' },
+    { id: 'UNDERWRITING', label: 'Underwriting', icon: Gavel, color: 'orange' },
+    { id: 'CLOSING', label: 'Closing', icon: PenTool, color: 'green' },
+    { id: 'ARCHIVED', label: 'Archived', icon: Archive, color: 'gray' },
 ];
 
-// System Logs Component - Terminal Style
-function SystemLogs({ logs, loading }) {
-    return (
-        <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
-            <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
-                <div className="flex items-center gap-2">
-                    <Terminal size={14} className="text-green-400" />
-                    <span className="text-xs font-mono text-gray-400">SYSTEM ACTIVITY</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-xs text-green-400">LIVE</span>
-                </div>
-            </div>
-            <div className="p-3 h-48 overflow-y-auto font-mono text-xs">
-                {loading ? (
-                    <div className="text-gray-500">Loading logs...</div>
-                ) : logs.length === 0 ? (
-                    <div className="text-gray-500">No recent activity</div>
-                ) : (
-                    logs.map((log, idx) => (
-                        <div key={idx} className="mb-2 flex items-start gap-2">
-                            <span className="text-gray-600 flex-shrink-0">
-                                {new Date(log.timestamp).toLocaleTimeString()}
-                            </span>
-                            <span className={`flex-shrink-0 px-1 rounded text-xs ${
-                                log.agent?.includes('CEO') ? 'bg-purple-900 text-purple-300' :
-                                log.agent?.includes('AI') || log.agent?.includes('Analyst') ? 'bg-blue-900 text-blue-300' :
-                                log.agent?.includes('DocGen') ? 'bg-yellow-900 text-yellow-300' :
-                                log.agent?.includes('Underwriting') ? 'bg-orange-900 text-orange-300' :
-                                'bg-gray-800 text-gray-400'
-                            }`}>
-                                {log.agent || 'System'}
-                            </span>
-                            <span className="text-green-400">{log.message}</span>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
-    );
-}
+export default function ManagerDashboard() {
+    // === STATE ===
+    const [loanApplications, setLoanApplications] = useState([]);
+    const [operationsSummary, setOperationsSummary] = useState(null);
+    const [systemLogs, setSystemLogs] = useState([]);
+    const [selectedStage, setSelectedStage] = useState(null); // null = show all
+    const [selectedApp, setSelectedApp] = useState(null);
+    const [details, setDetails] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [selectedDoc, setSelectedDoc] = useState(null);
+    const [uwReason, setUwReason] = useState('');
+    const [approvalReason, setApprovalReason] = useState('');
 
-// Worker Status Widget
-function WorkerStatus({ workers }) {
-    return (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                    <Server size={14} className="text-gray-500" />
-                    <span className="text-xs font-bold text-gray-600 uppercase">Worker Status</span>
-                </div>
-            </div>
-            <div className="p-2 space-y-1">
-                {workers.map((worker, idx) => (
-                    <div key={idx} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-50">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${
-                                worker.status === 'online' ? 'bg-green-500' :
-                                worker.status === 'busy' ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}></div>
-                            <span className="text-sm font-medium text-gray-700">{worker.name}</span>
-                        </div>
-                        <span className="text-xs text-gray-400">{worker.last_activity}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-// Stats Card
-function StatCard({ icon: Icon, label, value, color = "blue" }) {
-    const colors = {
-        blue: "bg-blue-100 text-blue-600",
-        green: "bg-green-100 text-green-600",
-        orange: "bg-orange-100 text-orange-600",
-        purple: "bg-purple-100 text-purple-600",
+    // === DATA FETCHING ===
+    const fetchAllData = async () => {
+        await Promise.all([
+            fetchLoanApplications(),
+            fetchOperationsSummary(),
+            fetchSystemLogs()
+        ]);
     };
 
-    return (
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colors[color]}`}>
-                    <Icon size={20} />
-                </div>
-                <div>
-                    <div className="text-2xl font-bold text-gray-900">{value}</div>
-                    <div className="text-xs text-gray-500 uppercase">{label}</div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-export default function ManagerDashboard() {
-    const [applications, setApplications] = useState([]);
-    const [selectedStage, setSelectedStage] = useState('all');
-    const [systemLogs, setSystemLogs] = useState([]);
-    const [workers, setWorkers] = useState([
-        { name: "AI Analyst", status: "online", last_activity: "2s ago" },
-        { name: "DocGen MCP", status: "online", last_activity: "5s ago" },
-        { name: "Encompass MCP", status: "online", last_activity: "1s ago" },
-        { name: "Underwriting", status: "online", last_activity: "3s ago" },
-    ]);
-    const [logsLoading, setLogsLoading] = useState(true);
-    const navigate = useNavigate();
-
-    const fetchApplications = async () => {
+    const fetchLoanApplications = async () => {
         try {
-            const res = await api.get('/applications');
-            setApplications(res.data);
+            const res = await api.get('/loan-applications');
+            setLoanApplications(res.data);
         } catch (err) {
-            console.error(err);
+            console.error("Loan applications fetch error:", err);
         }
     };
 
-    const fetchLogs = async () => {
+    const fetchOperationsSummary = async () => {
+        try {
+            const res = await api.get('/operations/summary');
+            setOperationsSummary(res.data);
+        } catch (err) {
+            console.error("Operations summary fetch error:", err);
+        }
+    };
+
+    const fetchSystemLogs = async () => {
         try {
             const res = await api.get('/recent_logs?limit=15');
             setSystemLogs(res.data);
-            setLogsLoading(false);
         } catch (err) {
-            console.error('Failed to fetch logs:', err);
-            setLogsLoading(false);
+            console.error("System logs fetch error:", err);
         }
     };
 
-    const fetchSystemHealth = async () => {
+    const fetchDetails = async (workflowId) => {
+        setLoadingDetails(true);
+        setDetails(null);
         try {
-            const res = await api.get('/system_health');
-            if (res.data?.workers) {
-                setWorkers(res.data.workers);
+            const res = await api.get(`/status/${workflowId}`);
+            setDetails(res.data);
+
+            if (res.data.data?.public_urls) {
+                const urls = res.data.data.public_urls;
+                setSelectedDoc(urls.tax_document ? 'tax_document' : Object.keys(urls)[0]);
             }
         } catch (err) {
-            console.error('Failed to fetch system health:', err);
+            console.warn("Details fetch failed:", err);
+        } finally {
+            setLoadingDetails(false);
         }
     };
 
     useEffect(() => {
-        fetchApplications();
-        fetchLogs();
-        fetchSystemHealth();
-
-        const appInterval = setInterval(fetchApplications, 5000);
-        const logInterval = setInterval(fetchLogs, 2000);
-        const healthInterval = setInterval(fetchSystemHealth, 10000);
-
-        return () => {
-            clearInterval(appInterval);
-            clearInterval(logInterval);
-            clearInterval(healthInterval);
-        };
+        fetchAllData();
+        const interval = setInterval(fetchAllData, 5000);
+        return () => clearInterval(interval);
     }, []);
 
-    const handleDelete = async (e, appId) => {
-        e.stopPropagation();
-        if (!confirm("Are you sure you want to DELETE this application? This cannot be undone.")) return;
+    // === HANDLERS ===
+    const handleSelectApp = (app) => {
+        setSelectedApp(app);
+        setDetails(null);
+        setSelectedDoc(null);
+        fetchDetails(app.workflow_id);
+    };
+
+    const handleManagerApproval = async (approved) => {
+        if (!selectedApp) return;
         try {
-            await api.delete(`/application/${appId}`);
-            fetchApplications();
+            await api.post('/review', {
+                workflow_id: selectedApp.workflow_id,
+                approved: approved,
+                reason: approvalReason || (approved ? 'Approved by manager' : 'Rejected by manager')
+            });
+            setApprovalReason('');
+            fetchAllData();
+            fetchDetails(selectedApp.workflow_id);
         } catch (err) {
-            alert("Delete failed");
+            alert("Action failed: " + err.message);
         }
     };
 
-    const getStatusIcon = (status) => {
-        const s = status?.toLowerCase() || "";
-        if (s.includes("approved") || s.includes("signed")) return <CheckCircle size={14} className="text-green-600" />;
-        if (s.includes("rejected") || s.includes("fail")) return <XCircle size={14} className="text-red-600" />;
-        if (s.includes("flagged") || s.includes("mismatch")) return <AlertTriangle size={14} className="text-orange-500" />;
-        return <Clock size={14} className="text-blue-500" />;
-    };
-
-    const getStatusColor = (status) => {
-        const s = status?.toLowerCase() || "";
-        if (s.includes("approved") || s.includes("signed")) return "bg-green-50 border-green-200 text-green-700";
-        if (s.includes("rejected") || s.includes("fail")) return "bg-red-50 border-red-200 text-red-700";
-        if (s.includes("flagged") || s.includes("mismatch")) return "bg-orange-50 border-orange-200 text-orange-700";
-        return "bg-blue-50 border-blue-200 text-blue-700";
-    };
-
-    // Filter applications by stage
-    const filteredApps = selectedStage === 'all'
-        ? applications
-        : applications.filter(app => app.loan_stage === selectedStage);
-
-    // Count by stage
-    const stageCounts = PIPELINE_STAGES.reduce((acc, stage) => {
-        if (stage.key === 'all') {
-            acc[stage.key] = applications.length;
-        } else {
-            acc[stage.key] = applications.filter(app => app.loan_stage === stage.key).length;
+    const handleUnderwritingDecision = async (workflowId, approved) => {
+        if (!uwReason.trim()) {
+            alert("Please provide a reason for your underwriting decision.");
+            return;
         }
-        return acc;
-    }, {});
+        try {
+            const res = await api.post('/underwriting/decision', {
+                workflow_id: workflowId,
+                approved: approved,
+                reason: uwReason
+            });
+            setUwReason('');
+            fetchAllData();
 
-    // Stats
-    const pendingReview = applications.filter(a => a.status?.toLowerCase().includes('submitted')).length;
-    const approved = applications.filter(a => a.status?.toLowerCase().includes('approved')).length;
-    const inClosing = applications.filter(a => a.loan_stage === 'CLOSING').length;
+            // Show warning if signal failed but DB was updated
+            if (res.data.warning) {
+                alert(`Decision saved!\n\nNote: ${res.data.note}`);
+            }
+
+            if (selectedApp?.workflow_id === workflowId) {
+                setSelectedApp(prev => ({
+                    ...prev,
+                    is_locked: false,
+                    underwriting_decision: approved ? 'approved' : 'rejected'
+                }));
+            }
+        } catch (err) {
+            alert("Failed to submit decision: " + err.message);
+        }
+    };
+
+    // === HELPERS ===
+    const getStageCount = (stageId) => {
+        return loanApplications.filter(app =>
+            (app.loan_stage || 'LEAD_CAPTURE').toUpperCase() === stageId
+        ).length;
+    };
+
+    const getFilteredApps = () => {
+        if (!selectedStage) return loanApplications;
+        return loanApplications.filter(app =>
+            (app.loan_stage || 'LEAD_CAPTURE').toUpperCase() === selectedStage
+        );
+    };
+
+    const getStageColor = (stageId) => {
+        const stage = PIPELINE_STAGES.find(s => s.id === stageId);
+        return stage?.color || 'gray';
+    };
+
+    const needsManagerApproval = (app) => {
+        const status = (app?.status || '').toLowerCase();
+        const stage = (app?.loan_stage || '').toUpperCase();
+        return status === 'submitted' || stage === 'LEAD_CAPTURE';
+    };
+
+    const info = details?.data?.applicant_info || {};
+    const analysis = details?.loan_metadata?.analysis || details?.data?.analysis || {};
+    const urls = details?.data?.public_urls || {};
 
     return (
-        <div className="h-[calc(100vh-64px)] bg-gray-100 flex">
-            {/* Sidebar - Pipeline View */}
-            <div className="w-56 bg-white border-r border-gray-200 flex flex-col">
-                <div className="p-3 border-b border-gray-100">
-                    <div className="flex items-center gap-2">
-                        <LayoutDashboard size={18} className="text-blue-600" />
-                        <h2 className="text-sm font-bold text-gray-800">Mission Control</h2>
-                    </div>
+        <div className="flex h-[calc(100vh-64px)] bg-slate-900 overflow-hidden">
+            {/* === LEFT SIDEBAR: PIPELINE FOLDERS === */}
+            <div className="w-72 bg-slate-800 border-r border-slate-700 flex flex-col">
+                {/* Header */}
+                <div className="p-4 border-b border-slate-700">
+                    <h1 className="text-white font-bold text-lg flex items-center gap-2">
+                        <Database size={20} className="text-blue-400" />
+                        Loan Pipeline
+                    </h1>
+                    <p className="text-slate-400 text-xs mt-1">Encompass-style Manager View</p>
                 </div>
 
-                {/* Navigation */}
-                <div className="p-2 border-b border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase px-2 mb-2">Pipeline</div>
-                    {PIPELINE_STAGES.map((stage) => {
+                {/* Stats Cards */}
+                {operationsSummary && (
+                    <div className="p-3 border-b border-slate-700">
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-slate-700/50 rounded-lg p-2 text-center">
+                                <div className="text-xl font-bold text-blue-400">{operationsSummary.total_applications}</div>
+                                <div className="text-[10px] text-slate-400 uppercase">Total</div>
+                            </div>
+                            <div className="bg-slate-700/50 rounded-lg p-2 text-center">
+                                <div className="text-xl font-bold text-orange-400">{operationsSummary.locked_waiting}</div>
+                                <div className="text-[10px] text-slate-400 uppercase">Locked</div>
+                            </div>
+                            <div className="bg-slate-700/50 rounded-lg p-2 text-center">
+                                <div className="text-xl font-bold text-green-400">{operationsSummary.funded}</div>
+                                <div className="text-[10px] text-slate-400 uppercase">Funded</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Pipeline Folders */}
+                <div className="flex-1 overflow-y-auto p-2">
+                    {/* All Loans Option */}
+                    <button
+                        onClick={() => setSelectedStage(null)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all ${
+                            selectedStage === null
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-300 hover:bg-slate-700'
+                        }`}
+                    >
+                        <Database size={18} />
+                        <span className="flex-1 text-left font-medium">All Loans</span>
+                        <span className="bg-slate-600 text-slate-200 text-xs px-2 py-0.5 rounded-full">
+                            {loanApplications.length}
+                        </span>
+                    </button>
+
+                    <div className="border-t border-slate-700 my-2"></div>
+
+                    {/* Stage Folders */}
+                    {PIPELINE_STAGES.map(stage => {
                         const Icon = stage.icon;
-                        const isActive = selectedStage === stage.key;
+                        const count = getStageCount(stage.id);
+                        const isSelected = selectedStage === stage.id;
+
                         return (
                             <button
-                                key={stage.key}
-                                onClick={() => setSelectedStage(stage.key)}
-                                className={`w-full flex items-center gap-2 px-2 py-1.5 text-left text-sm rounded transition ${
-                                    isActive
-                                        ? 'bg-blue-50 text-blue-700 font-medium'
-                                        : 'text-gray-600 hover:bg-gray-50'
+                                key={stage.id}
+                                onClick={() => setSelectedStage(stage.id)}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all ${
+                                    isSelected
+                                        ? `bg-${stage.color}-600/20 text-${stage.color}-400 border border-${stage.color}-500/30`
+                                        : 'text-slate-300 hover:bg-slate-700'
                                 }`}
                             >
-                                <Icon size={14} className={isActive ? 'text-blue-500' : 'text-gray-400'} />
-                                <span className="flex-1 truncate">{stage.label}</span>
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                    isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                                {isSelected ? <FolderOpen size={18} /> : <Folder size={18} />}
+                                <span className="flex-1 text-left font-medium">{stage.label}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    count > 0 ? 'bg-slate-600 text-slate-200' : 'text-slate-500'
                                 }`}>
-                                    {stageCounts[stage.key] || 0}
+                                    {count}
                                 </span>
                             </button>
                         );
                     })}
                 </div>
 
-                {/* Worker Status Widget */}
-                <div className="flex-1 p-2 overflow-y-auto">
-                    <WorkerStatus workers={workers} />
-                </div>
-
-                <div className="p-2 border-t border-gray-100">
-                    <button
-                        onClick={() => { fetchApplications(); fetchLogs(); }}
-                        className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition"
-                    >
-                        <RefreshCw size={14} /> Refresh All
-                    </button>
+                {/* System Logs Panel (Terminal Style) */}
+                <div className="h-48 border-t border-slate-700 bg-slate-900/50">
+                    <div className="p-2 border-b border-slate-700 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                            <Terminal size={12} /> SYSTEM LOGS
+                        </span>
+                        <button onClick={fetchSystemLogs} className="text-slate-500 hover:text-slate-300">
+                            <RefreshCw size={12} />
+                        </button>
+                    </div>
+                    <div className="p-2 h-36 overflow-y-auto font-mono text-[10px]">
+                        {systemLogs.length === 0 ? (
+                            <div className="text-slate-500 text-center py-4">No recent activity</div>
+                        ) : (
+                            systemLogs.map((log, i) => (
+                                <div key={i} className="text-slate-400 mb-1 flex gap-2">
+                                    <span className="text-slate-600">[{log.timestamp?.slice(11, 19) || '??:??:??'}]</span>
+                                    <span className="text-green-400">{log.agent || 'System'}</span>
+                                    <span className="text-slate-300 truncate">{log.message}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Header with Stats */}
-                <div className="bg-white border-b border-gray-200 px-4 py-3">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Activity size={20} className="text-blue-600" />
-                            <h1 className="text-lg font-bold text-gray-800">Loan Pipeline</h1>
-                            <span className="text-sm text-gray-500">
-                                ({filteredApps.length} {filteredApps.length === 1 ? 'loan' : 'loans'})
-                            </span>
-                        </div>
+            {/* === MIDDLE: LOAN LIST === */}
+            <div className="w-80 bg-white border-r flex flex-col">
+                {/* Header */}
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                    <div>
+                        <h2 className="font-bold text-gray-800">
+                            {selectedStage ? PIPELINE_STAGES.find(s => s.id === selectedStage)?.label : 'All Loans'}
+                        </h2>
+                        <p className="text-xs text-gray-500">{getFilteredApps().length} applications</p>
                     </div>
-                    {/* Stats Row */}
-                    <div className="grid grid-cols-4 gap-3">
-                        <StatCard icon={Clock} label="Pending Review" value={pendingReview} color="orange" />
-                        <StatCard icon={CheckCircle} label="Approved" value={approved} color="green" />
-                        <StatCard icon={FileText} label="In Closing" value={inClosing} color="purple" />
-                        <StatCard icon={BarChart3} label="Total Active" value={applications.length} color="blue" />
-                    </div>
+                    <button onClick={fetchAllData} className="p-2 hover:bg-gray-200 rounded-full transition">
+                        <RefreshCw size={16} className="text-gray-600" />
+                    </button>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex-1 flex overflow-hidden">
-                    {/* Loan List */}
-                    <div className="flex-1 overflow-y-auto p-3">
-                        {filteredApps.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                <FolderOpen size={48} className="mb-2 opacity-30" />
-                                <p className="text-sm">No applications in this stage</p>
+                {/* Loan List */}
+                <div className="flex-1 overflow-y-auto">
+                    {getFilteredApps().length === 0 ? (
+                        <div className="p-8 text-center text-gray-400">
+                            <Folder size={40} className="mx-auto mb-2 opacity-30" />
+                            <p>No loans in this stage</p>
+                        </div>
+                    ) : (
+                        getFilteredApps().map(app => (
+                            <div
+                                key={app.id}
+                                onClick={() => handleSelectApp(app)}
+                                className={`p-4 border-b cursor-pointer transition-all hover:bg-gray-50 ${
+                                    selectedApp?.id === app.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'
+                                }`}
+                            >
+                                {/* Top Row: Name + Lock */}
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="font-bold text-gray-800">{app.borrower_name}</div>
+                                    {app.is_locked && (
+                                        <span className="flex items-center gap-1 text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                            <Lock size={10} /> LOCKED
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Amount + Stage */}
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-gray-600">${app.loan_amount?.toLocaleString() || 0}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded bg-${getStageColor(app.loan_stage?.toUpperCase())}-100 text-${getStageColor(app.loan_stage?.toUpperCase())}-700`}>
+                                        {app.loan_stage || 'LEAD_CAPTURE'}
+                                    </span>
+                                </div>
+
+                                {/* Status */}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-gray-500">{app.status}</span>
+                                    {app.underwriting_decision && (
+                                        <span className={`text-xs font-bold ${
+                                            app.underwriting_decision === 'approved' ? 'text-green-600' : 'text-red-600'
+                                        }`}>
+                                            UW: {app.underwriting_decision.toUpperCase()}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* DB ID */}
+                                <div className="mt-2 font-mono text-[9px] text-gray-400">
+                                    DB: {app.id?.slice(0, 8)}
+                                </div>
                             </div>
-                        ) : (
-                            <div className="space-y-1">
-                                {filteredApps.map((app) => {
-                                    const info = app.loan_metadata?.applicant_info || {};
-                                    return (
-                                        <div
-                                            key={app.workflow_id}
-                                            onClick={() => navigate(`/manager/application/${app.workflow_id}`)}
-                                            className="bg-white border rounded-lg p-3 cursor-pointer transition group hover:border-blue-300 hover:shadow-sm border-gray-200"
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* === RIGHT: DETAIL PANEL === */}
+            <div className="flex-1 bg-gray-100 p-6 overflow-hidden flex flex-col">
+                {selectedApp ? (
+                    <div className="h-full flex gap-6">
+                        {/* Left Column: Info & Actions */}
+                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2">
+                            {/* Header Card */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                                            {selectedApp.borrower_name}
+                                            {selectedApp.is_locked ? (
+                                                <Lock className="text-orange-500" size={20} />
+                                            ) : (
+                                                <Unlock className="text-green-500" size={20} />
+                                            )}
+                                        </h1>
+                                        <p className="text-gray-500 text-sm mt-1">{selectedApp.workflow_id}</p>
+                                        <div className="flex gap-2 mt-3">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold bg-${getStageColor(selectedApp.loan_stage?.toUpperCase())}-100 text-${getStageColor(selectedApp.loan_stage?.toUpperCase())}-700`}>
+                                                {selectedApp.loan_stage || 'LEAD_CAPTURE'}
+                                            </span>
+                                            <span className="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                                                {selectedApp.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-3xl font-bold text-gray-800">
+                                            ${selectedApp.loan_amount?.toLocaleString() || 0}
+                                        </div>
+                                        <div className="text-xs text-gray-500">Loan Amount</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* GATE 1: Manager Approval */}
+                            {needsManagerApproval(selectedApp) && (
+                                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-blue-800 mb-3 flex items-center gap-2">
+                                        <Users size={20} /> Initial Manager Review
+                                    </h3>
+                                    <p className="text-sm text-blue-700 mb-4">
+                                        Review documents and AI analysis, then approve to proceed to Processing.
+                                    </p>
+                                    <textarea
+                                        className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-300"
+                                        placeholder="Optional notes..."
+                                        value={approvalReason}
+                                        onChange={e => setApprovalReason(e.target.value)}
+                                        rows={2}
+                                    />
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => handleManagerApproval(true)}
+                                            className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 flex items-center justify-center gap-2"
                                         >
-                                            <div className="flex items-center gap-3">
-                                                {/* Status Icon */}
-                                                <div className={`w-8 h-8 rounded flex items-center justify-center ${getStatusColor(app.status)}`}>
-                                                    {getStatusIcon(app.status)}
-                                                </div>
+                                            <CheckCircle size={18} /> Approve
+                                        </button>
+                                        <button
+                                            onClick={() => handleManagerApproval(false)}
+                                            className="flex-1 bg-white text-red-600 border-2 border-red-200 py-3 rounded-lg font-bold hover:bg-red-50 flex items-center justify-center gap-2"
+                                        >
+                                            <XCircle size={18} /> Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
-                                                {/* Loan Info */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium text-gray-900 text-sm truncate">
-                                                            {info.name || 'Unknown Borrower'}
-                                                        </span>
-                                                        {app.loan_stage && (
-                                                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                                                                {app.loan_stage}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
-                                                        <span className="font-mono">{app.workflow_id.slice(0, 18)}...</span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Calendar size={10} />
-                                                            {new Date(app.created_at).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                </div>
+                            {/* GATE 2: Underwriting Decision (When Locked) */}
+                            {selectedApp.is_locked && (
+                                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-orange-800 mb-3 flex items-center gap-2">
+                                        <Gavel size={20} /> Underwriting Decision Required
+                                    </h3>
+                                    <div className="bg-white/80 p-4 rounded-lg border border-orange-200 mb-4">
+                                        <div className="flex items-center gap-2 text-orange-700">
+                                            <Lock size={16} />
+                                            <span className="font-semibold">Workflow is PAUSED</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            Your decision will unlock the workflow and send disclosures to the borrower.
+                                        </p>
+                                    </div>
+                                    <textarea
+                                        className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-orange-300"
+                                        placeholder="Enter underwriting reason (e.g., 'Income verified, DTI 32%')..."
+                                        value={uwReason}
+                                        onChange={e => setUwReason(e.target.value)}
+                                        rows={2}
+                                    />
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => handleUnderwritingDecision(selectedApp.workflow_id, true)}
+                                            className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle size={18} /> Approve & Send Disclosures
+                                        </button>
+                                        <button
+                                            onClick={() => handleUnderwritingDecision(selectedApp.workflow_id, false)}
+                                            className="flex-1 bg-white text-red-600 border-2 border-red-300 py-3 rounded-lg font-bold hover:bg-red-50 flex items-center justify-center gap-2"
+                                        >
+                                            <XCircle size={18} /> Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
-                                                {/* Actions */}
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-xs px-2 py-1 rounded border font-medium ${getStatusColor(app.status)}`}>
-                                                        {app.status}
+                            {/* Funded Success */}
+                            {selectedApp.status?.toLowerCase().includes('funded') && (
+                                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                                    <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
+                                        <CheckCircle size={20} /> Loan Funded Successfully
+                                    </h3>
+                                    <p className="text-sm text-green-700 mt-2">
+                                        This loan has completed the full lifecycle.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* AI Verification Analysis */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <Shield size={20} className="text-blue-600" /> AI Verification Analysis
+                                </h3>
+
+                                {analysis.verified_income ? (
+                                    <div className="space-y-4">
+                                        <div className={`p-4 rounded-lg border ${
+                                            analysis.income_mismatch ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+                                        }`}>
+                                            <div className="flex justify-between items-center mb-3">
+                                                <span className="font-bold text-gray-700">Income Verification</span>
+                                                {analysis.income_mismatch ? (
+                                                    <span className="text-red-600 text-xs font-bold flex items-center gap-1">
+                                                        <AlertTriangle size={12} /> MISMATCH
                                                     </span>
-                                                    <button
-                                                        onClick={(e) => handleDelete(e, app.workflow_id)}
-                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition opacity-0 group-hover:opacity-100"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                    <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-400" />
+                                                ) : (
+                                                    <span className="text-green-600 text-xs font-bold flex items-center gap-1">
+                                                        <CheckCircle size={12} /> VERIFIED
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <div className="text-xs text-gray-500">Stated</div>
+                                                    <div className="text-xl font-bold">${(analysis.stated_income || 0).toLocaleString()}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs text-gray-500">Verified</div>
+                                                    <div className="text-xl font-bold">${(analysis.verified_income || 0).toLocaleString()}</div>
                                                 </div>
                                             </div>
                                         </div>
-                                    );
-                                })}
+
+                                        <div className="p-4 rounded-lg bg-gray-50 border">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-bold text-gray-700">AI Confidence</span>
+                                                <span className={`text-xl font-bold ${
+                                                    (analysis.confidence || 0) > 0.8 ? 'text-green-600' : 'text-yellow-600'
+                                                }`}>
+                                                    {((analysis.confidence || 0) * 100).toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-6 bg-gray-50 rounded-lg text-center text-gray-400">
+                                        <Shield size={32} className="mx-auto mb-2 opacity-30" />
+                                        <p>AI analysis pending...</p>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {/* Right Panel - System Logs */}
-                    <div className="w-80 border-l border-gray-200 bg-gray-50 p-3 flex flex-col gap-3">
-                        <SystemLogs logs={systemLogs} loading={logsLoading} />
-
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-3">
-                            <div className="text-xs font-bold text-gray-500 uppercase mb-2">Quick Actions</div>
-                            <div className="space-y-1">
-                                <button
-                                    onClick={fetchApplications}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded transition"
-                                >
-                                    <RefreshCw size={14} /> Refresh Pipeline
-                                </button>
-                                <button
-                                    onClick={() => setSelectedStage('LEAD_CAPTURE')}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded transition"
-                                >
-                                    <Users size={14} /> View Pending Reviews
-                                </button>
+                            {/* DB Record Info */}
+                            <div className="bg-slate-800 text-white p-4 rounded-xl">
+                                <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                                    <Database size={14} /> Database Record
+                                </h3>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <span className="text-slate-400">DB ID:</span>
+                                        <span className="ml-2 font-mono text-xs text-blue-400">{selectedApp.id?.slice(0, 12)}...</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400">Lock:</span>
+                                        <span className="ml-2">{selectedApp.is_locked ? '🔒 Locked' : '🔓 Unlocked'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400">Stage:</span>
+                                        <span className="ml-2">{selectedApp.loan_stage || 'LEAD_CAPTURE'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400">UW:</span>
+                                        <span className={`ml-2 font-bold ${
+                                            selectedApp.underwriting_decision === 'approved' ? 'text-green-400' :
+                                            selectedApp.underwriting_decision === 'rejected' ? 'text-red-400' : 'text-gray-400'
+                                        }`}>
+                                            {selectedApp.underwriting_decision?.toUpperCase() || 'Pending'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Right Column: Document Viewer */}
+                        <div className="w-[450px] bg-white rounded-xl shadow-lg border flex flex-col overflow-hidden">
+                            <div className="p-3 bg-gray-100 border-b flex justify-between items-center">
+                                <div className="flex gap-1 flex-wrap">
+                                    {Object.keys(urls).length > 0 ? (
+                                        Object.keys(urls).map(key => (
+                                            <button
+                                                key={key}
+                                                onClick={() => setSelectedDoc(key)}
+                                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition capitalize ${
+                                                    selectedDoc === key ? 'bg-white text-blue-600 shadow' : 'text-gray-500 hover:bg-gray-200'
+                                                }`}
+                                            >
+                                                {key.replace('_document', '').replace('_', ' ')}
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <span className="text-xs text-gray-500 px-2">Documents</span>
+                                    )}
+                                </div>
+                                {selectedDoc && urls[selectedDoc] && (
+                                    <a
+                                        href={`${API_URL}${urls[selectedDoc]}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-gray-400 hover:text-blue-600"
+                                    >
+                                        <ExternalLink size={16} />
+                                    </a>
+                                )}
+                            </div>
+
+                            {selectedDoc && urls[selectedDoc] ? (
+                                <iframe
+                                    src={`${API_URL}${urls[selectedDoc]}`}
+                                    className="flex-1 w-full bg-slate-50"
+                                    title="Document Viewer"
+                                />
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-gray-300">
+                                    <FileText size={48} className="mb-4 opacity-20" />
+                                    <p>Select a document to preview</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    /* Empty State */
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                        {loadingDetails ? (
+                            <RefreshCw className="animate-spin mb-4" size={48} />
+                        ) : (
+                            <>
+                                <Folder size={64} className="mb-6 opacity-10" />
+                                <h2 className="text-xl font-bold text-gray-600">Loan Pipeline Manager</h2>
+                                <p className="text-gray-500 max-w-sm mt-2 text-center">
+                                    Select a pipeline stage from the left sidebar, then choose a loan to review.
+                                </p>
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
