@@ -38,6 +38,6 @@ Thumbs.db
 .idea/
 *.swp
 
-docs/*
+docs/
 testsprite_tests/*
 
