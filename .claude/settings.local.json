@@ -4,7 +4,15 @@
       "Bash(dir:*)",
       "Bash(tree:*)",
       "Bash(ls:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "mcp__TestSprite__testsprite_bootstrap",
+      "mcp__TestSprite__testsprite_generate_code_summary",
+      "Bash(if not exist \"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\testsprite_tests\\\\tmp\" mkdir \"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\testsprite_tests\\\\tmp\")",
+      "mcp__TestSprite__testsprite_generate_standardized_prd",
+      "mcp__TestSprite__testsprite_generate_backend_test_plan",
+      "mcp__TestSprite__testsprite_generate_code_and_execute",
+      "Bash(node:*)"
     ]
   }
 }
