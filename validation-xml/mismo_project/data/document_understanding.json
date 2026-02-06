@@ -1,0 +1,16 @@
+{
+    "document_id": "000000002214873",
+    "document_type": "PAYSTUB",
+    "issuing_organization": "University of North Carolina at Chapel Hill",
+    "country_detected": "US",
+    "currency_detected": "USD",
+    "is_income_document": true,
+    "is_mortgage_relevant": true,
+    "confidence_score": 0.97,
+    "classification_reason": [
+        "Contains earnings and tax breakdown",
+        "Contains employer information",
+        "Contains pay period and net pay",
+        "US address and USD currency detected"
+    ]
+}

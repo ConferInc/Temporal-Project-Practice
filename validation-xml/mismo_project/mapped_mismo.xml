@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<mismo:MESSAGE xmlns:mismo="http://www.mismo.org/residential/2009/schemas" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <mismo:DEAL_SETS>
+    <mismo:DEAL_SET>
+      <mismo:DEALS>
+        <mismo:DEAL>
+          <mismo:PARTIES>
+            <mismo:PARTY>
+              <mismo:INDIVIDUAL>
+                <mismo:NAME>
+                  <mismo:FullName>Employee Name</mismo:FullName>
+                </mismo:NAME>
+              </mismo:INDIVIDUAL>
+              <mismo:ADDRESSES>
+                <mismo:ADDRESS>
+                  <mismo:AddressLineText>123 Franklin St</mismo:AddressLineText>
+                  <mismo:CityName>Chapel Hill</mismo:CityName>
+                  <mismo:PostalCode>27517</mismo:PostalCode>
+                  <mismo:StateCode>NC</mismo:StateCode>
+                </mismo:ADDRESS>
+              </mismo:ADDRESSES>
+              <mismo:ROLES>
+                <mismo:ROLE>
+                  <mismo:BORROWER>
+                    <mismo:BORROWER_DETAIL/>
+                    <mismo:CURRENT_INCOME>
+                      <mismo:CURRENT_INCOME_ITEMS>
+                        <mismo:CURRENT_INCOME_ITEM>
+                          <mismo:CURRENT_INCOME_ITEM_DETAIL>
+                            <mismo:CurrentIncomeMonthlyTotalAmount>1627.74</mismo:CurrentIncomeMonthlyTotalAmount>
+                            <mismo:IncomeType>Base</mismo:IncomeType>
+                          </mismo:CURRENT_INCOME_ITEM_DETAIL>
+                        </mismo:CURRENT_INCOME_ITEM>
+                      </mismo:CURRENT_INCOME_ITEMS>
+                    </mismo:CURRENT_INCOME>
+                    <mismo:EMPLOYERS>
+                      <mismo:EMPLOYER>
+                        <mismo:LEGAL_ENTITY>
+                          <mismo:LEGAL_ENTITY_DETAIL>
+                            <mismo:FullName>University of North Carolina at Chapel Hill</mismo:FullName>
+                          </mismo:LEGAL_ENTITY_DETAIL>
+                        </mismo:LEGAL_ENTITY>
+                        <mismo:EMPLOYMENT>
+                          <mismo:EmploymentPositionDescription>Admin Support Specialist</mismo:EmploymentPositionDescription>
+                        </mismo:EMPLOYMENT>
+                      </mismo:EMPLOYER>
+                    </mismo:EMPLOYERS>
+                  </mismo:BORROWER>
+                  <mismo:ROLE_DETAIL>
+                    <mismo:PartyRoleType>Borrower</mismo:PartyRoleType>
+                  </mismo:ROLE_DETAIL>
+                </mismo:ROLE>
+              </mismo:ROLES>
+            </mismo:PARTY>
+          </mサウンド:PARTIES>
+        </mismo:DEAL>
+      </mismo:DEALS>
+    </mismo:DEAL_SET>
+  </mismo:DEAL_SETS>
+</mismo:MESSAGE>

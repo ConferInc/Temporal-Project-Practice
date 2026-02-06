@@ -1,0 +1,71 @@
+{
+    "application": {
+        "application_id": "APP-2017-UNC-001",
+        "country": "US",
+        "source_document": "PAYSTUB"
+    },
+    "borrower": {
+        "full_name": "Employee Name",
+        "employee_id": "000000000",
+        "address": {
+            "street": "123 Franklin St",
+            "city": "Chapel Hill",
+            "state": "NC",
+            "zip": "27517",
+            "country": "US"
+        },
+        "employment": {
+            "employer_name": "University of North Carolina at Chapel Hill",
+            "job_title": "Admin Support Specialist",
+            "department": "260108-WSEE-HR Information Mgmt",
+            "employment_type": "Non-Exempt"
+        }
+    },
+    "income": {
+        "pay_frequency": "Bi-Weekly",
+        "pay_period": {
+            "start_date": "2017-07-10",
+            "end_date": "2017-07-23",
+            "pay_date": "2017-08-04"
+        },
+        "pay_rate": {
+            "amount": 45000,
+            "unit": "Annual",
+            "currency": "USD"
+        },
+        "earnings": {
+            "current_gross_pay": 1627.74,
+            "ytd_gross_pay": 28707.21,
+            "currency": "USD"
+        },
+        "net_pay": {
+            "current_net_pay": 1040.23,
+            "currency": "USD"
+        }
+    },
+    "taxes": {
+        "tax_status": "Single",
+        "federal": {
+            "withholding": 182.98,
+            "medicare": 22.12,
+            "social_security": 94.58
+        },
+        "state": {
+            "state_code": "NC",
+            "withholding": 61.00
+        },
+        "total_taxes_current": 360.68
+    },
+    "banking": {
+        "account_type": "Checking",
+        "account_number_masked": "XXXXX000000",
+        "deposit_amount": 1040.23
+    },
+    "document_metadata": {
+        "document_type": "PAYSTUB",
+        "document_id": "000000002214873",
+        "business_unit": "UNCCH",
+        "location": "Chapel Hill, NC",
+        "currency": "USD"
+    }
+}
