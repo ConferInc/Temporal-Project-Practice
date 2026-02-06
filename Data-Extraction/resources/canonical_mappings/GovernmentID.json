@@ -1,0 +1,42 @@
+[
+    {
+        "sourceField": "firstName",
+        "targetPath": "deal.parties[0].individual.first_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "lastName",
+        "targetPath": "deal.parties[0].individual.last_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "ssn",
+        "targetPath": "deal.parties[0].individual.ssn",
+        "priority": 1
+    },
+    {
+        "sourceField": "socialSecurityNumber",
+        "targetPath": "deal.parties[0].individual.ssn",
+        "priority": 2
+    },
+    {
+        "sourceField": "dateOfBirth",
+        "targetPath": "deal.parties[0].individual.dob",
+        "priority": 1
+    },
+    {
+        "sourceField": "dob",
+        "targetPath": "deal.parties[0].individual.dob",
+        "priority": 2
+    },
+    {
+        "sourceField": "citizenshipStatus",
+        "targetPath": "deal.parties[0].individual.citizenship_residency.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "citizenship",
+        "targetPath": "deal.parties[0].individual.citizenship_residency.value",
+        "priority": 2
+    }
+]
