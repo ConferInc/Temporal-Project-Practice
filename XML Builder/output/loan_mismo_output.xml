@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<MESSAGE>
+  <DEAL_SETS>
+    <DEAL_SET>
+      <DEALS>
+        <DEAL>
+          <LOANS>
+            <LOAN>
+              <LOAN_DETAIL>
+                <LoanPurposeType>Refinance</LoanPurposeType>
+                <LoanAmount>492718.9</LoanAmount>
+              </LOAN_DETAIL>
+              <PROPERTY>
+                <ADDRESS>
+                  <AddressLineText>98961 David Court</AddressLineText>
+                  <CityName>Greenview</CityName>
+                  <StateCode>OK</StateCode>
+                  <PostalCode>71141</PostalCode>
+                </ADDRESS>
+              </PROPERTY>
+            </LOAN>
+          </LOANS>
+          <PARTIES>
+            <PARTY>
+              <ROLES>
+                <ROLE>
+                  <RoleType>Borrower</RoleType>
+                </ROLE>
+              </ROLES>
+              <INDIVIDUAL>
+                <NAME>
+                  <FirstName>Pamelayoder</FirstName>
+                  <LastName>Unknown</LastName>
+                  <SuffixName></SuffixName>
+                </NAME>
+              </INDIVIDUAL>
+            </PARTY>
+          </PARTIES>
+        </DEAL>
+      </DEALS>
+    </DEAL_SET>
+  </DEAL_SETS>
+</MESSAGE>
