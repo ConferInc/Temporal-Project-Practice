@@ -1,0 +1,429 @@
+# 🔍 UTILITY MCP SERVER - Comprehensive Project Analysis
+
+**Analysis Date**: February 4, 2026  
+**Project**: Mortgage Document Processing Pipeline  
+**Status**: Production Implementation with Multiple Bugs Identified
+
+---
+
+## 📋 Executive Summary
+
+I've completed a thorough analysis of your **UTILITY MCP SERVER** project. This is a sophisticated mortgage document processing system that uses:
+- **MCP (Model Context Protocol)** server architecture
+- **Multi-stage pipeline**: Classification → Extraction → Structure → Canonical Mapping → Normalization → MISMO XML
+- **Hybrid approach**: OCR (docTR) + Structure-aware parsing (Dockling) + LLM extraction + Rule-based mapping
+
+### ✅ What's Working Well
+
+1. **Excellent Architecture**: Clean separation of concerns with modular tools
+2. **Comprehensive Documentation**: Detailed PRD, canonical model docs, and mapping examples
+3. **Rule-Based Mapping**: Deterministic canonical mapper (no LLM) ensures reproducibility
+4. **Document Scoping**: Prevents schema pollution through strict section-level access control
+5. **MISMO XML Generation**: Full pipeline from PDF → MISMO 3.6 XML
+
+### ❌ Critical Bugs Identified
+
+I found **7 critical bugs** that need immediate attention:
+
+---
+
+## 🐛 Bug Report
+
+### **BUG #1: Unreachable Code in [canonical_mapper.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py)** ⚠️ CRITICAL
+
+**Location**: [canonical_mapper.py:188](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py#L188)
+
+**Issue**: Line 188 has `return result` inside the [_set_nested_value](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py#143-189) method, but this line is unreachable because it comes after the function has already completed its logic.
+
+```python
+# Line 143-188
+def _set_nested_value(self, obj: Dict, path: str, value: Any) -> None:
+    """..."""
+    try:
+        # ... all the logic ...
+        else:
+            current[final_key] = value
+            
+    except Exception as e:
+        logger.error(f"Error setting nested value at path '{path}': {e}")
+        raise
+        
+    return result  # ❌ BUG: 'result' is not defined, and this is unreachable
+```
+
+**Impact**: 
+- Function signature says `-> None` but tries to return something
+- Variable `result` doesn't exist in this scope
+- This line is never executed due to function flow
+
+**Fix**: Remove line 188 entirely
+
+---
+
+### **BUG #2: Missing Document Type in [unified_extraction.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/unified_extraction.py)** ⚠️ CRITICAL
+
+**Location**: [unified_extraction.py:30](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/unified_extraction.py#L30)
+
+**Issue**: The code tries to access `decision.get("document_class")` but the classifier returns `document_category`, not `document_class`.
+
+```python
+# Line 30 - WRONG
+canonical_data = map_to_canonical_model(decision.get("document_class"), {})
+
+# Should be:
+canonical_data = map_to_canonical_model(decision.get("document_category"), {})
+```
+
+**Impact**: 
+- Canonical mapper always receives `None` as document type
+- Mapping will fail or produce empty results
+- Pipeline breaks at the canonical mapping stage
+
+**Evidence**: Check [classifier.py:53-59](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/classifier.py#L53-L59):
+```python
+class ClassificationResult(BaseModel):
+    file_type: FileType
+    pdf_type: PDFType
+    document_category: DocumentType  # ← Returns "document_category"
+    recommended_tool: str
+    confidence: float
+    reasoning: str
+```
+
+---
+
+### **BUG #3: Incomplete Pipeline in [unified_extraction.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/unified_extraction.py)** ⚠️ HIGH
+
+**Location**: [unified_extraction.py:28-30](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/unified_extraction.py#L28-L30)
+
+**Issue**: The unified extraction pipeline skips the **Structure Extraction** step entirely.
+
+```python
+# Current flow (BROKEN):
+# 1. Classify ✅
+# 2. Extract raw text/markdown ✅
+# 3. ❌ SKIP structure extraction (LLM)
+# 4. Canonical mapping with EMPTY dict ❌
+# 5. Normalization ✅
+```
+
+**Expected Flow** (as shown in [test_pipeline.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/test_pipeline.py)):
+```python
+# 1. Classify
+# 2. Extract raw text/markdown
+# 3. Structure extraction (LLM) ← MISSING
+# 4. Canonical mapping with extracted fields
+# 5. Normalization
+```
+
+**Impact**: 
+- Canonical mapper receives empty `{}` instead of extracted fields
+- No data gets mapped to canonical schema
+- Pipeline produces empty output
+
+**Fix**: Add structure extraction step between raw extraction and canonical mapping
+
+---
+
+### **BUG #4: Document Type Mapping Mismatch** ⚠️ MEDIUM
+
+**Location**: Multiple files
+
+**Issue**: Inconsistent document type naming between classifier and canonical mapper.
+
+**Classifier Output** ([classifier.py:23-51](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/classifier.py#L23-L51)):
+```python
+class DocumentType(Enum):
+    URLA = "URLA (Form 1003)"
+    PAY_STUBS = "Pay Stub"
+    BANK_STATEMENTS = "Bank Statement"
+    GOVERNMENT_ID = "Government ID"
+    # ... etc
+```
+
+**Canonical Mapper Expected** ([canonical_mapper.py:20-46](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py#L20-L46)):
+```python
+DOCUMENT_SCOPE = {
+    "BankStatement": {...},  # ← No spaces
+    "PayStub": {...},
+    "URLA": {...},
+    "GovernmentID": {...}
+}
+```
+
+**Current Workaround** ([test_pipeline.py:81-91](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/test_pipeline.py#L81-L91)):
+```python
+doc_type_mapping = {
+    "Bank Statement": "BankStatement",
+    "Pay Stub": "PayStub",
+    "W-2 Form": "W2",
+    # ...
+}
+```
+
+**Impact**: 
+- Requires manual mapping in every consumer
+- Error-prone
+- Not DRY (Don't Repeat Yourself)
+
+**Fix**: Standardize document type naming across all components
+
+---
+
+### **BUG #5: Scoping Mismatch in [BankStatement.json](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/resources/canonical_mappings/BankStatement.json)** ⚠️ MEDIUM
+
+**Location**: [BankStatement.json](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/resources/canonical_mappings/BankStatement.json)
+
+**Issue**: Mapping rules target `parties[0].*` but document scope only allows `assets` and `parties`.
+
+**Defined Scope** ([canonical_mapper.py:22](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py#L22)):
+```python
+"BankStatement": {"assets", "parties"}
+```
+
+**Mapping Rules** ([BankStatement.json:33-61](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/resources/canonical_mappings/BankStatement.json#L33-L61)):
+```json
+{
+    "sourceField": "firstName",
+    "targetPath": "parties[0].individual.firstName",  // ✅ Should work
+    "priority": 1
+}
+```
+
+**Actual Issue**: The scoping check in [_is_path_allowed](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py#116-142) may not properly handle array notation `parties[0].*` when checking against scope `{"parties"}`.
+
+**Impact**: 
+- Party information from bank statements may not be mapped
+- Validation may fail unexpectedly
+
+**Fix**: Ensure [_is_path_allowed](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py#116-142) properly strips array indices when checking scope
+
+---
+
+### **BUG #6: Model Name Hardcoded** ⚠️ LOW
+
+**Location**: [structure_extractor.py:14](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/structure_extractor.py#L14)
+
+**Issue**: Default model is hardcoded to `gpt-5.1` which may not exist.
+
+```python
+def extract_structure(file_path: str, document_type: str = "Unknown", model: str = "gpt-5.1") -> str:
+```
+
+**Impact**: 
+- API calls may fail if model doesn't exist
+- No fallback mechanism
+
+**Fix**: Use environment variable or config file for model name
+
+---
+
+### **BUG #7: Missing OPENAI_BASE_URL in [env.example](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/env.example)** ⚠️ LOW
+
+**Location**: [env.example](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/env.example)
+
+**Issue**: Only shows `OPENAI_API_KEY` but code also uses `OPENAI_BASE_URL`.
+
+**Evidence** ([structure_extractor.py:47-51](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/structure_extractor.py#L47-L51)):
+```python
+api_key = os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("OPENAI_BASE_URL")  # ← Used but not documented
+
+client = OpenAI(api_key=api_key, base_url=base_url)
+```
+
+**Impact**: 
+- Users may not know they can configure base URL
+- Missing documentation
+
+**Fix**: Add `OPENAI_BASE_URL` to [env.example](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/env.example)
+
+---
+
+## 🏗️ Project Architecture Overview
+
+### Directory Structure
+
+```
+UTILITY MCP SERVER/
+├── server.py                    # FastMCP server entry point
+├── test_pipeline.py             # Complete pipeline test
+├── requirements.txt             # Dependencies
+│
+├── orchestrator/
+│   └── pipeline_router.py       # Routes to unified_extraction
+│
+├── tools/                       # Core processing tools
+│   ├── classifier.py            # Document classification (19+ types)
+│   ├── doctr_tool.py            # OCR extraction
+│   ├── dockling_tool.py         # Structure-aware parsing
+│   ├── structure_extractor.py   # LLM-based field extraction
+│   ├── canonical_mapper.py      # Rule-based canonical mapping ⭐
+│   ├── normalization.py         # Data normalization (placeholder)
+│   ├── mismo_mapper.py          # MISMO 3.6 XML generation
+│   ├── query.py                 # Document Q&A
+│   └── unified_extraction.py    # Orchestrates full pipeline
+│
+├── resources/
+│   ├── canonical_schema/
+│   │   └── schema.json          # Canonical schema definition
+│   ├── canonical_mappings/
+│   │   ├── BankStatement.json   # 14 mapping rules
+│   │   ├── PayStub.json         # 7 mapping rules
+│   │   └── GovernmentID.json    # 8 mapping rules
+│   └── mismo_mapping/
+│       └── map_mismo_3_6.json   # MISMO mapping rules
+│
+└── utils/
+    ├── logging.py               # Structured logging
+    ├── file_utils.py            # File utilities
+    └── pdf_utils.py             # PDF utilities
+```
+
+### Pipeline Flow
+
+```mermaid
+graph TB
+    A[Upload PDF/Image] --> B[Classifier]
+    B --> C{Document Type?}
+    C -->|Complex Form| D[Dockling Parser]
+    C -->|Simple/Scanned| E[docTR OCR]
+    D --> F[Structure Extractor LLM]
+    E --> F
+    F --> G[Canonical Mapper]
+    G --> H[Normalizer]
+    H --> I[MISMO XML Generator]
+    I --> J[Output JSON/XML]
+```
+
+### Key Design Decisions
+
+1. **Deterministic Mapping**: Canonical mapper uses ONLY rule-based logic (NO LLM)
+2. **Document Scoping**: Each document type can only populate specific schema sections
+3. **Priority-Based Fallback**: Multiple source fields can map to one target with priority
+4. **List Pattern Support**: Handles repeating structures (e.g., transaction lists)
+5. **Partial Schema Output**: Only populated sections returned (no empty initialization)
+
+---
+
+## 📊 Supported Document Types
+
+| Category | Document Types | Canonical Sections |
+|----------|----------------|-------------------|
+| **Application** | URLA (Form 1003) | deal, loans, parties, employment, income, assets, liabilities, collateral, governmentLoan, closing |
+| **Income** | Pay Stub, W-2, Tax Return | employment, income |
+| **Assets** | Bank Statement | assets, parties |
+| **Identity** | Government ID | parties |
+| **Property** | Sales Contract, Appraisal | collateral |
+| **Credit** | Credit Report | liabilities |
+
+---
+
+## 🔧 Technology Stack
+
+### Core Dependencies
+- **FastMCP**: MCP server framework
+- **docTR**: OCR extraction (PyTorch-based)
+- **Dockling**: Structure-aware PDF parsing
+- **OpenAI API**: LLM for structure extraction
+- **Pydantic**: Data validation
+
+### Python Version
+- Requires Python 3.8+
+
+---
+
+## 📝 Code Quality Observations
+
+### ✅ Strengths
+
+1. **Excellent Documentation**: 
+   - Comprehensive PRD (1533 lines)
+   - Detailed canonical model documentation
+   - Mapping examples with real data
+   - Quick reference guide
+
+2. **Clean Architecture**:
+   - Separation of concerns
+   - Modular tool design
+   - Reusable components
+
+3. **Production-Ready Features**:
+   - Structured logging
+   - Error handling
+   - Validation layers
+   - Output persistence
+
+4. **Type Hints**: Good use of Python type annotations
+
+### ⚠️ Areas for Improvement
+
+1. **Testing**: No unit tests found
+2. **Error Recovery**: Limited retry mechanisms
+3. **Configuration**: Hardcoded values (model names, paths)
+4. **Normalization**: Currently a placeholder (pass-through)
+5. **Validation**: Schema validation not fully implemented
+
+---
+
+## 🎯 Recommended Next Steps
+
+### Immediate (Critical Bugs)
+1. ✅ Fix [canonical_mapper.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/canonical_mapper.py) line 188 (unreachable code)
+2. ✅ Fix [unified_extraction.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/unified_extraction.py) document type key
+3. ✅ Add structure extraction step to [unified_extraction.py](file:///c:/Users/harsh/Downloads/UTILITY%20MCP%20SERVER/tools/unified_extraction.py)
+
+### Short-term (High Priority)
+4. ✅ Standardize document type naming
+5. ✅ Fix scoping validation for array paths
+6. ✅ Add unit tests for canonical mapper
+7. ✅ Implement normalization layer
+
+### Long-term (Enhancements)
+8. ✅ Add multi-document aggregation
+9. ✅ Implement data quality scoring
+10. ✅ Add validation layer with business rules
+11. ✅ Create comprehensive test suite
+
+---
+
+## 📈 Project Statistics
+
+- **Total Files**: 25+ Python files
+- **Lines of Code**: ~3,000+ (excluding docs)
+- **Documentation**: ~2,500+ lines
+- **Supported Document Types**: 19+
+- **Canonical Schema Sections**: 10
+- **Mapping Rules**: 
+  - BankStatement: 14 rules
+  - PayStub: 7 rules
+  - GovernmentID: 8 rules
+  - URLA: 237 rules (mentioned in docs)
+
+---
+
+## 🔐 Security Considerations
+
+1. **API Keys**: Properly using environment variables ✅
+2. **Sensitive Data**: SSN masking mentioned in normalization (not implemented)
+3. **File Access**: No input validation on file paths ⚠️
+4. **Output Storage**: Files saved to disk without encryption ⚠️
+
+---
+
+## 💡 Conclusion
+
+This is a **well-architected, production-quality project** with excellent documentation and clean code structure. The bugs identified are mostly **integration issues** and **missing implementations** rather than fundamental design flaws.
+
+The project demonstrates:
+- ✅ Strong understanding of mortgage document processing
+- ✅ Proper separation of LLM-based vs rule-based logic
+- ✅ MISMO standard compliance
+- ✅ Scalable architecture
+
+**Priority**: Fix the 3 critical bugs first, then address the medium/low priority issues.
+
+---
+
+**Analysis completed by**: Antigravity AI  
+**Date**: February 4, 2026
