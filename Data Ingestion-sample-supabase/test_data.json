@@ -1,0 +1,162 @@
+{
+    "description": "Test JSON for Versioned Canonical Data Platform",
+    "note": "Replace the UUIDs with actual user IDs from your users table after creating users",
+    "test_scenarios": {
+        "scenario_1_create_user": {
+            "description": "First, create a user",
+            "json": {
+                "user": {
+                    "email": "john.doe@example.com",
+                    "organization_id": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        },
+        "scenario_2_first_time_submission": {
+            "description": "Submit all financial data for a user (first time)",
+            "note": "Replace customer_id with the actual user ID from scenario_1",
+            "json": {
+                "employment": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "employer_name": "Google Inc",
+                    "employment_type": "full_time"
+                },
+                "income": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "income_type": "salary",
+                    "monthly_amount": 50000
+                },
+                "asset": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "application_id": "app-mortgage-2024-001",
+                    "asset_type": "bank_account",
+                    "asset_value": 100000
+                },
+                "liability": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "application_id": "app-mortgage-2024-001",
+                    "liability_type": "car_loan",
+                    "monthly_payment": 15000
+                }
+            }
+        },
+        "scenario_3_update_income": {
+            "description": "Update income (creates version 2)",
+            "note": "This will create a new version of the income record",
+            "json": {
+                "income": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "income_type": "salary",
+                    "monthly_amount": 65000
+                }
+            }
+        },
+        "scenario_4_add_bonus_income": {
+            "description": "Add a different income type (bonus)",
+            "note": "This creates a separate income record (different income_type)",
+            "json": {
+                "income": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "income_type": "bonus",
+                    "monthly_amount": 10000
+                }
+            }
+        },
+        "scenario_5_update_asset": {
+            "description": "Update asset value (creates version 2)",
+            "json": {
+                "asset": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "application_id": "app-mortgage-2024-001",
+                    "asset_type": "bank_account",
+                    "asset_value": 150000
+                }
+            }
+        },
+        "scenario_6_add_second_asset": {
+            "description": "Add a different asset type",
+            "json": {
+                "asset": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "application_id": "app-mortgage-2024-001",
+                    "asset_type": "stocks",
+                    "asset_value": 50000
+                }
+            }
+        },
+        "scenario_7_batch_update": {
+            "description": "Update multiple entities at once",
+            "json": {
+                "income": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "income_type": "salary",
+                    "monthly_amount": 70000
+                },
+                "employment": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "employer_name": "Google Inc",
+                    "employment_type": "senior_full_time"
+                },
+                "asset": {
+                    "customer_id": "REPLACE_WITH_USER_ID_FROM_SCENARIO_1",
+                    "application_id": "app-mortgage-2024-001",
+                    "asset_type": "bank_account",
+                    "asset_value": 200000
+                }
+            }
+        }
+    },
+    "ready_to_use_examples": {
+        "example_1_simple_user": {
+            "description": "Create a simple user - READY TO USE",
+            "json": {
+                "user": {
+                    "email": "test.user@example.com",
+                    "organization_id": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        },
+        "example_2_complete_profile": {
+            "description": "Complete financial profile - UPDATE customer_id first",
+            "json": {
+                "employment": {
+                    "customer_id": "UPDATE_THIS_WITH_ACTUAL_USER_ID",
+                    "employer_name": "Tech Corp",
+                    "employment_type": "full_time"
+                },
+                "income": {
+                    "customer_id": "UPDATE_THIS_WITH_ACTUAL_USER_ID",
+                    "income_type": "salary",
+                    "monthly_amount": 80000
+                },
+                "asset": {
+                    "customer_id": "UPDATE_THIS_WITH_ACTUAL_USER_ID",
+                    "asset_type": "savings",
+                    "asset_value": 250000
+                },
+                "liability": {
+                    "customer_id": "UPDATE_THIS_WITH_ACTUAL_USER_ID",
+                    "liability_type": "mortgage",
+                    "monthly_payment": 25000
+                }
+            }
+        }
+    },
+    "testing_workflow": [
+        "1. Run scenario_1_create_user to create a user",
+        "2. Copy the returned user ID from the response",
+        "3. Replace 'REPLACE_WITH_USER_ID_FROM_SCENARIO_1' in other scenarios with the actual user ID",
+        "4. Run scenario_2_first_time_submission to create initial records (all version 1)",
+        "5. Run scenario_3_update_income to test versioning (creates version 2 for salary income)",
+        "6. Run scenario_4_add_bonus_income to test multiple income types",
+        "7. Check Supabase to verify:",
+        "   - Users table has 1 user",
+        "   - Incomes table has 3 records (salary v1, salary v2, bonus v1)",
+        "   - Only salary v2 and bonus v1 have is_current=true",
+        "   - All records have proper version_number, valid_from, valid_to"
+    ],
+    "verification_queries": {
+        "check_current_income": "SELECT * FROM incomes WHERE customer_id = 'YOUR_USER_ID' AND is_current = true;",
+        "check_income_history": "SELECT id, income_type, monthly_amount, version_number, is_current, valid_from, valid_to FROM incomes WHERE customer_id = 'YOUR_USER_ID' ORDER BY income_type, version_number;",
+        "check_all_current_data": "SELECT 'income' as type, income_type as subtype, version_number FROM incomes WHERE customer_id = 'YOUR_USER_ID' AND is_current = true UNION ALL SELECT 'employment', employer_name, version_number FROM employments WHERE customer_id = 'YOUR_USER_ID' AND is_current = true UNION ALL SELECT 'asset', asset_type, version_number FROM assets WHERE customer_id = 'YOUR_USER_ID' AND is_current = true UNION ALL SELECT 'liability', liability_type, version_number FROM liabilities WHERE customer_id = 'YOUR_USER_ID' AND is_current = true;"
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "income": {
+        "customer_id": "PASTE_USER_ID_HERE",
+        "income_type": "salary",
+        "monthly_amount": 65000
+    }
+}

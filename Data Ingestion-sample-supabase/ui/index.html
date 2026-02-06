@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Versioned Data Platform - Testing Interface</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔹 Versioned Canonical Data Platform</h1>
+            <p class="subtitle">Testing Interface for Temporal Financial Data System</p>
+        </header>
+
+        <main>
+            <section class="input-section">
+                <h2>Canonical JSON Input</h2>
+                <p class="help-text">
+                    Paste your canonical JSON below. You can submit one or multiple entities in a single payload.
+                </p>
+
+                <textarea id="jsonInput" placeholder='Example:
+{
+  "income": {
+    "customer_id": "123e4567-e89b-12d3-a456-426614174000",
+    "income_type": "salary",
+    "monthly_amount": 50000
+  },
+  "employment": {
+    "customer_id": "123e4567-e89b-12d3-a456-426614174000",
+    "employer_name": "Google",
+    "employment_type": "full_time"
+  }
+}'></textarea>
+
+                <button id="submitBtn" class="submit-btn">Submit Data</button>
+            </section>
+
+            <section class="output-section">
+                <h2>Response</h2>
+                <div id="responseContainer" class="response-container">
+                    <p class="placeholder">Response will appear here after submission...</p>
+                </div>
+            </section>
+
+            <section class="examples-section">
+                <h3>Quick Examples</h3>
+                <div class="examples-grid">
+                    <button class="example-btn" data-example="income">Income</button>
+                    <button class="example-btn" data-example="employment">Employment</button>
+                    <button class="example-btn" data-example="asset">Asset</button>
+                    <button class="example-btn" data-example="liability">Liability</button>
+                    <button class="example-btn" data-example="multi">Multi-Entity</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Temporal, append-only data system • All updates create new versions • Historical data preserved forever
+            </p>
+        </footer>
+    </div>
+
+    <script src="app.js?v=2"></script>
+</body>
+
+</html>

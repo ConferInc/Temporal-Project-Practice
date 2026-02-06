@@ -1,0 +1,24 @@
+{
+    "employment": {
+        "customer_id": "PASTE_USER_ID_HERE",
+        "employer_name": "Google Inc",
+        "employment_type": "full_time"
+    },
+    "income": {
+        "customer_id": "PASTE_USER_ID_HERE",
+        "income_type": "salary",
+        "monthly_amount": 50000
+    },
+    "asset": {
+        "customer_id": "PASTE_USER_ID_HERE",
+        "application_id": "app-mortgage-2024-001",
+        "asset_type": "bank_account",
+        "asset_value": 100000
+    },
+    "liability": {
+        "customer_id": "PASTE_USER_ID_HERE",
+        "application_id": "app-mortgage-2024-001",
+        "liability_type": "car_loan",
+        "monthly_payment": 15000
+    }
+}
