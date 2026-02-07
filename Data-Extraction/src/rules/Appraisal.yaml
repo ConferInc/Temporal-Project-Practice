@@ -1,0 +1,375 @@
+# ============================================================
+# Appraisal.yaml — Deterministic extraction rules for
+# Uniform Residential Appraisal Report (URAR Form 1004/70)
+# ============================================================
+# Ground truth: Docling markdown of filled Appraisal Report
+#
+# Docling renders URAR forms with merged label-value text:
+#   "PropertyAddress76EWestlandSt"
+#   "CityTucson"
+#   "StateAZ"
+#   "Zip Code85711"
+#   "TaxYear2016"
+# Also: "7Rooms", "3Bedrooms", "2.0 Bath(s)"
+# Sections repeat for multi-property appraisals.
+#
+# Strategy: Regex with flexible whitespace to handle merged text.
+# Target the first occurrence of each field (subject property).
+#
+# MISMO Mapping: .../APPRAISAL_RESPONSE (Section 4)
+# Critical Fields: AppraisedValue, PropertyAddress, GLA, YearBuilt
+# ============================================================
+
+document_type: "Appraisal (Form 1004)"
+schema_version: "1.0"
+
+rules:
+
+  # ============================================================
+  # SUBJECT SECTION — Property Identification
+  # ============================================================
+
+  # "PropertyAddress76EWestlandSt" or "PropertyAddress76 EWestlandSt"
+  - id: property_address
+    type: regex
+    pattern: 'Property\s*Address\s*(\d+\s*\w[\w\s]*?(?:St|Ave|Blvd|Rd|Dr|Ln|Ct|Way|Pl|Cir)\.?)\s*\n'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_property_address"
+    target_path: "deal.collateral.subject_property.address"
+    transform: strip_ocr_noise
+
+  # "CityTucson" or "City Tucson"
+  - id: property_city
+    type: regex
+    pattern: '\bCity\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*\n'
+    group: 1
+    key: "appraisal_property_city"
+    target_path: "deal.collateral.subject_property.city"
+
+  # "StateAZ" or "State AZ"
+  - id: property_state
+    type: regex
+    pattern: '\bState\s*([A-Z]{2})\b'
+    group: 1
+    key: "appraisal_property_state"
+    target_path: "deal.collateral.subject_property.state"
+
+  # "Zip Code85711" or "ZipCode40165"
+  - id: property_zip
+    type: regex
+    pattern: 'Zip\s*Code\s*(\d{5}(?:-\d{4})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_property_zip"
+    target_path: "deal.collateral.subject_property.zip_code"
+
+  # "CountyPima" or "County Bullitt"
+  - id: property_county
+    type: regex
+    pattern: '\bCounty\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*\n'
+    group: 1
+    key: "appraisal_property_county"
+    target_path: "deal.collateral.subject_property.county"
+
+  # "Borrower Philips,Alex" or "BorrowerRobertFisherman"
+  - id: borrower_name
+    type: regex
+    pattern: '\bBorrower\s*([A-Z][\w,\s]+?)(?:\n|Owner)'
+    group: 1
+    key: "appraisal_borrower_name"
+    target_path: "deal.parties[0].individual.full_name"
+    transform: strip_ocr_noise
+
+  # "Legal DescriptionDelMonteVillageLot 270"
+  - id: legal_description
+    type: regex
+    pattern: 'Legal\s*Description\s*\n?\s*([A-Z][\w\s,\-\(\)]+?)(?:\n\n|\nAssessor)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_legal_description"
+    target_path: "deal.collateral.subject_property.legal_description"
+    transform: strip_ocr_noise
+
+  # "Assessor'sParcel#128-12-2720" or "Assessor's Parcel#\n\n053-SEO-06-004"
+  - id: assessor_parcel
+    type: regex
+    pattern: 'Assessor.?s?\s*Parcel\s*#?\s*\n?\s*([A-Za-z0-9\-\.]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_assessor_parcel"
+    target_path: "deal.collateral.subject_property.assessor_parcel_number"
+
+  # "TaxYear2016" or "TaxYear2015"
+  - id: tax_year
+    type: regex
+    pattern: 'Tax\s*Year\s*(20\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_tax_year"
+    target_path: "deal.collateral.subject_property.tax_year"
+
+  # "R.E.Taxes S1,231" or "R.E.Taxes S 1,705"
+  - id: real_estate_taxes
+    type: regex
+    pattern: 'R\.?E\.?\s*Taxes\s*\$?\s*S?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_annual_taxes"
+    target_path: "deal.collateral.subject_property.annual_taxes"
+    transform: to_float
+
+  # "Loan#185675119"
+  - id: loan_number
+    type: regex
+    pattern: 'Loan\s*#\s*(\d+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_loan_number"
+    target_path: "deal.identifiers.lender_case_number"
+
+  # ============================================================
+  # PROPERTY CHARACTERISTICS
+  # ============================================================
+
+  # Year Built: "Year Buit\n\n1952" or "Year Built\n\n1979" (OCR may have "Buit")
+  - id: year_built
+    type: regex
+    pattern: 'Year\s*Bu[il]+t\s*\n+\s*(\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_year_built"
+    target_path: "deal.collateral.subject_property.year_built"
+    transform: to_int
+
+  # Effective Age: "Effective Age (Yrs) 18" or "Effective Age (Yrs) 25"
+  - id: effective_age
+    type: regex
+    pattern: 'Effective\s*Age\s*\(?\s*Yrs?\s*\)?\s*(\d+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_effective_age"
+    target_path: "deal.collateral.subject_property.effective_age_years"
+    transform: to_int
+
+  # Rooms: "7Rooms" or "Rooms"
+  - id: room_count
+    type: regex
+    pattern: '(\d+)\s*Rooms\b'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_room_count"
+    target_path: "deal.collateral.subject_property.total_room_count"
+    transform: to_int
+
+  # Bedrooms: "3Bedrooms" or "3 Bedrooms"
+  - id: bedroom_count
+    type: regex
+    pattern: '(\d+)\s*Bedrooms?\b'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_bedroom_count"
+    target_path: "deal.collateral.subject_property.bedroom_count"
+    transform: to_int
+
+  # Bathrooms: "2.0 Bath(s)"
+  - id: bathroom_count
+    type: regex
+    pattern: '(\d+(?:\.\d)?)\s*Bath\(?s?\)?'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_bathroom_count"
+    target_path: "deal.collateral.subject_property.bathroom_count"
+
+  # GLA: "1,522SquareFeet ofGross LivingAreaAbove Grade" or "1,522 SquareFeetofGrossLiving Area"
+  - id: gross_living_area
+    type: regex
+    pattern: '([\d,]+)\s*(?:Square\s*Feet?\s*(?:of\s*)?Gross\s*Living\s*Area|Sq(?:uare)?\s*F(?:ee)?t\s*(?:of\s*)?(?:Gross\s*Living))'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_gla_sqft"
+    target_path: "deal.collateral.subject_property.gross_living_area_sqft"
+    transform: to_int
+
+  # Stories: "#of Stories\n\n1"
+  - id: stories
+    type: regex
+    pattern: '#\s*of\s*Stories\s*\n+\s*(\d+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_stories"
+    target_path: "deal.collateral.subject_property.number_of_stories"
+    transform: to_int
+
+  # Design style: "Design (Style)\n\nRanch"
+  - id: design_style
+    type: regex
+    pattern: 'Design\s*\(\s*Style\s*\)\s*\n+\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_design_style"
+    target_path: "deal.collateral.subject_property.design_style"
+
+  # Lot dimensions: "Dimensions 80x151.13" or "Dimensions100x250"
+  - id: lot_dimensions
+    type: regex
+    pattern: 'Dimensions\s*(\d+\s*x\s*[\d.]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_lot_dimensions"
+    target_path: "deal.collateral.subject_property.lot_dimensions"
+
+  # Lot area: "Area12090sf" or "Area24829sf" or "Area12090 sf"
+  - id: lot_area
+    type: regex
+    pattern: '\bArea\s*([\d,]+)\s*(?:sf|sq\.?\s*ft)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_lot_area"
+    target_path: "deal.collateral.subject_property.lot_size"
+
+  # View: "ViewN;Res:" or "View N;Res:"
+  - id: view
+    type: regex
+    pattern: '\bView\s*([A-Z];[A-Za-z:;]+)'
+    group: 1
+    key: "appraisal_view"
+    target_path: "deal.collateral.subject_property.view"
+
+  # Basement area: "BasementArea\n\n1,333 sq.ft." or "BasementArea\n\n0sq.ft"
+  - id: basement_area
+    type: regex
+    pattern: 'Basement\s*Area\s*\n+\s*([\d,]+)\s*sq\.?\s*ft'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_basement_area"
+    target_path: "deal.collateral.subject_property.basement_area_sqft"
+    transform: to_int
+
+  # Basement finish %: "BasementFinish\n\n84\n\n%"
+  - id: basement_finish_pct
+    type: regex
+    pattern: 'Basement\s*Finish\s*\n+\s*(\d+)\s*\n+\s*%'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_basement_finish_pct"
+    target_path: "deal.collateral.subject_property.basement_finish_percent"
+    transform: to_int
+
+  # ============================================================
+  # CONDITION RATING (C1-C6)
+  # ============================================================
+
+  # "C3:Kitchen-remodeled" — condition rating in description
+  - id: condition_rating
+    type: regex
+    pattern: '\b(C[1-6])\s*:'
+    group: 1
+    key: "appraisal_condition_rating"
+    target_path: "deal.collateral.subject_property.condition_rating"
+
+  # ============================================================
+  # SALES COMPARISON / VALUATION
+  # ============================================================
+
+  # Contract Price: "Contract Price$" or "Contract PriceS"
+  - id: contract_price
+    type: regex
+    pattern: 'Contract\s*Price\s*\$?\s*S?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_contract_price"
+    target_path: "deal.collateral.subject_property.valuation.sales_price"
+    transform: to_float
+
+  # Lender: "Lender/Client FairwayIndependentMortgageCorp." or "Lender/Client\n\nFirstCapitalBankofKentucky"
+  - id: lender_name
+    type: regex
+    pattern: 'Lender/Client\s*\n?\s*([A-Z][\w\s.,\-]+?)(?:\n\n|\nAddress)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_lender_name"
+    target_path: "deal.parties[1].company_name"
+    transform: strip_ocr_noise
+
+  # ============================================================
+  # OCCUPANCY
+  # ============================================================
+
+  # "OccupantOwnerTenantVacant" — Owner is first, indicating owner-occupied
+  # Or "OccupantOwner\n\nTenant\n\n[ ] Vacant" — Owner is checked
+  - id: occupant_type
+    type: regex
+    pattern: 'Occupant\s*(Owner|Tenant|Vacant)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_occupant_type"
+    target_path: "deal.collateral.subject_property.occupancy_status"
+
+  # ============================================================
+  # NEIGHBORHOOD
+  # ============================================================
+
+  # "Neighborhood NameDel MonteVillage" or "Neighborhood Name\n\nHighMeadow"
+  - id: neighborhood_name
+    type: regex
+    pattern: 'Neighborhood\s*Name\s*\n?\s*([A-Z][\w\s]+?)(?:\n\n|\nMap)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_neighborhood_name"
+    target_path: "deal.collateral.subject_property.neighborhood_name"
+    transform: strip_ocr_noise
+
+  # Zoning: "SpecificZoning ClassificationR-1" or "SpecificZoning Classification\n\nR-1"
+  - id: zoning
+    type: regex
+    pattern: 'Zoning\s*Classification\s*\n?\s*([A-Z0-9\-]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_zoning"
+    target_path: "deal.collateral.subject_property.zoning_classification"
+
+  # FEMA: "FEMAFloodZoneX" or "FEMA Flood Zone\n\nFEMAMap#21029C0067F"
+  - id: fema_flood_zone
+    type: regex
+    pattern: 'FEMA\s*(?:Flood\s*)?Zone\s*([A-Z0-9]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_fema_flood_zone"
+    target_path: "deal.collateral.subject_property.fema_flood_zone"
+
+  - id: fema_map_number
+    type: regex
+    pattern: 'FEMA\s*Map\s*#?\s*([A-Z0-9]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "appraisal_fema_map_number"
+    target_path: "deal.collateral.subject_property.fema_map_number"
+
+  # ============================================================
+  # STATIC / METADATA
+  # ============================================================
+
+  - id: source_doc_type
+    type: static
+    value: "Appraisal1004"
+    key: "appraisal_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: schema_version
+    type: static
+    value: "3.4.0"
+    key: "appraisal_schema_version"
+    target_path: "document_metadata.schema_version"
+
+  - id: appraisal_form_type
+    type: static
+    value: "URAR_1004"
+    key: "appraisal_form_type"
+    target_path: "deal.collateral.subject_property.valuation.appraisal_form_type"
+
+  - id: party_role
+    type: static
+    value: "Borrower"
+    key: "appraisal_party_role"
+    target_path: "deal.parties[0].party_role.value"

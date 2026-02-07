@@ -1,0 +1,224 @@
+# ============================================================
+# PayStub.yaml — Deterministic extraction rules for Pay Stubs
+# ============================================================
+# The RuleEngine reads this config and applies each rule against
+# the clean Markdown produced by Docling.
+#
+# Rule types:
+#   heading    – extract text from markdown headings (## ...)
+#   key_value  – look for "Key:\n\nValue" line patterns
+#   regex      – run a regex against the full markdown text
+#   table      – locate a markdown table by header keywords,
+#                then extract rows/columns or a specific cell
+# ============================================================
+
+document_type: "Pay Stub"
+schema_version: "1.0"
+
+rules:
+
+  # ----------------------------------------------------------
+  # 1. HEADING RULES  (## heading text)
+  # ----------------------------------------------------------
+  - id: employer_name_heading
+    type: heading
+    level: 2                        # match ## headings
+    key: "paystub_employer_name"
+    target_path: "deal.parties[0].employment[0].employer_name"
+
+  # ----------------------------------------------------------
+  # 2. KEY-VALUE RULES  (Key:\n\nValue)
+  # ----------------------------------------------------------
+  - id: employer_business_unit
+    type: key_value
+    key: "Business Unit"
+    target_path: "deal.parties[0].employment[0].employer_business_unit"
+
+  - id: employee_name
+    type: key_value
+    key: "Employee Name"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: employee_id
+    type: key_value
+    key: "Employee ID"
+    target_path: "deal.parties[0].individual.employee_id"
+
+  - id: department
+    type: key_value
+    key: "Department"
+    target_path: "deal.parties[0].employment[0].department"
+
+  - id: job_title
+    type: key_value
+    key: "Job Title"
+    target_path: "deal.parties[0].employment[0].position_title"
+
+  - id: pay_rate
+    type: key_value
+    key: "Pay Rate"
+    target_path: "deal.parties[0].employment[0].pay_rate"
+
+  - id: pay_begin_date
+    type: key_value
+    key: "Pay Begin Date"
+    target_path: "deal.parties[0].income_verification_fragments[0].pay_period_start"
+
+  - id: pay_end_date
+    type: key_value
+    key: "Pay End Date"
+    target_path: "deal.parties[0].income_verification_fragments[0].pay_period_end"
+
+  - id: advice_date
+    type: key_value
+    key: "Advice Date"
+    target_path: "deal.parties[0].income_verification_fragments[0].advice_date"
+
+  - id: tax_status_federal
+    type: key_value
+    key: "Tax Status"
+    target_path: "deal.parties[0].income_verification_fragments[0].federal_tax_status"
+
+  - id: location
+    type: key_value
+    key: "Location"
+    target_path: "deal.parties[0].employment[0].location"
+
+  # ----------------------------------------------------------
+  # 3. REGEX RULES
+  # ----------------------------------------------------------
+  # NOTE: In YAML single quotes, \ is literal — write \d not \\d
+  - id: pay_rate_annual_amount
+    type: regex
+    pattern: 'Pay Rate:\s*\n\s*\n\s*\$([\d,]+\.\d{2})\s+Annual'
+    group: 1
+    key: "paystub_monthly_income_base"
+    target_path: "deal.parties[0].employment[0].monthly_income.base"
+    transform: annual_to_monthly    # divide by 12
+
+  - id: pay_period_range
+    type: regex
+    pattern: 'Pay Begin Date:\s*\n\s*\n\s*(\d{2}/\d{2}/\d{4}).*?Pay End Date:\s*\n\s*\n\s*(\d{2}/\d{2}/\d{4})'
+    flags: [DOTALL]
+    groups:
+      1: "deal.parties[0].income_verification_fragments[0].pay_period_start"
+      2: "deal.parties[0].income_verification_fragments[0].pay_period_end"
+    groups_keys:
+      1: "paystub_pay_period_start"
+      2: "paystub_pay_period_end"
+
+  # ----------------------------------------------------------
+  # 4. TABLE RULES
+  # ----------------------------------------------------------
+
+  # --- Summary Table (TOTAL GROSS / NET PAY) ---
+  - id: summary_table
+    type: table
+    identify_by:
+      header_contains: ["TOTAL GROSS", "NET PAY"]
+    extract:
+      - row_label: "Current"
+        columns:
+          "TOTAL GROSS":      "deal.parties[0].income_verification_fragments[0].current_gross_pay"
+          "FED TAXABLE GROSS": "deal.parties[0].income_verification_fragments[0].current_fed_taxable_gross"
+          "TOTAL TAXES":      "deal.parties[0].income_verification_fragments[0].current_total_taxes"
+          "TOTAL DEDUCTIONS": "deal.parties[0].income_verification_fragments[0].current_total_deductions"
+          "NET PAY":          "deal.parties[0].income_verification_fragments[0].current_net_pay"
+      - row_label: "YTD"
+        columns:
+          "TOTAL GROSS":      "deal.parties[0].income_verification_fragments[0].ytd_gross_amount"
+          "FED TAXABLE GROSS": "deal.parties[0].income_verification_fragments[0].ytd_fed_taxable_gross"
+          "TOTAL TAXES":      "deal.parties[0].income_verification_fragments[0].ytd_total_taxes"
+          "TOTAL DEDUCTIONS": "deal.parties[0].income_verification_fragments[0].ytd_total_deductions"
+          "NET PAY":          "deal.parties[0].income_verification_fragments[0].ytd_net_pay"
+    extract_keys:
+      "deal.parties[0].income_verification_fragments[0].current_gross_pay": "paystub_current_gross_pay"
+      "deal.parties[0].income_verification_fragments[0].current_fed_taxable_gross": "paystub_current_fed_taxable_gross"
+      "deal.parties[0].income_verification_fragments[0].current_total_taxes": "paystub_current_total_taxes"
+      "deal.parties[0].income_verification_fragments[0].current_total_deductions": "paystub_current_total_deductions"
+      "deal.parties[0].income_verification_fragments[0].current_net_pay": "paystub_current_net_pay"
+      "deal.parties[0].income_verification_fragments[0].ytd_gross_amount": "paystub_ytd_gross_amount"
+      "deal.parties[0].income_verification_fragments[0].ytd_fed_taxable_gross": "paystub_ytd_fed_taxable_gross"
+      "deal.parties[0].income_verification_fragments[0].ytd_total_taxes": "paystub_ytd_total_taxes"
+      "deal.parties[0].income_verification_fragments[0].ytd_total_deductions": "paystub_ytd_total_deductions"
+      "deal.parties[0].income_verification_fragments[0].ytd_net_pay": "paystub_ytd_net_pay"
+
+  # --- Earnings Table (Hours and Earnings) ---
+  # Docling merges the first header row with data ("Description | Rate 20.346846 | ...").
+  # We skip that merged header row and start from the actual data rows.
+  - id: earnings_table
+    type: table
+    identify_by:
+      header_contains: ["HOURS AND EARNINGS"]
+    key: "paystub_earnings"
+    extract_rows:
+      target_path: "deal.parties[0].income_verification_fragments[0].earnings"
+      flat_key: "paystub_earnings"
+      skip_total: true
+      skip_header_rows: 2       # skip the 2 merged header rows
+      string_columns: ["description"]
+      column_map:
+        0: "description"
+        1: "rate"
+        2: "current_hours"
+        3: "current_earnings"
+        4: "ytd_hours"
+        5: "ytd_earnings"
+
+  # --- Before-Tax Deductions (columns 0-2 of the deductions table) ---
+  - id: before_tax_deductions
+    type: table
+    identify_by:
+      header_contains: ["BEFORE-TAX DEDUCTIONS"]
+    key: "paystub_before_tax_deductions"
+    extract_rows:
+      target_path: "deal.parties[0].income_verification_fragments[0].before_tax_deductions"
+      flat_key: "paystub_before_tax_deductions"
+      skip_total: true
+      skip_header_rows: 2       # row 0 = group header, row 1 = "Description|Current|YTD"
+      col_offset: 0
+      string_columns: ["description"]
+      column_map:
+        0: "description"
+        1: "current"
+        2: "ytd"
+
+  # --- After-Tax Deductions (columns 3-5 of the same deductions table) ---
+  - id: after_tax_deductions
+    type: table
+    identify_by:
+      header_contains: ["AFTER-TAX DEDUCTIONS"]
+    key: "paystub_after_tax_deductions"
+    extract_rows:
+      target_path: "deal.parties[0].income_verification_fragments[0].after_tax_deductions"
+      flat_key: "paystub_after_tax_deductions"
+      skip_total: true
+      skip_header_rows: 2       # row 0 = group header, row 1 = "Description|Current|YTD"
+      col_offset: 3             # after-tax starts at column 3
+      string_columns: ["description"]
+      column_map:
+        0: "description"
+        1: "current"
+        2: "ytd"
+
+  # ----------------------------------------------------------
+  # 5. COMPUTED FIELDS  (derived from extracted values)
+  # ----------------------------------------------------------
+  - id: source_doc_type
+    type: static
+    value: "Paystub"
+    key: "paystub_source_doc_type"
+    target_path: "deal.parties[0].income_verification_fragments[0].source_doc.value"
+
+  - id: employment_status
+    type: static
+    value: "Current"
+    key: "paystub_employment_status"
+    target_path: "deal.parties[0].employment[0].employment_status.value"
+
+  - id: verified_monthly_base
+    type: computed
+    source_path: "deal.parties[0].employment[0].monthly_income.base"
+    source_key: "paystub_monthly_income_base"
+    key: "paystub_verified_monthly_base"
+    target_path: "deal.parties[0].income_verification_fragments[0].verified_monthly_base"

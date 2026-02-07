@@ -1,0 +1,98 @@
+[
+    {
+        "canonicalPath": "deal.transaction_information.loan_purpose.value",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/LOANS/LOAN/LOAN_PURPOSE/LoanPurposeType"
+    },
+    {
+        "canonicalPath": "deal.parties[].individual.first_name",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/NAME/FirstName"
+    },
+    {
+        "canonicalPath": "deal.parties[].individual.last_name",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/NAME/LastName"
+    },
+    {
+        "canonicalPath": "deal.parties[].individual.middle_name",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/NAME/MiddleName"
+    },
+    {
+        "canonicalPath": "deal.parties[].individual.name_suffix",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/NAME/SuffixName"
+    },
+    {
+        "canonicalPath": "deal.parties[].individual.ssn",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/TAXPAYER_IDENTIFIERS/TAXPAYER_IDENTIFIER/TaxpayerIdentifierValue"
+    },
+    {
+        "canonicalPath": "deal.parties[].individual.dob",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/BirthDate"
+    },
+    {
+        "canonicalPath": "deal.parties[].addresses[].street",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ADDRESSES/ADDRESS/AddressLineText"
+    },
+    {
+        "canonicalPath": "deal.parties[].addresses[].city",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ADDRESSES/ADDRESS/CityName"
+    },
+    {
+        "canonicalPath": "deal.parties[].addresses[].state",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ADDRESSES/ADDRESS/StateCode"
+    },
+    {
+        "canonicalPath": "deal.parties[].addresses[].postal_code",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ADDRESSES/ADDRESS/PostalCode"
+    },
+    {
+        "canonicalPath": "deal.parties[].addresses[].country",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ADDRESSES/ADDRESS/CountryCode"
+    },
+    {
+        "canonicalPath": "deal.assets[].institution_name",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/ASSETS/ASSET/ASSET_DETAIL/FinancialInstitutionName"
+    },
+    {
+        "canonicalPath": "deal.assets[].account_identifier",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/ASSETS/ASSET/ASSET_DETAIL/AssetAccountIdentifier"
+    },
+    {
+        "canonicalPath": "deal.assets[].cash_or_market_value",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/ASSETS/ASSET/ASSET_DETAIL/CashOrMarketValueAmount"
+    },
+    {
+        "canonicalPath": "deal.assets[].asset_type.value",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/ASSETS/ASSET/ASSET_DETAIL/AssetType"
+    },
+    {
+        "canonicalPath": "deal.parties[].employment[].employer_name",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ROLES/ROLE/BORROWER/EMPLOYERS/EMPLOYER/LEGAL_ENTITY/FullName"
+    },
+    {
+        "canonicalPath": "deal.parties[].employment[].monthly_income.base",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ROLES/ROLE/BORROWER/CURRENT_INCOME/CURRENT_INCOME_ITEM/CurrentIncomeMonthlyTotalAmount"
+    },
+    {
+        "canonicalPath": "deal.parties[].employment[].self_employed_indicator",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/ROLES/ROLE/BORROWER/EMPLOYERS/EMPLOYER/EmploymentSelfEmployedIndicator"
+    },
+    {
+        "canonicalPath": "deal.collateral.subject_property.address",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/COLLATERALS/COLLATERAL/SUBJECT_PROPERTY/ADDRESS/AddressLineText"
+    },
+    {
+        "canonicalPath": "deal.collateral.subject_property.valuation.appraised_value",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/COLLATERALS/COLLATERAL/SUBJECT_PROPERTY/VALUATIONS/VALUATION/PropertyValuationAmount"
+    },
+    {
+        "canonicalPath": "deal.collateral.subject_property.property_type.value",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/COLLATERALS/COLLATERAL/SUBJECT_PROPERTY/ProjectDesignType"
+    },
+    {
+        "canonicalPath": "deal.disclosures_and_closing.closing_disclosure_h25.final_cash_to_close",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/LOANS/LOAN/CLOSING_INFORMATION/CLOSING_INFORMATION_DETAIL/CashToCloseAmount"
+    },
+    {
+        "canonicalPath": "deal.disclosures_and_closing.closing_disclosure_h25.disbursement_date",
+        "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/LOANS/LOAN/CLOSING_INFORMATION/CLOSING_INFORMATION_DETAIL/ClosingDate"
+    }
+]

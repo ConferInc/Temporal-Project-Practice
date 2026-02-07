@@ -1,0 +1,290 @@
+# ============================================================
+# TaxReturn.yaml — Deterministic extraction rules for
+# IRS Form 1040 (U.S. Individual Income Tax Return)
+# ============================================================
+# Ground truth: Docling markdown of filled 1040 form
+#
+# Docling renders the 1040 as line-by-line text with NO tables.
+# Line items appear as:
+#   "1a\n\nTotal amount fromForm(s)W-2,box1...\n\n1a\n\n10,530"
+# The line number repeats, then the value appears on its own line.
+# Labels may have merged words: "Thisisyourtotalincome"
+#
+# Strategy: For each 1040 line, look for the line label text
+# then capture the dollar amount that follows on a nearby line.
+# Use DOTALL where needed for multiline patterns.
+#
+# MISMO Mapping: .../TAX_RETURN (Section 2)
+# Critical Fields: AdjustedGrossIncome, TaxableIncome, TotalTax
+# ============================================================
+
+document_type: "Tax Return (1040)"
+schema_version: "1.0"
+
+rules:
+
+  # ============================================================
+  # TAX YEAR
+  # ============================================================
+
+  # Docling: "1040\n\n...\n\n2022\n\nU.S.Individual IncomeTaxReturn"
+  - id: tax_year
+    type: regex
+    pattern: '1040\s*\n+.*?\n+\s*(20\d{2})\s*\n+.*?(?:U\.?S\.?\s*Individual|Individual\s*Income)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_year"
+    target_path: "deal.parties[0].income_verification_fragments[0].tax_year"
+
+  # Fallback: "Form 1040 (2022)"
+  - id: tax_year_fallback
+    type: regex
+    pattern: 'Form\s*1040\s*\(?(20\d{2})\)?'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_year"
+    target_path: "deal.parties[0].income_verification_fragments[0].tax_year"
+
+  # ============================================================
+  # TAXPAYER IDENTIFICATION
+  # ============================================================
+
+  # Docling: "Yourfirst name and middle initial\n\nLast name\n\n
+  #           Yoursocialsecuritynumber\n\nRickT\n\nWinters\n\n789576987"
+  - id: taxpayer_first_name
+    type: regex
+    pattern: 'Your\s*(?:first\s*name|social).*?\n+\s*(?:Last\s*name)?\s*\n+\s*(?:Your\s*social.*?\n+\s*)?([A-Z][a-z]+(?:\s*[A-Z]\.?)?)\s*\n+\s*([A-Z][a-z]+)\s*\n+\s*(\d{9}|\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    groups:
+      1: "deal.parties[0].individual.first_name"
+      2: "deal.parties[0].individual.last_name"
+      3: "deal.parties[0].individual.ssn"
+    groups_keys:
+      1: "tax_taxpayer_first_name"
+      2: "tax_taxpayer_last_name"
+      3: "tax_taxpayer_ssn"
+
+  # Spouse: "spouse's first name and middle initial\n\nLast name\n\n
+  #          Spouse's social security number\n\nLaura M\n\nWinters\n\n658749803"
+  - id: spouse_name
+    type: regex
+    pattern: 'spouse.?s?\s*first\s*name.*?\n+\s*(?:Last\s*name)?\s*\n+\s*(?:Spouse.?s?\s*social.*?\n+\s*)?([A-Z][a-z]+(?:\s*[A-Z]\.?)?)\s*\n+\s*([A-Z][a-z]+)\s*\n+\s*(\d{9}|\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    groups:
+      1: "deal.parties[1].individual.first_name"
+      2: "deal.parties[1].individual.last_name"
+      3: "deal.parties[1].individual.ssn"
+    groups_keys:
+      1: "tax_spouse_first_name"
+      2: "tax_spouse_last_name"
+      3: "tax_spouse_ssn"
+
+  # Address: "578CherrywoodDr" after "Home address" section
+  - id: taxpayer_address
+    type: regex
+    pattern: 'Home\s*address.*?\n+\s*(?:Apt\.?\s*no\.?\s*\n+\s*)?(?:Presidential.*?\n+\s*)?(\d+\w+(?:\s*\w+)?(?:Dr|St|Ave|Rd|Ln|Blvd|Way|Ct))\s*\n+\s*(\d+)'
+    flags: [IGNORECASE, DOTALL]
+    groups:
+      1: "deal.parties[0].addresses[0].street"
+      2: "deal.parties[0].addresses[0].apt_number"
+    groups_keys:
+      1: "tax_taxpayer_street"
+      2: "tax_taxpayer_apt"
+
+  # City/State/Zip: "Gloucester\n\nMA\n\n56375"
+  - id: taxpayer_city_state_zip
+    type: regex
+    pattern: 'City\s*,?\s*town.*?\n+\s*(?:State\s*\n+\s*)?(?:ZIP\s*code\s*\n+\s*)?(?:spouse.*?\n+\s*)*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*\n+\s*([A-Z]{2})\s*\n+\s*(\d{5}(?:-\d{4})?)'
+    flags: [IGNORECASE, DOTALL]
+    groups:
+      1: "deal.parties[0].addresses[0].city"
+      2: "deal.parties[0].addresses[0].state"
+      3: "deal.parties[0].addresses[0].zip_code"
+    groups_keys:
+      1: "tax_taxpayer_city"
+      2: "tax_taxpayer_state"
+      3: "tax_taxpayer_zip"
+
+  # ============================================================
+  # FILING STATUS
+  # ============================================================
+
+  # Docling: "Filing Status\n\nSingleMarriedfiling jointly"
+  # Look for checked box pattern or text markers
+  - id: filing_status
+    type: regex
+    pattern: 'Filing\s*Status\s*\n+\s*(Single|Married\s*filing\s*jointly|Married\s*filing\s*separately|Head\s*of\s*household|Qualifying\s*surviving)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_filing_status"
+    target_path: "deal.parties[0].income_verification_fragments[0].filing_status"
+
+  # ============================================================
+  # LINE ITEMS: INCOME
+  # ============================================================
+  # Pattern: Line items have repeated line number, e.g.:
+  # "1a\n\nTotal amount from Form(s) W-2...\n\n1a\n\n10,530"
+  # We capture the value after the SECOND occurrence of the line#.
+
+  # Line 1a: Wages (W-2 box 1)
+  - id: line1a_wages
+    type: regex
+    pattern: 'Total\s*amount\s*from\s*Form.*?W-2.*?\n+\s*1a\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_wages_salaries_tips"
+    target_path: "deal.parties[0].income_verification_fragments[0].wages_salaries_tips"
+    transform: to_float
+
+  # Line 2b: Taxable interest
+  - id: line2b_taxable_interest
+    type: regex
+    pattern: '(?:b\s*)?Taxable\s*interest\s*\n+\s*2b\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_taxable_interest"
+    target_path: "deal.parties[0].income_verification_fragments[0].taxable_interest"
+    transform: to_float
+
+  # Line 3b: Ordinary dividends
+  - id: line3b_dividends
+    type: regex
+    pattern: '(?:b\s*)?Ordinary\s*dividends\s*\n+\s*3b\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_ordinary_dividends"
+    target_path: "deal.parties[0].income_verification_fragments[0].ordinary_dividends"
+    transform: to_float
+
+  # Line 7: Capital gain or (loss)
+  - id: line7_capital_gains
+    type: regex
+    pattern: 'Capital\s*gain\s*(?:or\s*\(?loss\)?).*?\n+\s*7\s*\n+\s*(-?[\d,]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_capital_gains"
+    target_path: "deal.parties[0].income_verification_fragments[0].capital_gains"
+    transform: to_float
+
+  # Line 8: Other income from Schedule 1
+  - id: line8_other_income
+    type: regex
+    pattern: 'Other\s*income\s*(?:from\s*Schedule\s*1)?.*?\n+\s*8\s*\n+\s*(-?[\d,]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_other_income"
+    target_path: "deal.parties[0].income_verification_fragments[0].other_income"
+    transform: to_float
+
+  # Line 9: Total income — "Thisisyourtotalincome\n\n9\n\n25,090"
+  - id: line9_total_income
+    type: regex
+    pattern: '(?:This\s*is\s*your\s*total\s*income|total\s*income)\s*\n+\s*9\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_total_income"
+    target_path: "deal.parties[0].income_verification_fragments[0].total_income"
+    transform: to_float
+
+  # Line 10: Adjustments to income
+  - id: line10_adjustments
+    type: regex
+    pattern: 'Adjustments?\s*to\s*income.*?\n+\s*10\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_adjustments_to_income"
+    target_path: "deal.parties[0].income_verification_fragments[0].adjustments_to_income"
+    transform: to_float
+
+  # Line 11: ADJUSTED GROSS INCOME (CRITICAL)
+  # "Thisisyouradjustedgrossincome\n\n11\n\n23,830"
+  - id: line11_agi
+    type: regex
+    pattern: '(?:adjusted\s*gross\s*income|your\s*adjusted\s*gross)\s*\n+\s*11\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_adjusted_gross_income"
+    target_path: "deal.parties[0].income_verification_fragments[0].adjusted_gross_income"
+    transform: to_float
+
+  # Line 12: Standard deduction or itemized deductions
+  - id: line12_deductions
+    type: regex
+    pattern: '(?:Standard\s*deduction|itemized\s*deductions?).*?\n+\s*12\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_deductions"
+    target_path: "deal.parties[0].income_verification_fragments[0].deductions"
+    transform: to_float
+
+  # Line 15: Taxable income — "Thisisyourtaxable income\n\n15\n\n18,300"
+  - id: line15_taxable_income
+    type: regex
+    pattern: '(?:taxable\s*income|your\s*taxable)\s*\n+\s*(?:see\s*instructions\.?\s*\n+\s*)?15\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_taxable_income"
+    target_path: "deal.parties[0].income_verification_fragments[0].taxable_income"
+    transform: to_float
+
+  # Line 24: Total tax — "Thisisyourtotaltax\n\n24\n\n795"
+  - id: line24_total_tax
+    type: regex
+    pattern: '(?:total\s*tax|your\s*total\s*tax)\s*\n+\s*24\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_total_tax"
+    target_path: "deal.parties[0].income_verification_fragments[0].total_tax"
+    transform: to_float
+
+  # Line 33: Total payments — "Theseareyourtotalpayments\n\n33\n\n4,635"
+  - id: line33_total_payments
+    type: regex
+    pattern: '(?:total\s*payments|your\s*total\s*payments)\s*\n+\s*33\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_total_payments"
+    target_path: "deal.parties[0].income_verification_fragments[0].total_payments"
+    transform: to_float
+
+  # Refund: "amountyouoverpaid\n\n34\n\n3,840"
+  - id: refund
+    type: regex
+    pattern: '(?:amount\s*you\s*overpaid|overpaid)\s*\n+\s*34\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "tax_refund_amount"
+    target_path: "deal.parties[0].income_verification_fragments[0].refund_amount"
+    transform: to_float
+
+  # Amount owed: "amount youowe\n\nYou Owe\n\n...\n\n37\n\n0"
+  - id: amount_owed
+    type: regex
+    pattern: '(?:amount\s*you\s*owe).*?\n+\s*37\s*\n+\s*([\d,]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_amount_owed"
+    target_path: "deal.parties[0].income_verification_fragments[0].amount_owed"
+    transform: to_float
+
+  # ============================================================
+  # STATIC / METADATA
+  # ============================================================
+
+  - id: source_doc_type
+    type: static
+    value: "TaxReturn1040"
+    key: "tax_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: schema_version
+    type: static
+    value: "3.4.0"
+    key: "tax_schema_version"
+    target_path: "document_metadata.schema_version"
+
+  - id: party_role
+    type: static
+    value: "Borrower"
+    key: "tax_party_role"
+    target_path: "deal.parties[0].party_role.value"

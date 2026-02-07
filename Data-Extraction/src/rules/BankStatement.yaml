@@ -1,0 +1,268 @@
+# ============================================================
+# BankStatement.yaml — Deterministic extraction rules for
+# Bank Statements (Generic — any institution)
+# ============================================================
+# Ground truth: Docling markdown of Bank of America statement
+#
+# Docling renders bank statements with:
+#   - ## headings for section titles
+#   - Markdown tables for Account Summary and Transactions
+#   - "Account number: 333 4444 5555" as inline text
+#
+# Strategy: Table rules for Account Summary and Deposits/
+# Withdrawals. Regex for account info and statement period.
+#
+# MISMO Mapping: .../AssetType="Checking" (Section 3)
+# Critical Fields: InstitutionName, AccountNumber, EndingBalance
+# ============================================================
+
+document_type: "Bank Statement"
+schema_version: "1.0"
+
+rules:
+
+  # ============================================================
+  # INSTITUTION / ACCOUNT IDENTIFICATION
+  # ============================================================
+
+  # Institution name: regex for known bank names in the doc
+  # Docling: "Bank of America, N.A. P.O. Box 52111 Tampa, FL 33475-1111"
+  - id: institution_name_regex
+    type: regex
+    pattern: '((?:Bank of America|Chase|Wells Fargo|Citibank|US Bank|PNC|TD Bank|Capital One|BB&T|SunTrust|Truist|Fifth Third|Ally|Regions|KeyBank|Huntington|M&T|Citizens|USAA|Navy Federal|BMO|Santander|HSBC|Discover|Schwab|Fidelity|Comerica)\b[^,\n]*(?:,\s*N\.?A\.?)?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_institution_name"
+    target_path: "deal.parties[0].assets[0].institution_name"
+
+  # Account number: "Account number: 333 4444 5555"
+  - id: account_number
+    type: regex
+    pattern: '(?:Account\s*(?:number|no\.?|#)\s*[:.]?\s*)([\d\s\*xX]+\d)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_account_number"
+    target_path: "deal.parties[0].assets[0].account_number"
+
+  # Account type: "Your Adv Plus Banking for" or "Checking Account"
+  - id: account_type
+    type: regex
+    pattern: '(?:Your\s+)?((?:Adv\s*Plus\s*Banking|Checking|Savings|Money\s*Market)\s*(?:Account)?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_account_type"
+    target_path: "deal.parties[0].assets[0].account_type"
+
+  # Account holder: Name on line before or after "## Account summary"
+  # Docling: "ABEL NEWTON" on its own line before account summary
+  - id: account_holder
+    type: regex
+    pattern: '\n([A-Z]{2,}(?:\s+[A-Z]{2,})+)\s*\n+\s*(?:##\s*Account|Account\s*(?:summary|number))'
+    group: 1
+    key: "bank_account_holder"
+    target_path: "deal.parties[0].individual.full_name"
+
+  # ============================================================
+  # STATEMENT PERIOD
+  # ============================================================
+
+  # Docling: "May l, 2019 to May 31, 2019" (note OCR: "l" for "1")
+  # Or: "## Vour Adv Plus Banking for\n\nMay l, 2019 to May 31, 2019"
+  - id: statement_period
+    type: regex
+    pattern: '((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\w{1,2},?\s+\d{4})\s*(?:to|through|-|–)\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\w{1,2},?\s+\d{4})'
+    flags: [IGNORECASE]
+    groups:
+      1: "deal.parties[0].assets[0].statement_period_start"
+      2: "deal.parties[0].assets[0].statement_period_end"
+    groups_keys:
+      1: "bank_statement_period_start"
+      2: "bank_statement_period_end"
+
+  # ============================================================
+  # BALANCES (from Account Summary table)
+  # ============================================================
+  # Docling table:
+  #   | Beginning balance on May I, 2019 | $25,000.00 |
+  #   | Deposits and other additions     | 200.00     |
+  #   | Ending balance on May 3 1, 2019  | $25,000.00 |
+
+  # Table rule for Account Summary
+  - id: account_summary_table
+    type: table
+    identify_by:
+      header_contains: ["balance"]
+    extract:
+      - row_label: "Beginning balance"
+        columns:
+          "Beginning balance": "deal.parties[0].assets[0].beginning_balance"
+      - row_label: "Ending balance"
+        columns:
+          "Ending balance": "deal.parties[0].assets[0].ending_balance"
+      - row_label: "Deposits"
+        columns:
+          "Deposits": "deal.parties[0].assets[0].total_deposits"
+      - row_label: "Withdrawals"
+        columns:
+          "Withdrawals": "deal.parties[0].assets[0].total_withdrawals"
+      - row_label: "Service fees"
+        columns:
+          "Service fees": "deal.parties[0].assets[0].service_fees"
+      - row_label: "Checks"
+        columns:
+          "Checks": "deal.parties[0].assets[0].total_checks"
+    extract_keys:
+      "deal.parties[0].assets[0].beginning_balance": "bank_beginning_balance"
+      "deal.parties[0].assets[0].ending_balance": "bank_ending_balance"
+      "deal.parties[0].assets[0].total_deposits": "bank_total_deposits"
+      "deal.parties[0].assets[0].total_withdrawals": "bank_total_withdrawals"
+      "deal.parties[0].assets[0].service_fees": "bank_service_fees"
+      "deal.parties[0].assets[0].total_checks": "bank_total_checks"
+
+  # Regex fallbacks for balances
+  - id: beginning_balance_regex
+    type: regex
+    pattern: '(?:Beginning|Opening|Previous)\s+balance\s*(?:on\s+\w+\s+\w+,?\s+\d{4})?\s*\|?\s*\$?\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_beginning_balance"
+    target_path: "deal.parties[0].assets[0].beginning_balance"
+    transform: to_float
+
+  - id: ending_balance_regex
+    type: regex
+    pattern: '(?:Ending|Closing|Current)\s+balance\s*(?:on\s+\w+\s+\w+\s*\w*,?\s+\d{4})?\s*\|?\s*\$?\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_cash_or_market_value"
+    target_path: "deal.parties[0].assets[0].cash_or_market_value_amount"
+    transform: to_float
+
+  # Also store as explicit ending_balance
+  - id: ending_balance_explicit
+    type: regex
+    pattern: '(?:Ending|Closing|Current)\s+balance\s*(?:on\s+\w+\s+\w+\s*\w*,?\s+\d{4})?\s*\|?\s*\$?\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_ending_balance"
+    target_path: "deal.parties[0].assets[0].ending_balance"
+    transform: to_float
+
+  # Total deposits: "| Deposits and other additions | 200.00 |"
+  - id: total_deposits_regex
+    type: regex
+    pattern: '(?:Deposits?\s+and\s+(?:other\s+)?additions?|Total\s*deposits)\s*\|?\s*\$?\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_total_deposits"
+    target_path: "deal.parties[0].assets[0].total_deposits"
+    transform: to_float
+
+  # Total withdrawals: "| Withdrawals and other subtractions | -200.00 |"
+  - id: total_withdrawals_regex
+    type: regex
+    pattern: '(?:Withdrawals?\s+and\s+(?:other\s+)?subtractions?|Total\s*withdrawals)\s*\|?\s*-?\$?\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_total_withdrawals"
+    target_path: "deal.parties[0].assets[0].total_withdrawals"
+    transform: to_float
+
+  # Total from bottom of section: "Totalwithdrawalsandothersubtractions\n\n-$200.00"
+  - id: total_withdrawals_bottom
+    type: regex
+    pattern: 'Total\s*withdrawals\s*(?:and\s*other\s*subtractions)?\s*\n+\s*-?\$?([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_total_withdrawals"
+    target_path: "deal.parties[0].assets[0].total_withdrawals"
+    transform: to_float
+
+  # Total deposits from bottom of section: "Totaldepositsandotheradditions" in merged table row
+  - id: total_deposits_bottom
+    type: regex
+    pattern: 'Total\s*deposits\s*(?:and\s*other\s*additions)?\s*[|\n]\s*\$?([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_total_deposits"
+    target_path: "deal.parties[0].assets[0].total_deposits"
+    transform: to_float
+
+  # ============================================================
+  # TRANSACTION TABLES
+  # ============================================================
+
+  # Deposits table: "## Deposits and other additions"
+  - id: deposit_transactions
+    type: table
+    identify_by:
+      header_contains: ["Date", "Description", "Amount"]
+    key: "bank_deposit_transactions"
+    extract_rows:
+      target_path: "deal.parties[0].assets[0].transactions"
+      flat_key: "bank_deposit_transactions"
+      skip_total: true
+      skip_header_rows: 1
+      string_columns: ["date", "description"]
+      column_map:
+        0: "date"
+        1: "description"
+        2: "amount"
+
+  # Withdrawals table (same structure)
+  - id: withdrawal_transactions
+    type: table
+    identify_by:
+      header_contains: ["Date", "Description", "Amount"]
+    key: "bank_withdrawal_transactions"
+    extract_rows:
+      target_path: "deal.parties[0].assets[0].withdrawal_transactions"
+      flat_key: "bank_withdrawal_transactions"
+      skip_total: true
+      skip_header_rows: 1
+      string_columns: ["date", "description"]
+      column_map:
+        0: "date"
+        1: "description"
+        2: "amount"
+
+  # ============================================================
+  # AVERAGE BALANCE
+  # ============================================================
+
+  - id: average_balance
+    type: regex
+    pattern: '(?:Average\s+(?:daily\s+)?(?:ledger\s+)?balance)\s*\$?\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "bank_average_balance"
+    target_path: "deal.parties[0].assets[0].average_balance"
+    transform: to_float
+
+  # ============================================================
+  # STATIC / METADATA
+  # ============================================================
+
+  - id: source_doc_type
+    type: static
+    value: "BankStatement"
+    key: "bank_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: schema_version
+    type: static
+    value: "3.4.0"
+    key: "bank_schema_version"
+    target_path: "document_metadata.schema_version"
+
+  - id: asset_type
+    type: static
+    value: "Checking"
+    key: "bank_asset_type"
+    target_path: "deal.parties[0].assets[0].asset_type.value"
+
+  - id: party_role
+    type: static
+    value: "Borrower"
+    key: "bank_party_role"
+    target_path: "deal.parties[0].party_role.value"
