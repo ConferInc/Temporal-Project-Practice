@@ -1,0 +1,441 @@
+# ============================================================
+# LoanEstimate.yaml — Deterministic extraction rules for
+# CFPB Loan Estimate (Form H-24)
+# ============================================================
+# Ground truth: Docling markdown of Ficus Bank Loan Estimate
+#
+# Docling renders the Loan Estimate with:
+#   - Clean headings: "## FICUS BANK", "## Loan Estimate"
+#   - Key fields on separate lines: "DATE ISSUED\n\n2/15/2013"
+#   - Loan Terms in markdown TABLE:
+#     | Loan Amount | $211,000 | NO |
+#     | Interest Rate | 4% | YES | ...
+#   - Closing Cost Details in tables
+#   - Calculating Cash to Close in table
+#   - Comparisons in table
+#
+# Strategy: Table rules for Loan Terms, Closing Costs, Cash to
+# Close, and Comparisons. Regex for top-level fields.
+#
+# MISMO Mapping: .../LOAN_ESTIMATE (Section 5)
+# Critical Fields: LoanAmount, InterestRate, APR, CashToClose
+# ============================================================
+
+document_type: "Loan Estimate"
+schema_version: "1.0"
+
+rules:
+
+  # ============================================================
+  # PAGE 1: LOAN INFORMATION BOX (separate lines)
+  # ============================================================
+
+  # "DATE ISSUED\n\n2/15/2013"
+  - id: date_issued
+    type: regex
+    pattern: 'DATE\s+ISSUED\s*\n+\s*(\d{1,2}/\d{1,2}/\d{2,4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_date_issued"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.date_issued"
+
+  # "APPLICANTS\n\nMichael Jones and Mary Stone"
+  - id: applicant_names
+    type: regex
+    pattern: 'APPLICANTS?\s*\n+\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+and\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_applicant_names"
+    target_path: "deal.parties[0].individual.full_name"
+
+  # "PROPERTY\n\n456 Somewhere Avenue\n\nAnytown, ST 12345"
+  - id: property_address
+    type: regex
+    pattern: 'PROPERTY\s*\n+\s*(\d+\s+[\w\s]+(?:Avenue|Street|Drive|Road|Lane|Blvd|Court|Way|Place|Circle))'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_property_address"
+    target_path: "deal.collateral.subject_property.address"
+    transform: strip_ocr_noise
+
+  - id: property_city_state_zip
+    type: regex
+    pattern: 'PROPERTY\s*\n+\s*\d+\s+[\w\s]+(?:Avenue|Street|Drive|Road|Lane|Blvd|Court|Way|Place|Circle)\s*\n+\s*([A-Z][\w\s]+,\s*[A-Z]{2}\s+\d{5})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_property_city_state_zip"
+    target_path: "deal.collateral.subject_property.city_state_zip"
+
+  # "SALE PRICE\n\n$240,000"
+  - id: sale_price
+    type: regex
+    pattern: 'SALE\s+PRICE\s*\n+\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_sale_price"
+    target_path: "deal.collateral.subject_property.valuation.sales_price"
+    transform: to_float
+
+  # "LOAN TERM\n\n30 years"
+  - id: loan_term
+    type: regex
+    pattern: 'LOAN\s+TERM\s*\n+\s*(\d+)\s*years?'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_loan_term_years"
+    target_path: "deal.disclosures_and_closing.promissory_note.loan_term_years"
+    transform: to_int
+
+  # "PURPOSE\n\nPurchase ce" (OCR noise at end)
+  - id: purpose
+    type: regex
+    pattern: 'PURPOSE\s*\n+\s*(Purchase|Refinance|Construction|Home\s+Equity)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_loan_purpose"
+    target_path: "deal.transaction_information.loan_purpose.value"
+
+  # "PRODUCT\n\n5 Year Interest Only, 5/3 Adjustable Rate"
+  - id: product
+    type: regex
+    pattern: 'PRODUCT\s*\n+\s*(.+?)(?:\n|$)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_product_description"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.product_description"
+    transform: strip_ocr_noise
+
+  # "LOAN TYPE\n\nx Conventional FHA VA"
+  - id: loan_type
+    type: regex
+    pattern: 'LOAN\s+TYPE\s*\n+\s*(?:x\s+)?(Conventional|FHA|VA)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_loan_type"
+    target_path: "deal.transaction_information.mortgage_type.value"
+
+  # "LOAN ID #\n\n1234567891330172608"
+  - id: loan_id
+    type: regex
+    pattern: 'LOAN\s+ID\s*#?\s*\n+\s*(\d+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_loan_id"
+    target_path: "deal.identifiers.lender_case_number"
+
+  # "RATE LOCK\n\nNO x YES, until 4/16/2013"
+  - id: rate_lock
+    type: regex
+    pattern: 'RATE\s+LOCK\s*\n+\s*(?:NO\s+)?(?:x\s+)?(YES|NO)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_rate_lock"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.rate_lock_indicator"
+
+  - id: rate_lock_date
+    type: regex
+    pattern: 'RATE\s+LOCK\s*\n+\s*.*?YES,?\s*until\s+(\d{1,2}/\d{1,2}/\d{2,4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_rate_lock_expiration"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.rate_lock_expiration_date"
+
+  # ============================================================
+  # PAGE 1: LOAN TERMS TABLE
+  # ============================================================
+  # | Loan Amount | $211,000 | NO |
+  # | Interest Rate | 4% | YES | ...
+  # | Monthly Principal &Interest... | $703.33 | YES | ...
+
+  - id: loan_terms_table
+    type: table
+    identify_by:
+      header_contains: ["Loan Terms", "increase after closing"]
+    extract:
+      - row_label: "Loan Amount"
+        columns:
+          "Loan Amount": "deal.disclosures_and_closing.promissory_note.principal_amount"
+      - row_label: "Interest Rate"
+        columns:
+          "Interest Rate": "deal.disclosures_and_closing.promissory_note.interest_rate_raw"
+      - row_label: "Monthly Principal"
+        columns:
+          "Monthly Principal": "deal.disclosures_and_closing.loan_estimate_h24.monthly_principal_interest"
+    extract_keys:
+      "deal.disclosures_and_closing.promissory_note.principal_amount": "le_principal_amount"
+      "deal.disclosures_and_closing.promissory_note.interest_rate_raw": "le_interest_rate_raw"
+      "deal.disclosures_and_closing.loan_estimate_h24.monthly_principal_interest": "le_monthly_pi"
+
+  # Regex fallbacks for loan terms (in case table parsing fails)
+  - id: loan_amount_regex
+    type: regex
+    pattern: 'Loan\s+Amount\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_principal_amount"
+    target_path: "deal.disclosures_and_closing.promissory_note.principal_amount"
+    transform: to_float
+
+  - id: interest_rate_regex
+    type: regex
+    pattern: 'Interest\s+Rate\s*\|?\s*([\d.]+)\s*%'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_interest_rate"
+    target_path: "deal.disclosures_and_closing.promissory_note.interest_rate"
+
+  - id: monthly_pi_regex
+    type: regex
+    pattern: 'Monthly\s+Principal\s+&?\s*Interest.*?\$\s*([\d,]+\.\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_monthly_pi"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.monthly_principal_interest"
+    transform: to_float
+
+  # Prepayment/Balloon from table
+  - id: prepayment_penalty
+    type: regex
+    pattern: 'Prepayment\s+Penalty\s*\|?\s*(?:Does the loan have\s*\|?\s*)?(YES|NO)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_prepayment_penalty"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.prepayment_penalty"
+
+  - id: balloon_payment
+    type: regex
+    pattern: 'Balloon\s+Payment\s*\|?\s*\s*(YES|NO)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_balloon_payment"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.balloon_payment"
+
+  # ============================================================
+  # PAGE 1: COSTS AT CLOSING
+  # ============================================================
+  # | Estimated Closing Costs | $8,791 Includes $5,851 in Loan Costs... |
+  # | Estimated Cash to Close | $27,791 Includes Closing Costs... |
+
+  - id: estimated_closing_costs
+    type: regex
+    pattern: 'Estimated\s+Closing\s+Costs\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_total_closing_costs"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.total_closing_costs"
+    transform: to_float
+
+  - id: estimated_cash_to_close
+    type: regex
+    pattern: 'Estimated\s+Cash\s+to\s+Close\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_estimated_cash_to_close"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.estimated_cash_to_close"
+    transform: to_float
+
+  # ============================================================
+  # PAGE 2: CLOSING COST DETAILS (tables)
+  # ============================================================
+
+  # Section A: "| A. Origination Charges | $3,110 |"
+  - id: origination_charges
+    type: regex
+    pattern: 'A\.?\s+Origination\s+Charges\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_origination_charges"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.origination_charges"
+    transform: to_float
+
+  # Points: "| 1 %of Loan Amount (Points) | $2,110 |"
+  - id: points
+    type: regex
+    pattern: '(\d+(?:\.\d+)?)\s*%\s*(?:of\s+)?Loan\s+Amount\s*\(?\s*Points?\s*\)?\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    groups:
+      1: "deal.disclosures_and_closing.loan_estimate_h24.points_percent"
+      2: "deal.disclosures_and_closing.loan_estimate_h24.points_amount"
+    groups_keys:
+      1: "le_points_percent"
+      2: "le_points_amount"
+
+  # Section B: "| B. Services You Cannot Shop For | $820 |"
+  - id: services_no_shop
+    type: regex
+    pattern: 'B\.?\s+Services\s+You\s+Cannot\s+Shop\s+For\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_services_cannot_shop"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.services_cannot_shop"
+    transform: to_float
+
+  # Section C: "| C. Services You Can Shop For | $1,921 |"
+  - id: services_can_shop
+    type: regex
+    pattern: 'C\.?\s+Services\s+You\s+Can\s+Shop\s+For\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_services_can_shop"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.services_can_shop"
+    transform: to_float
+
+  # Section D: "| D. TOTAL LOAN | $5,851 |"
+  - id: total_loan_costs
+    type: regex
+    pattern: 'D\.?\s+TOTAL\s+LOAN\s*(?:COSTS?)?\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_total_loan_costs"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.total_loan_costs"
+    transform: to_float
+
+  # Prepaid interest: "Prepaid Interest  ( $23.44  per day for 15 days @ 4.00%)"
+  - id: prepaid_interest
+    type: regex
+    pattern: 'Prepaid\s+Interest\s*(?:\()?\s*\$?\s*([\d.]+)\s*per\s*day\s*(?:for)?\s*(\d+)\s*days?'
+    flags: [IGNORECASE]
+    groups:
+      1: "deal.disclosures_and_closing.loan_estimate_h24.prepaid_interest_per_day"
+      2: "deal.disclosures_and_closing.loan_estimate_h24.prepaid_interest_days"
+    groups_keys:
+      1: "le_prepaid_interest_per_day"
+      2: "le_prepaid_interest_days"
+
+  # ============================================================
+  # PAGE 2: CALCULATING CASH TO CLOSE (table)
+  # ============================================================
+  # | Total Closing Costs (J) | $8,791 |
+  # | Down Payment/Funds from Borrower | $29,000 |
+
+  - id: cash_to_close_table
+    type: table
+    identify_by:
+      header_contains: ["Closing Costs", "Cash to Close"]
+    extract:
+      - row_label: "Total Closing Costs"
+        columns:
+          "Total Closing Costs": "deal.disclosures_and_closing.loan_estimate_h24.total_closing_costs_j"
+      - row_label: "Down Payment"
+        columns:
+          "Down Payment": "deal.disclosures_and_closing.loan_estimate_h24.down_payment"
+      - row_label: "Deposit"
+        columns:
+          "Deposit": "deal.disclosures_and_closing.loan_estimate_h24.earnest_money_deposit"
+      - row_label: "Seller Credits"
+        columns:
+          "Seller Credits": "deal.disclosures_and_closing.loan_estimate_h24.seller_credits"
+      - row_label: "Estimated Cash to Close"
+        columns:
+          "Estimated Cash to Close": "deal.disclosures_and_closing.loan_estimate_h24.estimated_cash_to_close"
+    extract_keys:
+      "deal.disclosures_and_closing.loan_estimate_h24.total_closing_costs_j": "le_total_closing_costs_j"
+      "deal.disclosures_and_closing.loan_estimate_h24.down_payment": "le_down_payment"
+      "deal.disclosures_and_closing.loan_estimate_h24.earnest_money_deposit": "le_earnest_money_deposit"
+      "deal.disclosures_and_closing.loan_estimate_h24.seller_credits": "le_seller_credits"
+      "deal.disclosures_and_closing.loan_estimate_h24.estimated_cash_to_close": "le_cash_to_close_table"
+
+  # Regex fallbacks for cash to close items
+  - id: down_payment_regex
+    type: regex
+    pattern: 'Down\s+Payment/?(?:\s*Funds\s+from\s+Borrower)?\s*\|?\s*\$?\s*([\d,]+(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_down_payment"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.down_payment"
+    transform: to_float
+
+  # ============================================================
+  # PAGE 3: COMPARISONS (table)
+  # ============================================================
+  # | In 5Years | $54,944 $0 | Total you will have paid... |
+  # | AnnualPercentageRate(APR) | 4.617% | Your costs... |
+  # | Total Interest Percentage (TIP) | 81.18% | The total... |
+
+  - id: apr
+    type: regex
+    pattern: 'Annual\s*Percentage\s*Rate\s*\(?\s*APR\s*\)?\s*\|?\s*([\d.]+)\s*%'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_apr"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.annual_percentage_rate"
+
+  - id: total_interest_percentage
+    type: regex
+    pattern: 'Total\s+Interest\s+Percentage\s*\(?\s*TIP\s*\)?\s*\|?\s*([\d.]+)\s*%'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_total_interest_percentage"
+    target_path: "deal.disclosures_and_closing.loan_estimate_h24.total_interest_percentage"
+
+  # "In 5Years | $54,944 $0"
+  - id: in_5_years
+    type: regex
+    pattern: 'In\s+5\s*Years?\s*\|?\s*\$?\s*([\d,]+)\s+\$?([\d,]+)'
+    flags: [IGNORECASE]
+    groups:
+      1: "deal.disclosures_and_closing.loan_estimate_h24.five_year_total_paid"
+      2: "deal.disclosures_and_closing.loan_estimate_h24.five_year_principal_reduction"
+    groups_keys:
+      1: "le_five_year_total_paid"
+      2: "le_five_year_principal_reduction"
+
+  # ============================================================
+  # PAGE 3: LENDER / LOAN OFFICER
+  # ============================================================
+
+  # "LENDER\n\nFicus Bank"
+  - id: lender_name
+    type: regex
+    pattern: '\nLENDER\s*\n+\s*([A-Z][\w\s&.,]+?)(?:\n|$)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_lender_name"
+    target_path: "deal.parties[1].company_name"
+    transform: strip_ocr_noise
+
+  # "LOAN OFFICER\n\nJoe Smith 12345 joesmith@ficusbank.com"
+  - id: loan_officer
+    type: regex
+    pattern: 'LOAN\s+OFFICER\s*\n+\s*([A-Z][a-z]+\s+[A-Z][a-z]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_loan_officer"
+    target_path: "deal.parties[1].individual.full_name"
+
+  # NMLS ID: "Joe Smith 12345"
+  - id: loan_officer_nmls
+    type: regex
+    pattern: 'LOAN\s+OFFICER\s*\n+\s*[A-Z][a-z]+\s+[A-Z][a-z]+\s+(\d{4,})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "le_loan_officer_nmls"
+    target_path: "deal.parties[1].individual.nmls_id"
+
+  # ============================================================
+  # STATIC / METADATA
+  # ============================================================
+
+  - id: source_doc_type
+    type: static
+    value: "LoanEstimate"
+    key: "le_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: schema_version
+    type: static
+    value: "3.4.0"
+    key: "le_schema_version"
+    target_path: "document_metadata.schema_version"
+
+  - id: party_role_borrower
+    type: static
+    value: "Borrower"
+    key: "le_party_role_borrower"
+    target_path: "deal.parties[0].party_role.value"
+
+  - id: party_role_lender
+    type: static
+    value: "Lender"
+    key: "le_party_role_lender"
+    target_path: "deal.parties[1].party_role.value"

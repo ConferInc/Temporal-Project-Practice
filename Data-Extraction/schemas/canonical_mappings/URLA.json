@@ -1,0 +1,282 @@
+[
+    {
+        "sourceField": "loanPurpose",
+        "targetPath": "deal.transaction_information.loan_purpose.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "mortgageType",
+        "targetPath": "deal.transaction_information.mortgage_type.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "loanType",
+        "targetPath": "deal.transaction_information.mortgage_type.value",
+        "priority": 2
+    },
+    {
+        "sourceField": "amortizationType",
+        "targetPath": "deal.transaction_information.amortization_type.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "applicationDate",
+        "targetPath": "deal.transaction_information.application_date",
+        "priority": 1
+    },
+    {
+        "sourceField": "loanAmount",
+        "targetPath": "deal.disclosures_and_closing.loan_estimate_h24.total_loan_costs",
+        "priority": 1
+    },
+    {
+        "sourceField": "interestRate",
+        "targetPath": "deal.disclosures_and_closing.promissory_note.interest_rate",
+        "priority": 1
+    },
+    {
+        "sourceField": "loanTerm",
+        "targetPath": "deal.disclosures_and_closing.promissory_note.maturity_date",
+        "priority": 1
+    },
+    {
+        "sourceField": "borrowerFirstName",
+        "targetPath": "deal.parties[0].individual.first_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "borrower_firstName",
+        "targetPath": "deal.parties[0].individual.first_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "firstName",
+        "targetPath": "deal.parties[0].individual.first_name",
+        "priority": 3
+    },
+    {
+        "sourceField": "borrowerLastName",
+        "targetPath": "deal.parties[0].individual.last_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "borrower_lastName",
+        "targetPath": "deal.parties[0].individual.last_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "lastName",
+        "targetPath": "deal.parties[0].individual.last_name",
+        "priority": 3
+    },
+    {
+        "sourceField": "borrowerMiddleName",
+        "targetPath": "deal.parties[0].individual.middle_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "ssn",
+        "targetPath": "deal.parties[0].individual.ssn",
+        "priority": 1
+    },
+    {
+        "sourceField": "socialSecurityNumber",
+        "targetPath": "deal.parties[0].individual.ssn",
+        "priority": 2
+    },
+    {
+        "sourceField": "dateOfBirth",
+        "targetPath": "deal.parties[0].individual.dob",
+        "priority": 1
+    },
+    {
+        "sourceField": "dob",
+        "targetPath": "deal.parties[0].individual.dob",
+        "priority": 2
+    },
+    {
+        "sourceField": "citizenship",
+        "targetPath": "deal.parties[0].individual.citizenship_residency.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "citizenshipStatus",
+        "targetPath": "deal.parties[0].individual.citizenship_residency.value",
+        "priority": 2
+    },
+    {
+        "sourceField": "languagePreference",
+        "targetPath": "deal.parties[0].individual.language_preference.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "currentAddress_street",
+        "targetPath": "deal.parties[0].addresses[0].street",
+        "priority": 1
+    },
+    {
+        "sourceField": "presentAddress_street",
+        "targetPath": "deal.parties[0].addresses[0].street",
+        "priority": 2
+    },
+    {
+        "sourceField": "currentAddress_city",
+        "targetPath": "deal.parties[0].addresses[0].city",
+        "priority": 1
+    },
+    {
+        "sourceField": "presentAddress_city",
+        "targetPath": "deal.parties[0].addresses[0].city",
+        "priority": 2
+    },
+    {
+        "sourceField": "currentAddress_state",
+        "targetPath": "deal.parties[0].addresses[0].state",
+        "priority": 1
+    },
+    {
+        "sourceField": "presentAddress_state",
+        "targetPath": "deal.parties[0].addresses[0].state",
+        "priority": 2
+    },
+    {
+        "sourceField": "currentAddress_zipCode",
+        "targetPath": "deal.parties[0].addresses[0].postal_code",
+        "priority": 1
+    },
+    {
+        "sourceField": "presentAddress_zipCode",
+        "targetPath": "deal.parties[0].addresses[0].postal_code",
+        "priority": 2
+    },
+    {
+        "sourceField": "currentEmployer",
+        "targetPath": "deal.parties[0].employment[0].employer_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "employerName",
+        "targetPath": "deal.parties[0].employment[0].employer_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "selfEmployed",
+        "targetPath": "deal.parties[0].employment[0].self_employed_indicator",
+        "priority": 1
+    },
+    {
+        "sourceField": "baseIncome",
+        "targetPath": "deal.parties[0].employment[0].monthly_income.base",
+        "priority": 1
+    },
+    {
+        "sourceField": "monthlyIncome",
+        "targetPath": "deal.parties[0].employment[0].monthly_income.base",
+        "priority": 2
+    },
+    {
+        "sourceField": "overtime",
+        "targetPath": "deal.parties[0].employment[0].monthly_income.overtime",
+        "priority": 1
+    },
+    {
+        "sourceField": "bonus",
+        "targetPath": "deal.parties[0].employment[0].monthly_income.bonus",
+        "priority": 1
+    },
+    {
+        "sourceField": "commission",
+        "targetPath": "deal.parties[0].employment[0].monthly_income.commission",
+        "priority": 1
+    },
+    {
+        "sourceField": "bankName",
+        "targetPath": "deal.assets[0].institution_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "financialInstitution",
+        "targetPath": "deal.assets[0].institution_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "accountNumber",
+        "targetPath": "deal.assets[0].account_identifier",
+        "priority": 1
+    },
+    {
+        "sourceField": "assetValue",
+        "targetPath": "deal.assets[0].cash_or_market_value",
+        "priority": 1
+    },
+    {
+        "sourceField": "accountBalance",
+        "targetPath": "deal.assets[0].cash_or_market_value",
+        "priority": 2
+    },
+    {
+        "sourceField": "assetType",
+        "targetPath": "deal.assets[0].asset_type.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "creditorName",
+        "targetPath": "deal.liabilities[0].creditor_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "liabilityType",
+        "targetPath": "deal.liabilities[0].liability_type.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "monthlyPayment",
+        "targetPath": "deal.liabilities[0].monthly_payment",
+        "priority": 1
+    },
+    {
+        "sourceField": "unpaidBalance",
+        "targetPath": "deal.liabilities[0].unpaid_balance",
+        "priority": 1
+    },
+    {
+        "sourceField": "toBePaidOff",
+        "targetPath": "deal.liabilities[0].to_be_paid_off_indicator",
+        "priority": 1
+    },
+    {
+        "sourceField": "propertyAddress",
+        "targetPath": "deal.collateral.subject_property.address",
+        "priority": 1
+    },
+    {
+        "sourceField": "subjectPropertyAddress",
+        "targetPath": "deal.collateral.subject_property.address",
+        "priority": 2
+    },
+    {
+        "sourceField": "occupancyType",
+        "targetPath": "deal.collateral.subject_property.occupancy_type.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "propertyType",
+        "targetPath": "deal.collateral.subject_property.property_type.value",
+        "priority": 1
+    },
+    {
+        "sourceField": "purchasePrice",
+        "targetPath": "deal.collateral.subject_property.valuation.sales_price",
+        "priority": 1
+    },
+    {
+        "sourceField": "appraisedValue",
+        "targetPath": "deal.collateral.subject_property.valuation.appraised_value",
+        "priority": 1
+    },
+    {
+        "sourceField": "estimatedValue",
+        "targetPath": "deal.collateral.subject_property.valuation.appraised_value",
+        "priority": 2
+    }
+]

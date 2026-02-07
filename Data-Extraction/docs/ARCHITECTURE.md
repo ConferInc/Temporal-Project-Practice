@@ -1,148 +1,140 @@
-# Data Extraction Pipeline Architecture
+# Confer LOS Pipeline Architecture
 
-## Overview
+## System Overview
 
-The Confer LOS Data Extraction Pipeline is a **Zero-LLM, rule-based system** designed to transform mortgage loan documents (PDFs, images) into MISMO 3.4 XML — the industry standard for loan data exchange. The architecture emphasizes **deterministic processing**, **parallel execution**, and **business-user maintainability** through YAML-based rules.
-
-This document describes the **INTENDED architecture** (the target design). Some components are still in development.
+The Confer LOS (Loan Origination System) Data Extraction Pipeline transforms mortgage loan documents into MISMO 3.4 XML through a **deterministic, rule-based processing chain**. The architecture prioritizes **auditability**, **offline processing**, and **stateful merging** of multi-document loan packages.
 
 ---
 
-## System Diagram
+## Current Architecture (Post-Phase 1)
+
+### Pipeline Diagram
 
 ```mermaid
 graph LR
-    A[Multi-page PDF/Image] --> B[Pre-Processing Laundry]
-    B --> C[Document Splitter]
-    C --> D[Classifier]
-    D --> E1[Rule Engine - Page 1]
-    D --> E2[Rule Engine - Page 2]
-    D --> E3[Rule Engine - Page N]
-    E1 --> F[Merger]
-    E2 --> F
-    E3 --> F
+    A[Multi-Document Upload] --> B[Ingest]
+    B --> C[Converter]
+    C --> D[Splitter]
+    D --> E[Extractor]
+    E --> F[Merger]
     F --> G[Canonical Assembler]
-    G --> H[MISMO Mapper]
-    H --> I[MISMO XML Output]
+    G --> H[MISMO XML Generator]
+    H --> I[Supabase Storage]
 
-    style B fill:#ffe6cc
+    C -->|Image→PDF| C1[RapidOCR]
+    D -->|Multi-page→Pages| D1[pypdf]
+    E -->|YAML Rules| E1[Rule Engine]
+    F -->|Priority Logic| F1[Identity Resolution]
+    I -->|Stateful| I1[Loan State DB]
+
     style C fill:#ffe6cc
-    style E1 fill:#d4edda
-    style E2 fill:#d4edda
-    style E3 fill:#d4edda
+    style D fill:#ffe6cc
+    style E fill:#d4edda
     style F fill:#d4edda
     style G fill:#d4edda
     style H fill:#cce5ff
+    style I fill:#e7f3ff
 ```
 
 **Legend:**
-- 🟠 Orange: Pre-processing (Standardization)
-- 🟢 Green: Zero-LLM Rule-Based Processing
-- 🔵 Blue: MISMO Output (Compliance)
-
----
-
-## Architecture Principles
-
-### 1. Zero-LLM Design
-**No AI variability.** All extraction logic is rule-based (YAML patterns, regex, keyword matching). This ensures:
-- **Deterministic outputs** (same input = same output)
-- **Audit compliance** (traceable rules)
-- **Cost efficiency** (no API calls)
-- **Offline capability** (no internet required)
-
-### 2. Parallel Processing ("The Factory")
-Documents are split into **pages**, and each page is processed independently through the Rule Engine. This enables:
-- **Cloud-native scaling** (AWS Lambda, Temporal workflows)
-- **Fault isolation** (one page failure doesn't block others)
-- **Performance** (multi-core utilization)
-
-### 3. Canonical Schema First
-All data flows through a **single canonical schema** (`schema.json`) before MISMO conversion. This:
-- **Decouples extraction from output format** (easy to add new formats like URLA JSON, Encompass XML)
-- **Centralizes validation** (enum checking, required fields)
-- **Simplifies merging** (common structure for all doc types)
-
-### 4. Rule-Driven Maintenance
-YAML rule files are **owned by business analysts**, not engineers. Example:
-```yaml
-# rules/w2.yaml
-document_type: "W-2 Form"
-rules:
-  - field: "wages"
-    canonical_path: "deal.parties[0].employment[0].income.base_amount"
-    pattern: "Wages, tips, other compensation"
-    extraction_type: "currency_after_label"
-    priority: 10  # High (IRS verified)
-```
+- 🟠 **Pre-Processing** (Converter, Splitter)
+- 🟢 **Rule-Based Extraction** (Zero-LLM)
+- 🔵 **Output Generation** (MISMO XML)
+- 🔷 **Persistence** (Supabase)
 
 ---
 
 ## Component Descriptions
 
-### 1. Pre-Processing Laundry
-**Status:** ⚠️ TO BE BUILT
-**File:** `laundry/image_converter.py`
+### 1. Ingest
+**Status:** ✅ COMPLETE
+**File:** `main.py`
 
-**Purpose:** Convert image files (JPEG, PNG, TIFF) to PDF format for standardized processing.
+**Purpose:** Entry point for file uploads. Accepts "Mega-PDFs" (multi-document packages) or individual files.
 
-**Technology Stack:**
-- **RapidOCR** (ONNX runtime) - Fast OCR engine
-- **pypdf** - PDF manipulation
+**Logic:**
+```python
+# main.py
+if file_path.endswith('.pdf'):
+    # Route to preprocessing
+    result = process_mega_pdf(file_path)
+```
 
-**Why Needed:**
-- Standardizes pipeline input (always PDF)
-- Enables text search in image-only documents
-- Reduces downstream complexity (single format)
+**Output:** File path to raw input (PDF or image).
 
 ---
 
-### 2. Document Splitter
-**Status:** ⚠️ TO BE BUILT
-**File:** `splitter/doc_splitter.py`
+### 2. Converter (Image → PDF)
+**Status:** ✅ COMPLETE
+**File:** `src/preprocessing/converter.py`
 
-**Purpose:** Split multi-page PDFs into individual single-page PDFs for parallel processing.
+**Purpose:** Standardize all inputs to PDF format with embedded text layer.
+
+**Technology Stack:**
+- **RapidOCR** (ONNX runtime) - Fast OCR engine
+- **pypdf** - PDF creation
+
+**Logic:**
+```python
+def convert_image_to_pdf(image_path: str) -> str:
+    """
+    Convert JPEG/PNG/TIFF to searchable PDF.
+
+    Process:
+    1. Run OCR to extract text
+    2. Create PDF with text layer
+    3. Save to temp/converted/
+
+    Returns:
+        str: Path to converted PDF
+    """
+```
+
+**Input:** `image_path` (JPEG, PNG, TIFF)
+**Output:** `temp/converted/{filename}.pdf`
+
+---
+
+### 3. Splitter (Multi-page → Pages)
+**Status:** ✅ COMPLETE
+**File:** `src/preprocessing/splitter.py`
+
+**Purpose:** Split multi-page PDFs into single-page chunks for parallel processing.
 
 **Technology Stack:**
 - **pypdf** - Page extraction
 
-**Output Example:**
+**Logic:**
+```python
+def split_pdf(pdf_path: str) -> List[str]:
+    """
+    Split multi-page PDF into individual pages.
+
+    Process:
+    1. Open PDF with pypdf
+    2. Extract each page
+    3. Write to temp/chunks/
+
+    Returns:
+        List[str]: Paths to single-page PDFs (preserves order)
+    """
+```
+
+**Input:** `pdf_path` (multi-page PDF)
+**Output:**
 ```python
 [
-    "/tmp/loan_123_page_1.pdf",  # URLA Page 1
-    "/tmp/loan_123_page_2.pdf",  # URLA Page 2
-    "/tmp/loan_123_page_3.pdf",  # W-2 Form
-    "/tmp/loan_123_page_4.pdf",  # Bank Statement
+    "temp/chunks/page_001.pdf",
+    "temp/chunks/page_002.pdf",
+    "temp/chunks/page_003.pdf"
 ]
 ```
 
 ---
 
-### 3. Classifier
-**Status:** ✅ BUILT
-**File:** `tools/classifier.py`
-
-**Purpose:** Identify document type and select extraction strategy.
-
-**Supported Types (14 total):**
-- **Application Core:** URLA (1003), URLA Addendums, SCIF (1103)
-- **Income/Tax:** W-2, Pay Stub, 1040, 4506-C, Military LES
-- **Assets:** Bank Statement, Investment Statement, Gift Letter
-- **Property:** Sales Contract, Lease Agreement, Insurance
-- **Identity:** Government ID
-- **Closing:** Closing Disclosure
-- **VA Loans:** VA Form 26-1880, 26-8937
-
-**Scoring System:**
-- **Keyword match:** +1 point per keyword
-- **Regex match:** +3 points per pattern
-- **Confidence:** `min(0.5 + (score * 0.1), 0.95)`
-
----
-
-### 4. Rule Engine
-**Status:** ⚠️ TO BE BUILT
-**File:** `engine/rule_engine.py`
+### 4. Extractor (Rule Engine)
+**Status:** ⚠️ IN DEVELOPMENT (Phase 1.5)
+**File:** `src/extraction/rule_engine.py`
 
 **Purpose:** Extract structured data from documents using YAML-defined rules (Zero-LLM).
 
@@ -153,70 +145,66 @@ rules:
 
 **Rule File Structure:**
 ```yaml
+# resources/rules/w2.yaml
 document_type: "W-2 Form"
-priority: 10  # Higher = more trusted (W-2 > URLA)
+priority: 10  # IRS verified
 
 rules:
   - field: "wages"
     canonical_path: "deal.parties[0].employment[0].income.base_amount"
     pattern: "Wages, tips, other compensation\\s*\\$?([\\d,]+\\.\\d{2})"
-    extraction_type: "regex"
     data_type: "currency"
-    required: true
 ```
 
-**Output Example:**
+**Input:** `page_path` (single-page PDF)
+**Output:** Flat dictionary
 ```python
 {
     "wages": 75000.00,
-    "employer_name": "Acme Corporation",
-    "borrower_ssn": "123-45-6789",  # Identity key for merging
-    "_metadata": {
-        "document_type": "W-2 Form",
-        "priority": 10,
-        "page_number": 1
-    }
+    "employer_name": "Acme Corp",
+    "borrower_ssn": "123-45-6789",
+    "_metadata": {"doc_type": "W-2", "priority": 10}
 }
 ```
 
 ---
 
-### 5. Merger
-**Status:** ⚠️ TO BE BUILT
-**File:** `merger/canonical_merger.py`
+### 5. Merger (Priority Logic)
+**Status:** ⚠️ IN DEVELOPMENT (Phase 3)
+**File:** `src/logic/merger.py`
 
-**Purpose:** Merge flat dictionaries from multiple documents into a single unified dictionary.
+**Purpose:** Merge flat dictionaries from multiple documents using priority resolution.
 
-**Key Logic:**
-
-#### A. Priority Resolution
+**Priority Matrix:**
 ```python
 DOCUMENT_PRIORITY = {
-    "W-2 Form": 10,           # IRS verified (highest trust)
+    "W-2 Form": 10,           # IRS verified
     "Tax Return (1040)": 9,
     "Pay Stub": 7,
     "Bank Statement": 6,
-    "URLA (Form 1003)": 3,    # Self-reported (lowest trust)
+    "URLA (Form 1003)": 3     # Self-reported
 }
 ```
 
-#### B. Identity Resolution
-Match borrowers across documents using **identity keys** (SSN primary, Name+DOB fallback).
+**Identity Resolution:** SSN matching (primary), Name+DOB (fallback)
+
+**Input:** List of flat dictionaries
+**Output:** Single merged dictionary
 
 ---
 
 ### 6. Canonical Assembler
-**Status:** ⚠️ TO BE BUILT
-**File:** `assembler/canonical_assembler.py`
+**Status:** ⚠️ IN DEVELOPMENT (Phase 3)
+**File:** `src/assembler/canonical_assembler.py`
 
-**Purpose:** Transform flat merged dictionary into nested canonical JSON structure.
+**Purpose:** Transform flat merged dictionary into nested canonical JSON.
 
 **Transformation:**
 ```python
-# Input (Flat):
+# Flat Input:
 {"borrower_first_name": "John", "wages": 75000}
 
-# Output (Nested Canonical):
+# Nested Output:
 {
     "deal": {
         "parties": [{
@@ -229,57 +217,122 @@ Match borrowers across documents using **identity keys** (SSN primary, Name+DOB 
 
 ---
 
-### 7. MISMO Mapper
-**Status:** ✅ BUILT
+### 7. MISMO XML Generator
+**Status:** ✅ COMPLETE
 **File:** `tools/mismo_mapper.py`
 
-**Purpose:** Convert canonical JSON to MISMO 3.4 XML (industry standard format).
+**Purpose:** Convert canonical JSON to MISMO 3.4 XML.
 
 **Mapping Rules:** 98 deterministic XPath mappings in `resources/mismo_mapping/map_mismo_3_6.json`
 
-**Example Rule:**
-```json
-{
-    "canonicalPath": "deal.parties[].individual.first_name",
-    "mismoXPath": "/MESSAGE/DEAL_SETS/DEAL_SET/DEALS/DEAL/PARTIES/PARTY/INDIVIDUAL/NAME/FirstName"
-}
+---
+
+### 8. Supabase Storage (Stateful Layer)
+**Status:** 🚧 PHASE 2 (IN PROGRESS)
+**File:** `src/db/supabase_client.py`
+
+**Purpose:** Persist loan state across multiple document ingestions.
+
+**Database Schema:**
+```sql
+CREATE TABLE loans (
+    id UUID PRIMARY KEY,
+    loan_number TEXT UNIQUE,
+    borrower_ssn TEXT,
+    canonical_data JSONB,
+    mismo_xml TEXT,
+    document_count INTEGER,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+);
 ```
+
+**Key Operations:**
+- `get_loan_state(loan_id)` - Fetch existing loan data
+- `update_loan_state(loan_id, data)` - Merge new document data
+- `create_loan(data)` - Initialize new loan record
 
 ---
 
-### 8. Schema Registry
-**Status:** ✅ BUILT
-**File:** `schema_registry.py`
+## Data Flow (End-to-End)
 
-**Purpose:** Centralized schema management (Singleton pattern).
+### Example: Processing a Mega-PDF
 
-**Enum Structure:**
+**Input:** `loan_package.pdf` (10 pages: URLA + W-2 + Bank Statement)
+
+**Step 1: Ingest**
+```
+loan_package.pdf → main.py
+```
+
+**Step 2: Splitter**
+```
+temp/chunks/page_001.pdf  # URLA Page 1
+temp/chunks/page_002.pdf  # URLA Page 2
+temp/chunks/page_003.pdf  # W-2 Form
+temp/chunks/page_004.pdf  # Bank Statement
+```
+
+**Step 3: Extractor (per page)**
+```python
+# page_003.pdf (W-2)
+{
+    "wages": 75000.00,
+    "borrower_ssn": "123-45-6789",
+    "_metadata": {"doc_type": "W-2", "priority": 10}
+}
+```
+
+**Step 4: Merger**
+```python
+# Merge URLA (priority 3) + W-2 (priority 10)
+{
+    "borrower_ssn": "123-45-6789",
+    "verified_income": 75000.00,  # W-2 wins
+    "declared_income": 80000.00,  # URLA preserved
+    "loan_amount": 350000.00
+}
+```
+
+**Step 5: Canonical Assembler**
 ```json
 {
-    "loan_purpose": {
-        "value": null,
-        "options": ["Purchase", "Refinance", "Construction", "Other"]
+    "deal": {
+        "parties": [{
+            "individual": {"ssn": "123-45-6789"},
+            "employment": [{"income": {"base_amount": 75000.00}}]
+        }],
+        "loans": [{"loan_amount": 350000.00}]
     }
 }
 ```
 
----
+**Step 6: Supabase Storage**
+```
+Check: Does loan with SSN "123-45-6789" exist?
+  → Yes: Merge with existing data
+  → No: Create new loan record
+```
 
-### 9. FastMCP Server
-**Status:** ✅ BUILT
-**File:** `server.py`
-
-**Purpose:** Model Context Protocol (MCP) API gateway for tool integration.
-
-**Exposed Tools:**
-```python
-@mcp.tool()
-def process_document(file_path: str) -> dict:
-    """Full pipeline: Classify → Extract → MISMO"""
-
-@mcp.tool()
-def list_loans(limit: int = 100) -> dict:
-    """Retrieve all processed loans (Phase 2: Supabase)"""
+**Step 7: MISMO XML**
+```xml
+<MESSAGE>
+    <DEAL_SETS>
+        <DEAL>
+            <PARTIES>
+                <PARTY>
+                    <INDIVIDUAL>
+                        <TAXPAYER_IDENTIFIERS>
+                            <TAXPAYER_IDENTIFIER>
+                                <TaxpayerIdentifierValue>123-45-6789</TaxpayerIdentifierValue>
+                            </TAXPAYER_IDENTIFIER>
+                        </TAXPAYER_IDENTIFIERS>
+                    </INDIVIDUAL>
+                </PARTY>
+            </PARTIES>
+        </DEAL>
+    </DEAL_SETS>
+</MESSAGE>
 ```
 
 ---
@@ -288,64 +341,85 @@ def list_loans(limit: int = 100) -> dict:
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **OCR** | Doctr (ONNX) | Text extraction from PDFs/images |
-| **PDF** | pypdf | Page splitting, manipulation |
-| **Rules** | YAML + Regex | Field extraction patterns |
-| **Schema** | JSON + Pydantic | Validation, type checking |
-| **Database** | Supabase (Postgres) | Loan state persistence |
-| **API** | FastMCP | Tool integration (Claude, IDEs) |
-| **Orchestration** | Temporal (future) | Workflow management, retries |
+| **Pre-Processing** | RapidOCR, pypdf | Image conversion, page splitting |
+| **Extraction** | Doctr, Regex, YAML | Zero-LLM rule-based extraction |
+| **Persistence** | Supabase (Postgres) | Stateful loan storage |
+| **Schema** | JSON Schema | Validation, enum checking |
+| **Output** | ElementTree | MISMO 3.4 XML generation |
+| **API** | FastMCP | Tool integration |
+| **Orchestration** | Temporal (future) | Workflow management |
 
 ---
 
-## File Locations
+## File Structure
 
 ```
 Data-Extraction/
-├── laundry/
-│   └── image_converter.py        # ⚠️ TO BE BUILT
-├── splitter/
-│   └── doc_splitter.py            # ⚠️ TO BE BUILT
-├── tools/
-│   ├── classifier.py              # ✅ BUILT
-│   ├── mismo_mapper.py            # ✅ BUILT
-│   ├── doctr_tool.py              # ✅ BUILT
-│   └── unified_extraction.py     # ✅ BUILT
-├── engine/
-│   └── rule_engine.py             # ⚠️ TO BE BUILT
-├── merger/
-│   └── canonical_merger.py        # ⚠️ TO BE BUILT
-├── assembler/
-│   └── canonical_assembler.py     # ⚠️ TO BE BUILT
+├── main.py                        # ✅ Entry point (Mega-PDF support)
+├── src/
+│   ├── preprocessing/
+│   │   ├── converter.py           # ✅ Image→PDF
+│   │   └── splitter.py            # ✅ Multi-page→Pages
+│   ├── extraction/
+│   │   └── rule_engine.py         # ⚠️ YAML-based extractor
+│   ├── logic/
+│   │   ├── merger.py              # ⚠️ Priority resolution
+│   │   └── processor.py           # 🚧 PHASE 2 Orchestrator
+│   ├── assembler/
+│   │   └── canonical_assembler.py # ⚠️ Flat→Nested
+│   ├── db/
+│   │   └── supabase_client.py     # 🚧 PHASE 2 DB client
+│   └── output/
+│       └── mismo_generator.py     # ✅ XML generation
 ├── resources/
+│   ├── rules/                     # ⚠️ YAML rule definitions
 │   ├── canonical_schema/
-│   │   └── schema.json            # ✅ 315 lines
-│   ├── mismo_mapping/
-│   │   └── map_mismo_3_6.json     # ✅ 98 mappings
-│   └── rules/                     # ⚠️ TO BE BUILT
-│       ├── w2.yaml
-│       ├── urla.yaml
-│       └── paystub.yaml
-├── schema_registry.py             # ✅ BUILT
-├── enum_validator.py              # ✅ BUILT
-├── server.py                      # ✅ BUILT
-└── src/db/
-    └── supabase_client.py         # ⚠️ Phase 2
+│   │   └── schema.json            # ✅ Schema definition
+│   └── mismo_mapping/
+│       └── map_mismo_3_6.json     # ✅ 98 XPath mappings
+├── temp/
+│   ├── converted/                 # ✅ Image→PDF outputs
+│   └── chunks/                    # ✅ Split page outputs
+└── docs/
+    ├── ARCHITECTURE.md            # This file
+    ├── DATA_FLOW.md
+    └── TASK_LOG.md
 ```
 
 ---
 
-## Future Enhancements
+## Phase Roadmap
 
-### Phase 3: Complete Zero-LLM Transition
-- Build YAML rule engine
-- Create rule files for 14 document types
-- Implement merger with priority logic
-- Build canonical assembler
+### ✅ Phase 1: The Laundry & Sorter (COMPLETE)
+- Image→PDF conversion (`converter.py`)
+- Multi-page splitting (`splitter.py`)
+- `main.py` Mega-PDF support
+- Temporary file management (`temp/` structure)
+
+### 🚧 Phase 2: Stateful Processing (IN PROGRESS)
+- Supabase client (`supabase_client.py`)
+- Processor orchestrator (`processor.py`)
+- Loan state persistence
+- SSN-based identity resolution
+
+### 📅 Phase 3: Zero-LLM Rule Engine (PLANNED)
+- YAML rule engine (`rule_engine.py`)
+- Merger with priority logic (`merger.py`)
+- Canonical assembler (`canonical_assembler.py`)
 - Remove LLM dependencies
 
-### Phase 4: Production Readiness
+### 📅 Phase 4: Production Ready (PLANNED)
 - Temporal workflow integration
-- Multi-tenancy (customer isolation)
-- Compliance audit logs (SOC 2, GLBA)
-- Performance benchmarks (target: <5s per loan)
+- FastMCP server enhancements
+- Web UI dashboard
+- Performance benchmarks
+
+---
+
+## Design Principles
+
+1. **Deterministic Processing**: Same input → Same output (no AI variability)
+2. **Parallel Ready**: Page-level processing enables cloud scaling
+3. **Stateful Merging**: Support multi-document loan packages
+4. **Audit Compliance**: Every transformation is traceable
+5. **Offline First**: No external API dependencies (post-Phase 3)

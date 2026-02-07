@@ -14,9 +14,12 @@ env/
 # Data and Outputs
 output/
 logs/
-.gemini/
+dockling_output/
+doctr_output/
 data/
 Test_upload_files/
+temp/
+*.tmp
 
 # IDEs
 .vscode/
@@ -25,6 +28,11 @@ Test_upload_files/
 # System
 .DS_Store
 Thumbs.db
+nul
+
+# Cache
+.pytest_cache/
+.gemini/
 
 # Private keys/certs
 *.pem

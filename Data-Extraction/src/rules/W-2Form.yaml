@@ -1,0 +1,313 @@
+# ============================================================
+# W-2Form.yaml — Deterministic extraction rules for
+# IRS Form W-2 (Wage and Tax Statement)
+# ============================================================
+# Ground truth: Docling markdown of filled W-2 form
+#
+# Docling renders W-2 as bullet-point lists with merged labels:
+#   "- aEmployee'ssocial securitynumber 999-60-5555"
+#   "- 1Wages,tips,other compensation 96000"
+# Also may render a second W-2 as a giant markdown table.
+#
+# Strategy: regex rules targeting Docling's bullet-point format
+# with flexible whitespace/merge patterns. Table fallbacks for
+# the markdown table format.
+#
+# MISMO Mapping: .../IncomeType="Base" (Section 2)
+# Critical Fields: EmployerName, EmployerID, WagesTipsOtherComp
+# ============================================================
+
+document_type: "W-2 Form"
+schema_version: "1.0"
+
+rules:
+
+  # ============================================================
+  # EMPLOYER INFORMATION
+  # ============================================================
+
+  # EIN: Docling renders as "- bEmployeridentification number(EIN)"
+  # then the EIN on its own line: "12-3476543"
+  # OR in table: "bEmployeridentificationno.(EIN) 12-3523123"
+  - id: employer_ein
+    type: regex
+    pattern: '(?:Employer\s*(?:identification|ID)\s*(?:number|no\.?)\s*(?:\(EIN\))?\s*[\n:]?\s*\n?\s*)(\d{2}-\d{7})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employer_ein"
+    target_path: "deal.parties[0].employment[0].employer_ein"
+
+  # Fallback: standalone EIN pattern (appears alone on a line after EIN label)
+  - id: employer_ein_standalone
+    type: regex
+    pattern: '(?:EIN\)?)\s*\n+\s*(?:- )?(?:\d\w[A-Z].*\n+\s*)*?(\d{2}-\d{7})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employer_ein"
+    target_path: "deal.parties[0].employment[0].employer_ein"
+
+  # Employer name: "- cEmployer'sname,address,andZIPcode ButterBuilders"
+  - id: employer_name
+    type: regex
+    pattern: '(?:c\s*)?Employer.?s?\s*name\s*,?\s*address\s*,?\s*and\s*Z[iI]P\s*code\s*\n?\s*([A-Z][\w\s&.,\-]+?)(?:\n|\d{2,}|$)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employer_name"
+    target_path: "deal.parties[0].employment[0].employer_name"
+    transform: strip_ocr_noise
+
+  # Table fallback: "cEmployers name,address,and ZIPcode BESTBROKERAGESERVICESLLC"
+  - id: employer_name_table
+    type: regex
+    pattern: 'c\s*Employer.?s?\s*name\s*,?\s*address.*?(?:ZIPcode|ZIP\s*code)\s+([A-Z][\w\s&.,\-]+?)(?:\s*\||\n|\d{3,})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employer_name"
+    target_path: "deal.parties[0].employment[0].employer_name"
+    transform: strip_ocr_noise
+
+  # ============================================================
+  # EMPLOYEE INFORMATION
+  # ============================================================
+
+  # SSN: "- aEmployee'ssocial securitynumber 999-60-5555"
+  - id: employee_ssn
+    type: regex
+    pattern: '(?:a\s*)?Employee.?s?\s*social\s*security\s*(?:number|no\.?)\s*[:\n]?\s*(\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employee_ssn"
+    target_path: "deal.parties[0].individual.ssn"
+
+  # Employee name: "- eEmployee'sfirst name and initial Sandy\n\nLast name America"
+  - id: employee_name
+    type: regex
+    pattern: '(?:e\s*)?Employee.?s?\s*(?:first\s*name\s*(?:and\s*(?:middle\s*)?initial)?|name)\s*\n?\s*([A-Z][a-z]+(?:\s+[A-Z]\.?)?)\s*\n+\s*(?:Last\s*name\s*\n?\s*)?([A-Z][a-z]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employee_first_name"
+    target_path: "deal.parties[0].individual.first_name"
+
+  - id: employee_last_name
+    type: regex
+    pattern: '(?:e\s*)?Employee.?s?\s*(?:first\s*name\s*(?:and\s*(?:middle\s*)?initial)?|name)\s*\n?\s*[A-Z][a-z]+(?:\s+[A-Z]\.?)?\s*\n+\s*(?:Last\s*name\s*\n?\s*)?([A-Z][a-z]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employee_last_name"
+    target_path: "deal.parties[0].individual.last_name"
+
+  # Table fallback: "eEmployee'sname,address,andZiPcode JOHNWILLOW"
+  - id: employee_name_table
+    type: regex
+    pattern: 'e\s*Employee.?s?\s*name\s*,?\s*address.*?(?:ZiPcode|ZIP\s*code)\s+([A-Z]+\s*[A-Z]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_employee_full_name"
+    target_path: "deal.parties[0].individual.full_name"
+
+  # Employee address: line after employer address, before box 15
+  - id: employee_address
+    type: regex
+    pattern: '(\d{3,5}\s*\w+\s*(?:Ave|St|Dr|Rd|Ln|Blvd|Way|Madison)\w*\s+\w+\s*,\s*\w{2}\s*\d{5})\s*\n+.*?(?:12d|fEmployee|Employee.s\s*address)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "w2_employee_address"
+    target_path: "deal.parties[0].addresses[0].street"
+    transform: strip_ocr_noise
+
+  # ============================================================
+  # BOX 1-6: WAGES AND TAXES (Bullet format)
+  # ============================================================
+
+  # Box 1: "- 1Wages,tips,other compensation 96000" or "1Wages,tips,othercompensation 385000.00"
+  - id: box1_wages
+    type: regex
+    pattern: '1\s*Wages\s*,?\s*tips\s*,?\s*other\s*(?:comp(?:ensation)?)\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_wages_monthly"
+    target_path: "deal.parties[0].employment[0].monthly_income.base"
+    transform: annual_to_monthly
+
+  - id: box1_wages_annual
+    type: regex
+    pattern: '1\s*Wages\s*,?\s*tips\s*,?\s*other\s*(?:comp(?:ensation)?)\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_wages_annual"
+    target_path: "deal.parties[0].income_verification_fragments[0].w2_wages_annual"
+    transform: to_float
+
+  # Box 2: "- 2Federal income tax withheld 9867.72" or "2Federal incometaxwithheld 102255.00"
+  - id: box2_federal_tax
+    type: regex
+    pattern: '2\s*Federal\s*income\s*tax\s*withheld\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_federal_tax_withheld"
+    target_path: "deal.parties[0].income_verification_fragments[0].federal_tax_withheld"
+    transform: to_float
+
+  # Box 3: "- 3Social securitywages 96000" or "3Social securitywages 89700.00"
+  - id: box3_ss_wages
+    type: regex
+    pattern: '3\s*Social\s*security\s*wages\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_ss_wages"
+    target_path: "deal.parties[0].income_verification_fragments[0].social_security_wages"
+    transform: to_float
+
+  # Box 4: "- 4Social security taxwithheld 3635.88" or "4Socialsecuritytaxwithheld 7886.40"
+  - id: box4_ss_tax
+    type: regex
+    pattern: '4\s*Social\s*security\s*tax\s*withheld\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_ss_tax_withheld"
+    target_path: "deal.parties[0].income_verification_fragments[0].social_security_tax_withheld"
+    transform: to_float
+
+  # Box 5: "- 5Medicare wages and tips 96000" or "5Medicarewagesand tips 400000.00"
+  - id: box5_medicare_wages
+    type: regex
+    pattern: '5\s*Medicare\s*wages\s*(?:and)?\s*tips\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_medicare_wages"
+    target_path: "deal.parties[0].income_verification_fragments[0].medicare_wages"
+    transform: to_float
+
+  # Box 6: "- 6Medicare taxwithheld 6089.16" or "6Medicaretaxwithheld 7600.00"
+  - id: box6_medicare_tax
+    type: regex
+    pattern: '6\s*Medicare\s*tax\s*withheld\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_medicare_tax_withheld"
+    target_path: "deal.parties[0].income_verification_fragments[0].medicare_tax_withheld"
+    transform: to_float
+
+  # ============================================================
+  # BOX 7-14: ADDITIONAL COMPENSATION
+  # ============================================================
+
+  # Box 7: "- 7Social security tips" (may have no value if empty)
+  - id: box7_ss_tips
+    type: regex
+    pattern: '7\s*Social\s*security\s*tips\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_ss_tips"
+    target_path: "deal.parties[0].income_verification_fragments[0].social_security_tips"
+    transform: to_float
+
+  # Box 10: "- 10 Dependentcarebenefits" or "10Dependentcarebenefits 9750.00"
+  - id: box10_dependent_care
+    type: regex
+    pattern: '10\s*Dependent\s*care\s*benefits\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_dependent_care_benefits"
+    target_path: "deal.parties[0].income_verification_fragments[0].dependent_care_benefits"
+    transform: to_float
+
+  # Box 12: Code D = 401(k) deferred comp
+  # Docling: "12aCode S    15000.00" or "12aSee instructions for box12"
+  - id: box12_deferred_comp
+    type: regex
+    pattern: '12[a-d]\s*(?:Code\s+)?(?:D|DD)\s+(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_box12_deferred_comp"
+    target_path: "deal.parties[0].income_verification_fragments[0].box12_deferred_comp"
+    transform: to_float
+
+  # ============================================================
+  # BOX 15-17: STATE / LOCAL
+  # ============================================================
+
+  # Box 15: "- 15StateEmployer's stateIDnumber" or "15State XN"
+  - id: box15_state
+    type: regex
+    pattern: '15\s*State\s*(?:Employer.s\s*state\s*ID\s*number)?\s*\n?\s*([A-Z]{2})\b'
+    group: 1
+    key: "w2_state_code"
+    target_path: "deal.parties[0].income_verification_fragments[0].state_code"
+
+  # Box 16: "- 16State wages,tips,etc.17 State income tax 96000"
+  # In this merged format, box 16 value appears after "tips,etc." or as "16 State wages,tips,etc. 325000.00"
+  - id: box16_state_wages
+    type: regex
+    pattern: '16\s*State\s*wages\s*,?\s*tips\s*,?\s*etc\.?\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_state_wages"
+    target_path: "deal.parties[0].income_verification_fragments[0].state_wages"
+    transform: to_float
+
+  # Box 17: "17 State income tax" or "17 Stateincometax 62500.00"
+  - id: box17_state_tax
+    type: regex
+    pattern: '17\s*State\s*income\s*tax\s*(\d[\d,]*(?:\.\d{2})?)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_state_income_tax"
+    target_path: "deal.parties[0].income_verification_fragments[0].state_income_tax"
+    transform: to_float
+
+  # ============================================================
+  # TAX YEAR
+  # ============================================================
+
+  # Docling: "## W-2 WageandTaxStatement" then "2020" on its own line
+  # Or "FormW-2WageandTaxStatement2017"
+  - id: tax_year
+    type: regex
+    pattern: '(?:W-?2\s*(?:Wage\s*(?:and)?\s*Tax\s*Statement)?)\s*(20\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "w2_tax_year"
+    target_path: "deal.parties[0].income_verification_fragments[0].tax_year"
+
+  # Fallback: standalone year near bottom of page
+  - id: tax_year_standalone
+    type: regex
+    pattern: '\n(20\d{2})\n+\s*(?:Department|Dept)'
+    group: 1
+    key: "w2_tax_year"
+    target_path: "deal.parties[0].income_verification_fragments[0].tax_year"
+
+  # ============================================================
+  # STATIC / METADATA
+  # ============================================================
+
+  - id: source_doc_type
+    type: static
+    value: "W-2"
+    key: "w2_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: schema_version
+    type: static
+    value: "3.4.0"
+    key: "w2_schema_version"
+    target_path: "document_metadata.schema_version"
+
+  - id: income_type
+    type: static
+    value: "Base"
+    key: "w2_income_type"
+    target_path: "deal.parties[0].employment[0].income_type.value"
+
+  - id: employment_status
+    type: static
+    value: "Current"
+    key: "w2_employment_status"
+    target_path: "deal.parties[0].employment[0].employment_status.value"
+
+  - id: party_role
+    type: static
+    value: "Borrower"
+    key: "w2_party_role"
+    target_path: "deal.parties[0].party_role.value"

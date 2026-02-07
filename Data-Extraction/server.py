@@ -1,19 +1,32 @@
+"""
+FastMCP Server — Document Extraction API.
+
+Exposes deterministic extraction tools over MCP protocol.
+All tools use the src/ pipeline (zero LLM).
+"""
+
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from fastmcp import FastMCP
-from orchestrator.pipeline_router import route_document
-from tools.classifier import classify_document
-from tools.query import query_document
-from tools.dockling_tool import extract_with_dockling
-from tools.canonical_mapper import map_to_canonical_model
-from tools.structure_extractor import extract_structure
-from tools.mismo_mapper import generate_mismo_xml
-from utils.logging import logger
 import json
+import sys
+from pathlib import Path
+
+# Ensure project root is on the path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from fastmcp import FastMCP
+from src.logic.classifier import classify_document
+from src.logic.unified_extraction import unified_extract, unified_extract_multi
+from src.extractors.dockling_tool import extract_with_dockling
+from src.mapping.mismo_emitter import emit_mismo_xml
+from src.preprocessing.converter import ensure_pdf, cleanup_temp
+from src.preprocessing.splitter import split_document_blob, cleanup_chunks
+from src.utils.logging import logger
 
 # Initialize FastMCP Server
 mcp = FastMCP("Utility Document Server")
+
 
 @mcp.tool()
 def process_document(file_path: str) -> dict:
@@ -23,11 +36,14 @@ def process_document(file_path: str) -> dict:
     """
     try:
         logger.info(f"Received request to process: {file_path}")
-        result = route_document(file_path)
+        pdf_path = ensure_pdf(file_path)
+        result = unified_extract(pdf_path, output_mode="flat")
+        cleanup_temp()
         return result
     except Exception as e:
         logger.error(f"Error processing document: {e}")
         return {"error": str(e)}
+
 
 @mcp.tool()
 def classify_file(file_path: str) -> dict:
@@ -40,16 +56,6 @@ def classify_file(file_path: str) -> dict:
         logger.error(f"Error classifying document: {e}")
         return {"error": str(e)}
 
-@mcp.tool()
-def ask_document(file_path: str, question: str) -> str:
-    """
-    Ask a question about a document.
-    """
-    try:
-        return query_document(file_path, question)
-    except Exception as e:
-        logger.error(f"Error querying document: {e}")
-        return f"Error: {str(e)}"
 
 @mcp.tool()
 def parse_document_with_dockling(file_path: str) -> str:
@@ -63,91 +69,43 @@ def parse_document_with_dockling(file_path: str) -> str:
         logger.error(f"Error parsing with Dockling: {e}")
         return f"Error: {str(e)}"
 
-@mcp.tool()
-def map_to_canonical_schema(document_type: str, extracted_fields: dict) -> dict:
-    """
-    Map extracted document fields to canonical schema using rule-based logic.
-    
-    This tool uses deterministic mapping rules (NO LLM) to convert extracted
-    key-value pairs into the canonical MISMO-compatible schema format.
-    
-    Args:
-        document_type: Type of document (e.g., BankStatement, PayStub, URLA, GovernmentID)
-        extracted_fields: Dictionary of extracted key-value pairs from the document
-    
-    Returns:
-        Partial canonical JSON with only relevant sections populated
-        
-    Example:
-        document_type = "BankStatement"
-        extracted_fields = {
-            "bankName": "Bank of America",
-            "endingBalance": 25000,
-            "accountNumber": "****1234"
-        }
-        
-        Result:
-        {
-            "financials": {
-                "assets": [{
-                    "institutionName": "Bank of America",
-                    "currentBalance": 25000,
-                    "accountNumberMasked": "****1234"
-                }]
-            }
-        }
-    """
-    try:
-        return map_to_canonical_model(document_type, extracted_fields)
-    except Exception as e:
-        logger.error(f"Error mapping to canonical schema: {e}")
-        return {"error": str(e)}
-
-@mcp.tool()
-def extract_structure_from_markdown(markdown_file_path: str, document_type: str = "Unknown") -> dict:
-    """
-    Extract structured key-value pairs from a Markdown file using LLM.
-    Saves the result as a JSON file in the same directory.
-    
-    Args:
-        markdown_file_path: Path to the Markdown file (e.g., output from Dockling)
-        document_type: Type of document (e.g., URLA, BankStatement, PayStub, etc.)
-    
-    Returns:
-        Dictionary with the path to the saved JSON file
-    """
-    try:
-        output_path = extract_structure(markdown_file_path, document_type)
-        return {
-            "success": True,
-            "output_file": output_path,
-            "message": f"Successfully extracted structure and saved to {output_path}"
-        }
-    except Exception as e:
-        logger.error(f"Error extracting structure: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
 
 @mcp.tool()
 def generate_mismo_xml_tool(canonical_data: dict) -> dict:
     """
-    Convert Canonical JSON to MISMO v3.4 XML using deterministic mapping tables.
-    
+    Convert Canonical JSON to MISMO v3.4 XML using deterministic emitter.
+
     Args:
-        canonical_data: The v3 canonical JSON output.
-        
+        canonical_data: The canonical JSON output from extraction.
+
     Returns:
-        Dictionary containing:
-        - intermediate_json: MISMO-structured JSON
-        - mismo_xml: The final XML string
+        Dictionary containing the MISMO XML string.
     """
     try:
-        return generate_mismo_xml(canonical_data)
+        xml_str = emit_mismo_xml(canonical_data)
+        return {"mismo_xml": xml_str, "success": bool(xml_str)}
     except Exception as e:
         logger.error(f"Error generating MISMO XML: {e}")
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def process_mega_document(file_path: str) -> dict:
+    """
+    Process a mega-PDF: split into sub-documents, extract each chunk,
+    and merge results into a single canonical model.
+    """
+    try:
+        pdf_path = ensure_pdf(file_path)
+        chunk_paths = split_document_blob(pdf_path)
+        try:
+            multi_result = unified_extract_multi(chunk_paths)
+            return multi_result
+        finally:
+            cleanup_chunks(chunk_paths)
+            cleanup_temp()
+    except Exception as e:
+        logger.error(f"Error processing mega document: {e}")
         return {"error": str(e)}
 
 
