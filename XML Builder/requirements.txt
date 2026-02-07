@@ -1,3 +1,0 @@
-supabase
-lxml
-python-dotenv
