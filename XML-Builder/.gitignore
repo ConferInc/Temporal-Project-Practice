@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Output Files
+output/*.xml
+!output/.gitkeep
+
+# Test Files
+test_application_id.txt
+schema_readable.txt
+mismo_mapping_readable.txt
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary Files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project Specific
+debug_*.py
+scratch/
+
+# Knowledge/Documentation (Internal)
+Knlowledge/
+MISMO_3.6_End_to_End_Process.md
+mismo_3.6_gap_analysis.md
+schema_alignment_report.md
+schema_readable.txt
