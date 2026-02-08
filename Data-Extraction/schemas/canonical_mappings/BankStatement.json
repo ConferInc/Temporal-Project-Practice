@@ -1,0 +1,134 @@
+[
+    {
+        "sourceField": "bankName",
+        "targetPath": "deal.assets[0].institution_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "institutionName",
+        "targetPath": "deal.assets[0].institution_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "accountNumber",
+        "targetPath": "deal.assets[0].account_identifier",
+        "priority": 1
+    },
+    {
+        "sourceField": "endingBalanceAmount",
+        "targetPath": "deal.assets[0].cash_or_market_value",
+        "priority": 1
+    },
+    {
+        "sourceField": "currentBalance",
+        "targetPath": "deal.assets[0].cash_or_market_value",
+        "priority": 2
+    },
+    {
+        "sourceField": "beginningBalanceAmount",
+        "targetPath": "deal.assets[0].beginning_balance",
+        "priority": 1
+    },
+    {
+        "sourceField": "statementPeriodStart",
+        "targetPath": "deal.assets[0].statement_period_start",
+        "priority": 1
+    },
+    {
+        "sourceField": "beginningBalanceDate",
+        "targetPath": "deal.assets[0].statement_period_start",
+        "priority": 2
+    },
+    {
+        "sourceField": "statementPeriodEnd",
+        "targetPath": "deal.assets[0].statement_period_end",
+        "priority": 1
+    },
+    {
+        "sourceField": "endingBalanceDate",
+        "targetPath": "deal.assets[0].statement_period_end",
+        "priority": 2
+    },
+    {
+        "sourceField": "firstName",
+        "targetPath": "deal.parties[0].individual.first_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "accountHolderFirstName",
+        "targetPath": "deal.parties[0].individual.first_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "lastName",
+        "targetPath": "deal.parties[0].individual.last_name",
+        "priority": 1
+    },
+    {
+        "sourceField": "accountHolderLastName",
+        "targetPath": "deal.parties[0].individual.last_name",
+        "priority": 2
+    },
+    {
+        "sourceField": "ssn",
+        "targetPath": "deal.parties[0].individual.ssn",
+        "priority": 1
+    },
+    {
+        "sourceField": "dateOfBirth",
+        "targetPath": "deal.parties[0].individual.dob",
+        "priority": 1
+    },
+    {
+        "sourceField": "dob",
+        "targetPath": "deal.parties[0].individual.dob",
+        "priority": 2
+    },
+    {
+        "sourceField": "customerAddress_street",
+        "targetPath": "deal.parties[0].addresses[0].street",
+        "priority": 1
+    },
+    {
+        "sourceField": "customerAddress_city",
+        "targetPath": "deal.parties[0].addresses[0].city",
+        "priority": 1
+    },
+    {
+        "sourceField": "customerAddress_state",
+        "targetPath": "deal.parties[0].addresses[0].state",
+        "priority": 1
+    },
+    {
+        "sourceField": "customerAddress_zipCode",
+        "targetPath": "deal.parties[0].addresses[0].postal_code",
+        "priority": 1
+    },
+    {
+        "sourceField": "customerAddress_country",
+        "targetPath": "deal.parties[0].addresses[0].country",
+        "priority": 1
+    },
+    {
+        "type": "listPattern",
+        "sourcePrefix": "depositsAndOtherAdditions",
+        "targetPath": "deal.assets[0].deposits",
+        "priority": 1,
+        "itemMapping": {
+            "date": "date",
+            "description": "description",
+            "amount": "amount"
+        }
+    },
+    {
+        "type": "listPattern",
+        "sourcePrefix": "withdrawalsAndOtherSubtractions",
+        "targetPath": "deal.assets[0].withdrawals",
+        "priority": 1,
+        "itemMapping": {
+            "date": "date",
+            "description": "description",
+            "amount": "amount"
+        }
+    }
+]
