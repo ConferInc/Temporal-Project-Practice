@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(git mv:*)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(pip install:*)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\activate.bat\")",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -m pytest tests/test_two_stage.py -v)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -W error::DeprecationWarning -c \"from src.mapping.rule_engine import RuleEngine; print\\(''OK''\\)\")",
+      "Bash(venvScriptspython.exe -m pytest tests/test_doc_splitter.py -v)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -m pytest:*)",
+      "Bash(del /q \"src\\\\mapping\\\\structure_extractor.py\")",
+      "Bash(del /q \"src\\\\mapping\\\\canonical_mapper.py\")",
+      "Bash(del /q \"src\\\\mapping\\\\mismo_mapper.py\")",
+      "Bash(del /q \"src\\\\processing\\\\semantic_distiller_DEPRECATED.py\")",
+      "Bash(del /q \"src\\\\processing\\\\llm_context_adapter.py\")",
+      "Bash(del /q \"src\\\\prompts\\\\prompts.py\")",
+      "Bash(del /q \"src\\\\prompts\\\\urla_prompts.py\")",
+      "Bash(find:*)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\":*)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -c \"import sys; sys.path.insert\\(0, r''C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction''\\); from src.logic.classifier import classify_document; from src.logic.unified_extraction import unified_extract; from src.extractors.dockling_tool import extract_with_dockling; from src.mapping.mismo_emitter import emit_mismo_xml; from src.preprocessing.converter import ensure_pdf; from src.preprocessing.splitter import split_document_blob; from src.utils.logging import logger; print\\(''All src/ imports OK''\\)\")",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -c:*)",
+      "Bash(\"Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\":*)",
+      "Bash(\"venv\\\\Scripts\\\\python.exe\" -c \"import ast; ast.parse\\(open\\(''src/mapping/canonical_assembler.py''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(venvScriptspython.exe -m pytest:*)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -m pytest \"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\tests\\\\test_doc_splitter.py\" -v --tb=short)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -c \"import ast; ast.parse\\(open\\(r''C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\src\\\\mapping\\\\canonical_assembler.py''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -m pytest \"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\tests\\\\test_two_stage.py\" -v)",
+      "Bash(del \"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\src\\\\mapping\\\\mismo_emitter.py\")",
+      "Bash(\"venv\\\\Scripts\\\\python.exe\":*)",
+      "Bash(\"venv\\\\Scripts\\\\python.exe\" main.py --input assets/samples/paystub.pdf)",
+      "Bash(\"C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\venv\\\\Scripts\\\\python.exe\" -c \"import yaml; yaml.safe_load\\(open\\(r''C:\\\\Confer Part Time\\\\GIT PROJECTS\\\\Temporal Project\\\\temporal-loan-python\\\\Data-Extraction\\\\src\\\\rules\\\\PayStub.yaml''\\)\\); print\\(''YAML valid''\\)\")"
+    ]
+  }
+}

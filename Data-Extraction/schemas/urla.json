@@ -1,0 +1,274 @@
+{
+    "UniformResidentialLoanApplication": {
+        "I_TypeOfMortgageAndTermsOfLoan": {
+            "MortgageAppliedFor": "",
+            "OtherMortgageTypeDescription": "",
+            "AgencyCaseNumber": "",
+            "LenderCaseNumber": "",
+            "LoanAmount": "",
+            "InterestRate": "",
+            "NoOfMonths": "",
+            "AmortizationType": "",
+            "ARMType": ""
+        },
+        "II_PropertyInformationAndPurposeOfLoan": {
+            "SubjectPropertyAddress": "",
+            "NoOfUnits": "",
+            "LegalDescriptionOfSubjectProperty": "",
+            "YearBuilt": "",
+            "PurposeOfLoan": {
+                "Purchase": false,
+                "Construction": false,
+                "Other": false,
+                "Refinance": false,
+                "ConstructionPermanent": false
+            },
+            "PropertyWillBe": {
+                "PrimaryResidence": false,
+                "SecondaryResidence": false,
+                "Investment": false
+            },
+            "CompleteThisLineIfConstructionOrConstructionPermanent": {
+                "YearLotAcquired": "",
+                "OriginalCost": "",
+                "AmountExistingLiens": "",
+                "PresentValueOfLot": "",
+                "CostOfImprovements": "",
+                "Total": ""
+            },
+            "CompleteThisLineIfRefinanceLoan": {
+                "YearAcquired": "",
+                "OriginalCost": "",
+                "AmountExistingLiens": "",
+                "PurposeOfRefinance": "",
+                "DescribeImprovements": "",
+                "Cost": ""
+            },
+            "TitleWillBeHeldInWhatName": "",
+            "MannerInWhichTitleWillBeHeld": "",
+            "EstateWillBeHeldIn": "",
+            "SourceOfDownPaymentSettlementChargesSubordinateFinancing": ""
+        },
+        "III_BorrowerInformation": {
+            "Borrowers": [
+                {
+                    "BorrowerType": "Borrower",
+                    "BorrowersName": "",
+                    "SocialSecurityNumber": "",
+                    "HomePhoneInclAreaCode": "",
+                    "DateOfBirth": "",
+                    "YearsSchool": "",
+                    "MaritalStatus": {
+                        "Married": false,
+                        "Unmarried": false,
+                        "Separated": false
+                    },
+                    "Dependents": {
+                        "No": "",
+                        "Ages": ""
+                    },
+                    "PresentAddress": "",
+                    "OwnOrRent": "",
+                    "NoYrs": "",
+                    "MailingAddressIfDifferent": "",
+                    "FormerAddresses": [
+                        {
+                            "FormerAddress": "",
+                            "OwnOrRent": "",
+                            "NoYrs": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        "IV_EmploymentInformation": {
+            "BorrowerEmployment": [
+                {
+                    "NameAndAddressOfEmployer": "",
+                    "SelfEmployed": false,
+                    "YrsOnThisJob": "",
+                    "PositionTitleTypeOfBusiness": "",
+                    "BusinessPhoneInclAreaCode": "",
+                    "IfEmployedInCurrentPositionForLessThanTwoYearsOrIfCurrentlyEmployedInMoreThanOnePosition": [
+                        {
+                            "NameAndAddressOfEmployer": "",
+                            "SelfEmployed": false,
+                            "DatesFromTo": "",
+                            "MonthlyIncome": "",
+                            "PositionTitleTypeOfBusiness": "",
+                            "BusinessPhoneInclAreaCode": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        "V_MonthlyIncomeAndCombinedHousingExpenseInformation": {
+            "GrossMonthlyIncome": {
+                "BaseEmploymentIncome": "",
+                "Overtime": "",
+                "Bonuses": "",
+                "Commissions": "",
+                "DividendsInterest": "",
+                "NetRentalIncome": "",
+                "Other": "",
+                "Total": ""
+            },
+            "CombinedMonthlyHousingExpense": {
+                "Present": {
+                    "Rent": "",
+                    "FirstMortgagePITI": "",
+                    "OtherFinancingPITI": "",
+                    "HazardInsurance": "",
+                    "RealEstateTaxes": "",
+                    "MortgageInsurance": "",
+                    "HomeownerAssocDues": "",
+                    "Other": "",
+                    "Total": ""
+                },
+                "Proposed": {
+                    "FirstMortgagePITI": "",
+                    "OtherFinancingPITI": "",
+                    "HazardInsurance": "",
+                    "RealEstateTaxes": "",
+                    "MortgageInsurance": "",
+                    "HomeownerAssocDues": "",
+                    "Other": "",
+                    "Total": ""
+                }
+            }
+        },
+        "VI_AssetsAndLiabilities": {
+            "Assets": [
+                {
+                    "Description": "",
+                    "CashOrMarketValue": ""
+                },
+                {
+                    "NameAndAddressOfBankSavingsLoanOrCreditUnion": "",
+                    "AccountNumber": "",
+                    "Value": ""
+                },
+                {
+                    "StocksAndBondsCompanyNameNumberAndDescription": "",
+                    "Value": ""
+                },
+                {
+                    "LifeInsuranceNetCashValue": "",
+                    "FaceAmount": ""
+                },
+                {
+                    "RealEstateOwnedMarketValue": "",
+                    "AmountOfLiens": ""
+                },
+                {
+                    "VestedInterestInRetirementFund": ""
+                },
+                {
+                    "NetWorthOfBusiness": ""
+                },
+                {
+                    "AutomobilesOwnedMakeAndYear": ""
+                },
+                {
+                    "OtherAssetsItemize": ""
+                }
+            ],
+            "Liabilities": [
+                {
+                    "NameAndAddressOfCompany": "",
+                    "AccountNumber": "",
+                    "MonthlyPayment": "",
+                    "MonthsLeftToPay": "",
+                    "UnpaidBalance": ""
+                }
+            ],
+            "Totals": {
+                "TotalAssets": "",
+                "TotalMonthlyPayments": "",
+                "NetWorth": "",
+                "TotalLiabilities": ""
+            }
+        },
+        "ScheduleOfRealEstateOwned": [
+            {
+                "PropertyAddress": "",
+                "TypeOfProperty": "",
+                "PresentMarketValue": "",
+                "AmountOfMortgagesAndLiens": "",
+                "GrossRentalIncome": "",
+                "MortgagePayments": "",
+                "InsuranceMaintenanceTaxes": "",
+                "NetRentalIncome": ""
+            }
+        ],
+        "VII_DetailsOfTransaction": {
+            "PurchasePrice": "",
+            "AlterationsImprovementsRepairs": "",
+            "LandIfAcquiredSeparately": "",
+            "RefinanceIncludingDebtsToBePaidOff": "",
+            "EstimatedPrepaidItems": "",
+            "EstimatedClosingCosts": "",
+            "PMIMIPFundingFee": "",
+            "DiscountIfBorrowerWillPay": "",
+            "TotalCosts": "",
+            "SubordinateFinancing": "",
+            "BorrowersClosingCostsPaidBySeller": "",
+            "OtherCredits": "",
+            "LoanAmount": "",
+            "PMIMIPFundingFeeFinanced": "",
+            "LoanAmountAdd": "",
+            "CashFromToBorrower": ""
+        },
+        "VIII_Declarations": {
+            "OutstandingJudgments": false,
+            "Bankruptcy": false,
+            "PropertyForeclosed": false,
+            "PartyToLawsuit": false,
+            "ObligatedOnLoan": false,
+            "DelinquentOrInDefault": false,
+            "AlimonyChildSupport": false,
+            "BorrowedDownPayment": false,
+            "CoMakerOrEndorser": false,
+            "USTCitizen": false,
+            "PermanentResidentAlien": false,
+            "PrimaryResidence": false,
+            "OwnershipInterestPastThreeYears": false
+        },
+        "IX_AcknowledgementAndAgreement": {
+            "BorrowerSignature": "",
+            "Date": "",
+            "CoBorrowerSignature": ""
+        },
+        "X_InformationForGovernmentMonitoringPurposes": {
+            "Ethnicity": "",
+            "Race": "",
+            "Sex": "",
+            "MethodOfApplication": {
+                "FaceToFace": false,
+                "Telephone": false,
+                "Mail": false,
+                "Internet": false
+            }
+        },
+        "LoanOriginatorInformation": {
+            "LoanOriginatorsName": "",
+            "LoanOriginatorIdentifier": "",
+            "LoanOriginatorsPhoneNumber": "",
+            "LoanOriginationCompanyName": "",
+            "LoanOriginationCompanyIdentifier": "",
+            "LoanOriginationCompanyAddress": "",
+            "Date": ""
+        },
+        "ContinuationSheetResidentialLoanApplication": {
+            "BorrowerName": "",
+            "CoBorrowerName": "",
+            "FormerAddresses": [
+                {
+                    "FormerAddress": "",
+                    "OwnOrRent": "",
+                    "NoYrs": ""
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,104 @@
+# ============================================================
+# TitleCommitment.yaml — Deterministic extraction rules for
+# Title Insurance Commitments (Preliminary Title Reports)
+# ============================================================
+# Anchors: "Commitment for Title Insurance", "Schedule A",
+#          "Proposed Insured"
+# Extraction: key_value + regex rules for title fields
+# ============================================================
+
+document_type: "Title Commitment"
+schema_version: "1.0"
+
+rules:
+
+  # ----------------------------------------------------------
+  # 1. KEY-VALUE RULES
+  # ----------------------------------------------------------
+  - id: tc_proposed_insured
+    type: key_value
+    key: "Proposed Insured"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: tc_commitment_number
+    type: key_value
+    key: "Commitment Number"
+    target_path: "deal.title.commitment_number"
+
+  - id: tc_commitment_date
+    type: key_value
+    key: "Effective Date"
+    target_path: "deal.title.commitment_date"
+
+  - id: tc_title_company
+    type: key_value
+    key: "Title Company"
+    target_path: "deal.title.title_company_name"
+
+  - id: tc_property_address
+    type: key_value
+    key: "Property Address"
+    target_path: "deal.collateral.subject_property.address"
+
+  - id: tc_vesting_info
+    type: key_value
+    key: "Vesting"
+    target_path: "deal.title.vesting_description"
+
+  - id: tc_estate_type
+    type: key_value
+    key: "Estate or Interest"
+    target_path: "deal.collateral.subject_property.estate_type"
+
+  # ----------------------------------------------------------
+  # 2. REGEX RULES
+  # ----------------------------------------------------------
+  - id: tc_proposed_insured_regex
+    type: regex
+    pattern: '(?:Proposed\s+Insured)[:\s]*([^\n]{3,80})'
+    group: 1
+    key: "tc_proposed_insured"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: tc_commitment_number_regex
+    type: regex
+    pattern: '(?:Commitment\s+(?:No|Number|#)|File\s+(?:No|Number|#))[:\s]*([A-Z0-9-]{5,25})'
+    group: 1
+    key: "tc_commitment_number"
+    target_path: "deal.title.commitment_number"
+
+  - id: tc_commitment_date_regex
+    type: regex
+    pattern: '(?:Effective\s+Date|Commitment\s+Date|Dated)[:\s]*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "tc_commitment_date"
+    target_path: "deal.title.commitment_date"
+
+  - id: tc_vesting_regex
+    type: regex
+    pattern: '(?:vested\s+in|Title\s+is\s+vested\s+in)[:\s]*([^\n]{3,120})'
+    group: 1
+    key: "tc_vesting_info"
+    target_path: "deal.title.vesting_description"
+
+  - id: tc_property_address_regex
+    type: regex
+    pattern: '(?:Property\s+Address|Land\s+referred\s+to|Located\s+at)[:\s]*([^\n]{10,80})'
+    group: 1
+    key: "tc_property_address"
+    target_path: "deal.collateral.subject_property.address"
+
+  # ----------------------------------------------------------
+  # 3. STATIC FIELDS
+  # ----------------------------------------------------------
+  - id: source_doc_type
+    type: static
+    value: "TitleCommitment"
+    key: "tc_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: proposed_insured_role
+    type: static
+    value: "Borrower"
+    key: "tc_party_role"
+    target_path: "deal.parties[0].party_role.value"
