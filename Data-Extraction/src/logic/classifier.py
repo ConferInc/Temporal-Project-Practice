@@ -41,6 +41,7 @@ class DocumentType(str, Enum):
     BANK_STATEMENTS = "Bank Statement"
     GIFT_LETTER = "Gift Letter"
     INVESTMENT_STATEMENTS = "Investment Statement"
+    CREDIT_BUREAU_REPORT = "Credit Bureau Report"
     # Property
     APPRAISAL = "Appraisal (Form 1004)"
     SALES_CONTRACT = "Sales Contract"
@@ -132,6 +133,7 @@ class ClassificationService:
             DocumentType.BANK_STATEMENTS: ['transaction history', 'beginning balance', 'ending balance', 'summary of accounts', 'checking account', 'savings account'],
             DocumentType.GIFT_LETTER: ['gift letter', 'no repayment', 'debt obligation', 'donor', 'gift funds'],
             DocumentType.INVESTMENT_STATEMENTS: ['401(k)', '401k', 'ira', 'stock portfolio', 'brokerage statement', 'retirement account', 'managed account'],
+            DocumentType.CREDIT_BUREAU_REPORT: ['credit report', 'merged infile', 'credit bureau', 'credit reporting', 'trade lines', 'inquiries', 'experian', 'equifax', 'transunion', 'credit score', 'fico', 'repositories'],
              
             # Property
             DocumentType.APPRAISAL: ['uniform residential appraisal', 'appraisal report', 'appraised value', 'sales comparison approach', 'cost approach', 'income approach', 'subject property', 'reconciliation', 'gross living area'],
@@ -200,7 +202,8 @@ class ClassificationService:
             DocumentType.FORM_1099_MISC, DocumentType.FORM_1099_INT, DocumentType.FORM_1099_DIV,
             DocumentType.MILITARY_LES, DocumentType.INVESTMENT_STATEMENTS,
             DocumentType.VA_FORM_26_1880, DocumentType.VA_FORM_26_8937,
-            DocumentType.APPRAISAL, DocumentType.LOAN_ESTIMATE, DocumentType.CLOSING_DISCLOSURE
+            DocumentType.APPRAISAL, DocumentType.LOAN_ESTIMATE, DocumentType.CLOSING_DISCLOSURE,
+            DocumentType.CREDIT_BUREAU_REPORT
         ]
         
         # URLA documents use OCR instead of Dockling (Dockling can timeout on complex forms)
