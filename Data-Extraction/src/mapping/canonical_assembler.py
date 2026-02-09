@@ -2,7 +2,7 @@
 Canonical Assembler — Flat business keys → deep canonical JSON structure.
 
 Converts the flat key-value dicts produced by RuleEngine (output_mode="flat")
-into the deep MISMO-aligned canonical JSON used by MismoEmitter.
+into the deep canonical JSON consumed by RelationalTransformer.
 
 Each document type has a dedicated strategy that knows how to map
 prefixed flat keys into the correct nested structure.

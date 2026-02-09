@@ -1,0 +1,115 @@
+# ============================================================
+# PurchaseContract.yaml — Deterministic extraction rules for
+# Purchase and Sale Agreements (Sales Contracts)
+# ============================================================
+# Anchors: "Purchase and Sale Agreement", "Sales Contract",
+#          "Buyer agrees to buy"
+# Extraction: key_value + regex rules for deal terms
+# ============================================================
+
+document_type: "Sales Contract"
+schema_version: "1.0"
+
+rules:
+
+  # ----------------------------------------------------------
+  # 1. KEY-VALUE RULES
+  # ----------------------------------------------------------
+  - id: pc_buyer_name
+    type: key_value
+    key: "Buyer"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: pc_seller_name
+    type: key_value
+    key: "Seller"
+    target_path: "deal.parties[1].individual.full_name"
+
+  - id: pc_property_address
+    type: key_value
+    key: "Property Address"
+    target_path: "deal.collateral.subject_property.address"
+
+  - id: pc_purchase_price
+    type: key_value
+    key: "Purchase Price"
+    target_path: "deal.collateral.subject_property.valuation.sales_price"
+    transform: to_float
+
+  - id: pc_closing_date
+    type: key_value
+    key: "Closing Date"
+    target_path: "deal.transaction_information.closing_date"
+
+  - id: pc_earnest_money
+    type: key_value
+    key: "Earnest Money"
+    target_path: "deal.transaction_information.earnest_money_deposit"
+    transform: to_float
+
+  - id: pc_seller_concessions
+    type: key_value
+    key: "Seller Concessions"
+    target_path: "deal.transaction_information.seller_concessions"
+
+  # ----------------------------------------------------------
+  # 2. REGEX RULES
+  # ----------------------------------------------------------
+  - id: pc_purchase_price_regex
+    type: regex
+    pattern: '(?:Purchase\s+Price|Sale\s+Price|Price)[:\s]*\$?([\d,]+(?:\.\d{2})?)'
+    group: 1
+    key: "pc_purchase_price"
+    target_path: "deal.collateral.subject_property.valuation.sales_price"
+    transform: to_float
+
+  - id: pc_closing_date_regex
+    type: regex
+    pattern: '(?:Closing\s+Date|Settlement\s+Date|Close\s+of\s+Escrow)[:\s]*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "pc_closing_date"
+    target_path: "deal.transaction_information.closing_date"
+
+  - id: pc_seller_concessions_regex
+    type: regex
+    pattern: '(?:Seller\s+Concessions?|Seller\s+Paid\s+Costs?)[:\s]*\$?([\d,]+(?:\.\d{2})?)'
+    group: 1
+    key: "pc_seller_concessions"
+    target_path: "deal.transaction_information.seller_concessions"
+    transform: to_float
+
+  - id: pc_earnest_money_regex
+    type: regex
+    pattern: '(?:Earnest\s+Money|Good\s+Faith\s+Deposit)[:\s]*\$?([\d,]+(?:\.\d{2})?)'
+    group: 1
+    key: "pc_earnest_money"
+    target_path: "deal.transaction_information.earnest_money_deposit"
+    transform: to_float
+
+  - id: pc_property_address_regex
+    type: regex
+    pattern: '(?:Property\s+Address|Subject\s+Property|Located\s+at)[:\s]*([^\n]{10,80})'
+    group: 1
+    key: "pc_property_address"
+    target_path: "deal.collateral.subject_property.address"
+
+  # ----------------------------------------------------------
+  # 3. STATIC FIELDS
+  # ----------------------------------------------------------
+  - id: source_doc_type
+    type: static
+    value: "PurchaseContract"
+    key: "pc_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: buyer_party_role
+    type: static
+    value: "Borrower"
+    key: "pc_party_role_buyer"
+    target_path: "deal.parties[0].party_role.value"
+
+  - id: seller_party_role
+    type: static
+    value: "PropertySeller"
+    key: "pc_party_role_seller"
+    target_path: "deal.parties[1].party_role.value"

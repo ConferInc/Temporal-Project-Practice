@@ -108,6 +108,74 @@ rules:
       2: "paystub_pay_period_end"
 
   # ----------------------------------------------------------
+  # 3b. OCR FALLBACK REGEX RULES
+  # ----------------------------------------------------------
+  # These patterns catch data from OCR plain-text output when
+  # markdown key-value and table patterns are unavailable.
+  # Placed BEFORE table rules so table extraction (Dockling path)
+  # overwrites these if both match.
+
+  # "123 - John R. Doe"  (OCR employee ID + name line)
+  - id: employee_name_regex
+    type: regex
+    pattern: '^\d+\s*-\s+([A-Za-z][A-Za-z. ''-]+[A-Za-z.])'
+    flags: [MULTILINE]
+    group: 1
+    key: "paystub_employee_name"
+    target_path: "deal.parties[0].individual.full_name"
+
+  # "NET PAY\n$418.00 $836.00"  → current net pay
+  - id: net_pay_current_regex
+    type: regex
+    pattern: '(?:NET PAY|Net Pay)[:\s]+\$?([\d,]+\.\d{2})'
+    group: 1
+    key: "paystub_current_net_pay"
+    target_path: "deal.parties[0].income_verification_fragments[0].current_net_pay"
+
+  # "NET PAY\n$418.00 $836.00"  → YTD net pay (second amount)
+  - id: net_pay_ytd_regex
+    type: regex
+    pattern: '(?:NET PAY|Net Pay)[:\s]+\$?[\d,]+\.\d{2}\s+\$?([\d,]+\.\d{2})'
+    group: 1
+    key: "paystub_ytd_net_pay"
+    target_path: "deal.parties[0].income_verification_fragments[0].ytd_net_pay"
+
+  # "Gross Pay\n450.00\n900.00"  → current gross pay
+  - id: gross_pay_current_regex
+    type: regex
+    pattern: '(?:Gross Pay|GROSS PAY|TOTAL GROSS)[:\s]+\$?([\d,]+\.\d{2})'
+    group: 1
+    key: "paystub_current_gross_pay"
+    target_path: "deal.parties[0].income_verification_fragments[0].current_gross_pay"
+
+  # "Gross Pay\n450.00\n900.00"  → YTD gross pay (second amount)
+  - id: gross_pay_ytd_regex
+    type: regex
+    pattern: '(?:Gross Pay|GROSS PAY|TOTAL GROSS)[:\s]+\$?[\d,]+\.\d{2}\s+\$?([\d,]+\.\d{2})'
+    group: 1
+    key: "paystub_ytd_gross_amount"
+    target_path: "deal.parties[0].income_verification_fragments[0].ytd_gross_amount"
+
+  # "Pay Period 06/02/06 to 06/16/06"  (OCR format)
+  - id: pay_period_ocr_regex
+    type: regex
+    pattern: 'Pay Period\s+(\d{2}/\d{2}/\d{2,4})\s+to\s+(\d{2}/\d{2}/\d{2,4})'
+    groups:
+      1: "deal.parties[0].income_verification_fragments[0].pay_period_start"
+      2: "deal.parties[0].income_verification_fragments[0].pay_period_end"
+    groups_keys:
+      1: "paystub_pay_period_start"
+      2: "paystub_pay_period_end"
+
+  # "Pay Date: 06/19/06"  (OCR format)
+  - id: pay_date_regex
+    type: regex
+    pattern: 'Pay Date[:\s]+(\d{2}/\d{2}/\d{2,4})'
+    group: 1
+    key: "paystub_advice_date"
+    target_path: "deal.parties[0].income_verification_fragments[0].advice_date"
+
+  # ----------------------------------------------------------
   # 4. TABLE RULES
   # ----------------------------------------------------------
 

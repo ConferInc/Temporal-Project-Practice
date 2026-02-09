@@ -279,6 +279,10 @@ class RuleEngine:
         "Loan Estimate":         "LoanEstimate",
         "Loan Estimate (H-24)":  "LoanEstimate",
         "Closing Disclosure":    "ClosingDisclosure",
+        "Government ID":         "DriversLicense",
+        "Sales Contract":        "PurchaseContract",
+        "Proof of Insurance":    "InsuranceDecPage",
+        "Title Commitment":      "TitleCommitment",
     }
 
     def _load_config(self, document_type: str) -> Optional[dict]:

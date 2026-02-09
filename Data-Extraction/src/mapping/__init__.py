@@ -1,10 +1,10 @@
-# Mapping package - Rule engine, canonical assembler, MISMO emitter
+# Mapping package - Rule engine, canonical assembler, relational transformer
 from .rule_engine import extract_with_rules
 from .canonical_assembler import CanonicalAssembler
-from .mismo_emitter import emit_mismo_xml
+from .relational_transformer import RelationalTransformer
 
 __all__ = [
     'extract_with_rules',
     'CanonicalAssembler',
-    'emit_mismo_xml',
+    'RelationalTransformer',
 ]

@@ -1,0 +1,113 @@
+# ============================================================
+# InsuranceDecPage.yaml — Deterministic extraction rules for
+# Homeowners Insurance Declarations Pages
+# ============================================================
+# Anchors: "Declarations Page", "Homeowners Policy",
+#          "Policy Number", "Policy Period"
+# Extraction: key_value + regex rules for policy fields
+# ============================================================
+
+document_type: "Proof of Insurance"
+schema_version: "1.0"
+
+rules:
+
+  # ----------------------------------------------------------
+  # 1. KEY-VALUE RULES
+  # ----------------------------------------------------------
+  - id: ins_policy_number
+    type: key_value
+    key: "Policy Number"
+    target_path: "deal.insurance.policy_number"
+
+  - id: ins_insurer_name
+    type: key_value
+    key: "Insurance Company"
+    target_path: "deal.insurance.insurer_name"
+
+  - id: ins_insured_name
+    type: key_value
+    key: "Named Insured"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: ins_annual_premium
+    type: key_value
+    key: "Annual Premium"
+    target_path: "deal.insurance.annual_premium"
+    transform: to_float
+
+  - id: ins_effective_date
+    type: key_value
+    key: "Effective Date"
+    target_path: "deal.insurance.effective_date"
+
+  - id: ins_expiration_date
+    type: key_value
+    key: "Expiration Date"
+    target_path: "deal.insurance.expiration_date"
+
+  - id: ins_property_address
+    type: key_value
+    key: "Property Location"
+    target_path: "deal.collateral.subject_property.address"
+
+  - id: ins_coverage_amount
+    type: key_value
+    key: "Coverage A"
+    target_path: "deal.insurance.dwelling_coverage"
+    transform: to_float
+
+  # ----------------------------------------------------------
+  # 2. REGEX RULES
+  # ----------------------------------------------------------
+  - id: ins_policy_number_regex
+    type: regex
+    pattern: '(?:Policy\s+(?:No|Number|#))[:\s]*([A-Z0-9-]{5,25})'
+    group: 1
+    key: "ins_policy_number"
+    target_path: "deal.insurance.policy_number"
+
+  - id: ins_annual_premium_regex
+    type: regex
+    pattern: '(?:Annual\s+Premium|Total\s+Premium|Premium\s+Amount)[:\s]*\$?([\d,]+(?:\.\d{2})?)'
+    group: 1
+    key: "ins_annual_premium"
+    target_path: "deal.insurance.annual_premium"
+    transform: to_float
+
+  - id: ins_effective_date_regex
+    type: regex
+    pattern: '(?:Effective\s+Date|Policy\s+Period\s+From)[:\s]*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "ins_effective_date"
+    target_path: "deal.insurance.effective_date"
+
+  - id: ins_expiration_date_regex
+    type: regex
+    pattern: '(?:Expiration\s+Date|Policy\s+Period\s+To|to)\s*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "ins_expiration_date"
+    target_path: "deal.insurance.expiration_date"
+
+  - id: ins_coverage_a_regex
+    type: regex
+    pattern: '(?:Coverage\s+A|Dwelling)[:\s]*\$?([\d,]+(?:\.\d{2})?)'
+    group: 1
+    key: "ins_coverage_amount"
+    target_path: "deal.insurance.dwelling_coverage"
+    transform: to_float
+
+  # ----------------------------------------------------------
+  # 3. STATIC FIELDS
+  # ----------------------------------------------------------
+  - id: source_doc_type
+    type: static
+    value: "InsuranceDecPage"
+    key: "ins_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: insured_party_role
+    type: static
+    value: "Borrower"
+    key: "ins_party_role"
+    target_path: "deal.parties[0].party_role.value"

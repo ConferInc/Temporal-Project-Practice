@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 """
-Data-Extraction Pipeline — Phase 1 CLI
+Data-Extraction Pipeline — Production CLI
 
 Flow:
-  Input → ensure_pdf() → split_document_blob() → Loop[unified_extract] → JSON
+  Input → ensure_pdf() → split_document_blob()
+    → Extract (Rules) → Assemble (Canonical) → Validate → Transform (Relational)
+    → Output JSONs
 
 Artifacts are saved in output/{stem}/:
-  1_raw.txt          – raw OCR or markdown
-  1b_merged_flat.json– merged flat data (multi-doc only)
-  2_canonical.json   – canonical model
-  3_mismo.xml        – MISMO 3.4 XML
-  report.md          – run summary
+  1_raw.txt                – raw OCR or markdown
+  1b_merged_flat.json      – merged flat data (multi-doc only)
+  2_canonical.json         – canonical model (Nested View)
+  3_relational_payload.json– Supabase table payload (Database View)
+  report.md                – run summary
 """
 
 import argparse
@@ -73,10 +75,11 @@ Examples:
             sys.exit(1)
 
     print("=" * 60)
-    print("  DATA EXTRACTION PIPELINE  (Phase 1)")
+    print("  DATA EXTRACTION PIPELINE")
     print("=" * 60)
 
     pdf_paths: list[str] = []
+    image_source_paths: set[str] = set()  # tracks files converted from images
     for rp in raw_paths:
         print(f"  Converting: {rp.name} ... ", end="")
         pdf_path = ensure_pdf(str(rp))
@@ -84,7 +87,8 @@ Examples:
         if str(Path(pdf_path).resolve()) == str(rp.resolve()):
             print("PDF (passthrough)")
         else:
-            print(f"→ {Path(pdf_path).name}")
+            image_source_paths.add(pdf_path)
+            print(f"→ {Path(pdf_path).name} (image source → OCR)")
 
     # =====================================================================
     # PHASE 1b: Document Splitting  (always attempt on multi-page PDFs)
@@ -155,14 +159,20 @@ Examples:
 
     try:
         # =================================================================
-        # STEP 2: Extract
+        # STEP 1: Extract & Assemble
         # =================================================================
         from src.logic.unified_extraction import unified_extract, unified_extract_multi
-        from src.mapping.mismo_emitter import emit_mismo_xml
+        from src.logic.validator import DataValidator
+        from src.mapping.relational_transformer import RelationalTransformer
+
+        _MIN_TEXT_LENGTH = 50  # fallback threshold for scanned PDFs
 
         if args.multi:
-            print(f"  [1/4] Processing {len(chunk_paths)} documents...")
-            multi_result = unified_extract_multi(chunk_paths)
+            print(f"  [1/5] Processing {len(chunk_paths)} documents...")
+            multi_result = unified_extract_multi(
+                chunk_paths,
+                force_ocr_paths=image_source_paths,
+            )
 
             canonical_data = multi_result.get("canonical_data", {})
             classifications = multi_result.get("classifications", [])
@@ -184,11 +194,26 @@ Examples:
                 "raw_extraction_summary": raw_summary,
             }
         else:
-            print("  [1/4] Classifying & extracting raw content...")
+            is_image_source = chunk_paths[0] in image_source_paths
+            print(f"  [1/5] Classifying & extracting raw content"
+                  f"{' (OCR — image source)' if is_image_source else ''}...")
             result = unified_extract(
                 chunk_paths[0],
                 output_mode=args.mode,
+                force_ocr=is_image_source,
             )
+
+            # Fallback: if Dockling returned too little text, retry with OCR
+            if (not is_image_source
+                    and result.get("_raw_text_length", 0) < _MIN_TEXT_LENGTH):
+                raw_len = result.get("_raw_text_length", 0)
+                print(f"  [WARN] Low text yield ({raw_len} chars), "
+                      f"retrying with OCR...")
+                result = unified_extract(
+                    chunk_paths[0],
+                    output_mode=args.mode,
+                    force_ocr=True,
+                )
 
         if not args.multi:
             classification = result.get("classification", {})
@@ -206,13 +231,13 @@ Examples:
             "",
         ]
 
-        # --- Save raw ---
-        print("  [2/4] Saving raw extraction...")
+        # =================================================================
+        # STEP 2: Save raw extraction
+        # =================================================================
+        print("  [2/5] Saving raw extraction & canonical...")
         raw_path = run_dir / "1_raw.txt"
         raw_path.write_text(raw_summary, encoding="utf-8")
 
-        # --- Save canonical ---
-        print("  [3/4] Saving canonical model...")
         canonical_path = run_dir / "2_canonical.json"
         canonical_path.write_text(
             json.dumps(canonical_data, indent=2, ensure_ascii=False, default=str),
@@ -226,49 +251,56 @@ Examples:
             "",
         ]
 
-        # --- MISMO XML ---
-        print("  [4/4] Generating MISMO 3.4 XML...")
-        mismo_xml = emit_mismo_xml(canonical_data)
+        # =================================================================
+        # STEP 3: Validate canonical data
+        # =================================================================
+        print("  [3/5] Validating data quality...")
+        validator = DataValidator()
+        canonical_data, validation_errors = validator.validate(canonical_data)
 
-        xml_path = run_dir / "3_mismo.xml"
-        if mismo_xml:
-            xml_path.write_text(mismo_xml, encoding="utf-8")
-            report_lines.append(f"- **MISMO XML:** Generated ({len(mismo_xml)} chars)")
+        if validation_errors:
+            print()
+            print(f"  [WARN] Validation Issues Found: {len(validation_errors)}")
+            for err in validation_errors:
+                print(f"    - {err}")
+            print()
+
+            report_lines += ["## Validation Issues"]
+            for err in validation_errors:
+                report_lines.append(f"- {err}")
+            report_lines.append("")
         else:
-            xml_path.write_text("<!-- No data to emit -->", encoding="utf-8")
-            report_lines.append("- **MISMO XML:** Empty (no deal data)")
-        report_lines.append("")
-
-        # --- Critical fields ---
-        critical_paths = [
-            ("Borrower Name",  "deal.parties.0.individual.full_name"),
-            ("Borrower SSN",   "deal.parties.0.individual.ssn"),
-            ("Loan Purpose",   "deal.transaction_information.loan_purpose.value"),
-            ("Property Addr",  "deal.collateral.subject_property.address"),
-            ("Loan Amount",    "deal.disclosures_and_closing.promissory_note.principal_amount"),
-        ]
-
-        missing = []
-        present = []
-        for label, path in critical_paths:
-            val = _deep_get(canonical_data, path)
-            if val:
-                present.append(f"- [x] **{label}:** `{val}`")
-            else:
-                missing.append(f"- [ ] **{label}:** MISSING")
-
-        report_lines += ["## Critical Fields"]
-        report_lines += present + missing
-        report_lines.append("")
-
-        if missing:
+            print("  [PASS] All validation checks passed.")
             report_lines += [
-                "## Warnings",
-                f"- {len(missing)} critical field(s) missing.",
+                "## Validation",
+                "- All checks passed.",
                 "",
             ]
 
-        # --- Finalize ---
+        # =================================================================
+        # STEP 4: Relational Payload (Database View)
+        # =================================================================
+        print("  [4/5] Generating relational payload...")
+        rt = RelationalTransformer()
+        relational_payload = rt.transform(canonical_data)
+
+        relational_path = run_dir / "3_relational_payload.json"
+        relational_path.write_text(
+            json.dumps(relational_payload, indent=2, ensure_ascii=False, default=str),
+            encoding="utf-8",
+        )
+        row_count = relational_payload.get("_metadata", {}).get("total_rows", 0)
+        table_count = relational_payload.get("_metadata", {}).get("table_count", 0)
+        report_lines += [
+            "## Database Payload",
+            f"- **Relational Payload:** {row_count} rows across {table_count} tables",
+            "",
+        ]
+
+        # =================================================================
+        # STEP 5: Finalize report
+        # =================================================================
+        print("  [5/5] Writing report...")
         t_end = datetime.now()
         elapsed = (t_end - t_start).total_seconds()
         report_lines += [
@@ -290,7 +322,8 @@ Examples:
         print(f"  Confidence:       {confidence:.0%}")
         print(f"  Extraction Tool:  {tool_used}")
         print(f"  Canonical Fields: {field_count}")
-        print(f"  Missing Critical: {len(missing)}")
+        print(f"  Validation:       {'PASS' if not validation_errors else f'{len(validation_errors)} issue(s)'}")
+        print(f"  DB Payload:       {row_count} rows / {table_count} tables")
         print(f"  Elapsed:          {elapsed:.2f}s")
         if did_split:
             print(f"  Auto-Split:       {len(chunk_paths)} chunks")
@@ -298,7 +331,7 @@ Examples:
         print(f"  Artifacts:")
         print(f"    {raw_path}")
         print(f"    {canonical_path}")
-        print(f"    {xml_path}")
+        print(f"    {relational_path}")
         print(f"    {report_path}")
         print("=" * 60)
 
@@ -326,25 +359,6 @@ def _count_fields(d, depth=0):
     if isinstance(d, list):
         return sum(_count_fields(v, depth + 1) for v in d)
     return 1 if d is not None else 0
-
-
-def _deep_get(data, dotted_path):
-    """Get a value from nested dict using dot notation."""
-    parts = dotted_path.split(".")
-    current = data
-    for part in parts:
-        if current is None:
-            return None
-        if isinstance(current, dict):
-            current = current.get(part)
-        elif isinstance(current, list):
-            try:
-                current = current[int(part)]
-            except (ValueError, IndexError):
-                return None
-        else:
-            return None
-    return current
 
 
 if __name__ == "__main__":

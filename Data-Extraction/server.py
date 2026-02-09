@@ -19,7 +19,6 @@ from fastmcp import FastMCP
 from src.logic.classifier import classify_document
 from src.logic.unified_extraction import unified_extract, unified_extract_multi
 from src.extractors.dockling_tool import extract_with_dockling
-from src.mapping.mismo_emitter import emit_mismo_xml
 from src.preprocessing.converter import ensure_pdf, cleanup_temp
 from src.preprocessing.splitter import split_document_blob, cleanup_chunks
 from src.utils.logging import logger
@@ -73,20 +72,16 @@ def parse_document_with_dockling(file_path: str) -> str:
 @mcp.tool()
 def generate_mismo_xml_tool(canonical_data: dict) -> dict:
     """
-    Convert Canonical JSON to MISMO v3.4 XML using deterministic emitter.
-
-    Args:
-        canonical_data: The canonical JSON output from extraction.
-
-    Returns:
-        Dictionary containing the MISMO XML string.
+    [DEPRECATED] MISMO XML output has been removed.
+    Pipeline now outputs relational DB payloads instead.
+    This tool is kept for API backward compatibility.
     """
-    try:
-        xml_str = emit_mismo_xml(canonical_data)
-        return {"mismo_xml": xml_str, "success": bool(xml_str)}
-    except Exception as e:
-        logger.error(f"Error generating MISMO XML: {e}")
-        return {"error": str(e)}
+    return {
+        "mismo_xml": "",
+        "success": False,
+        "deprecated": True,
+        "message": "MISMO XML output removed. Use RelationalTransformer instead.",
+    }
 
 
 @mcp.tool()

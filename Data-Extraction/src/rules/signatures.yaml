@@ -136,3 +136,74 @@ signatures:
       - 'CFPB\s+H-24'
     minimum_score: 0.25
     max_pages: 3
+
+  # ----- Driver's License / Government ID -----
+  - doc_type: "Government ID"
+    required_keywords: []
+    keywords:
+      - "driver license"
+      - "driver's license"
+      - "identification card"
+      - "class"
+      - "restrictions"
+      - "date of birth"
+      - "expiration date"
+    regex_patterns:
+      - 'DRIVER\s+LICEN[SC]E'
+      - '\bDL\s*(?:NO|NUMBER|#)'
+      - '\bCLASS\s+[A-Z]'
+    minimum_score: 0.30
+    max_pages: 1
+
+  # ----- Purchase Contract / Sales Agreement -----
+  - doc_type: "Sales Contract"
+    required_keywords: []
+    keywords:
+      - "purchase and sale agreement"
+      - "sales contract"
+      - "buyer agrees to buy"
+      - "purchase price"
+      - "earnest money"
+      - "closing date"
+      - "seller concessions"
+    regex_patterns:
+      - 'Purchase\s+and\s+Sale\s+Agreement'
+      - 'Sales\s+Contract'
+      - 'Buyer\s+agrees?\s+to\s+buy'
+    minimum_score: 0.25
+    max_pages: 15
+
+  # ----- Insurance Declarations Page -----
+  - doc_type: "Proof of Insurance"
+    required_keywords: []
+    keywords:
+      - "declarations page"
+      - "homeowners policy"
+      - "policy number"
+      - "policy period"
+      - "annual premium"
+      - "named insured"
+      - "coverage a"
+    regex_patterns:
+      - 'Declarations?\s+Page'
+      - 'Homeowners?\s+Policy'
+      - 'Policy\s+(?:No|Number|#)'
+    minimum_score: 0.25
+    max_pages: 3
+
+  # ----- Title Commitment -----
+  - doc_type: "Title Commitment"
+    required_keywords: []
+    keywords:
+      - "commitment for title insurance"
+      - "schedule a"
+      - "proposed insured"
+      - "title company"
+      - "vested in"
+      - "effective date"
+    regex_patterns:
+      - 'Commitment\s+for\s+Title\s+Insurance'
+      - 'Schedule\s+A'
+      - 'Proposed\s+Insured'
+    minimum_score: 0.25
+    max_pages: 8

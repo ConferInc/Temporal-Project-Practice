@@ -1,0 +1,114 @@
+# ============================================================
+# DriversLicense.yaml — Deterministic extraction rules for
+# Driver's Licenses / Government IDs
+# ============================================================
+# Anchors: "DRIVER LICENSE", "CLASS", "RESTRICTIONS", state names
+# Extraction: key_value + regex rules for ID fields
+# ============================================================
+
+document_type: "Government ID"
+schema_version: "1.0"
+
+rules:
+
+  # ----------------------------------------------------------
+  # 1. KEY-VALUE RULES
+  # ----------------------------------------------------------
+  - id: dl_full_name
+    type: key_value
+    key: "Name"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: dl_license_number
+    type: key_value
+    key: "License Number"
+    target_path: "deal.parties[0].individual.license_number"
+
+  - id: dl_date_of_birth
+    type: key_value
+    key: "Date of Birth"
+    target_path: "deal.parties[0].individual.dob"
+
+  - id: dl_expiration_date
+    type: key_value
+    key: "Expiration Date"
+    target_path: "deal.parties[0].individual.id_expiration_date"
+
+  - id: dl_issue_date
+    type: key_value
+    key: "Issue Date"
+    target_path: "deal.parties[0].individual.id_issue_date"
+
+  - id: dl_address_street
+    type: key_value
+    key: "Address"
+    target_path: "deal.parties[0].addresses[0].street"
+
+  - id: dl_class
+    type: key_value
+    key: "Class"
+    target_path: "deal.parties[0].individual.license_class"
+
+  - id: dl_restrictions
+    type: key_value
+    key: "Restrictions"
+    target_path: "deal.parties[0].individual.license_restrictions"
+
+  # ----------------------------------------------------------
+  # 2. REGEX RULES
+  # ----------------------------------------------------------
+  - id: dl_license_number_regex
+    type: regex
+    pattern: '(?:DL|LIC|LICENSE)\s*(?:NO|NUMBER|#)?[:\s]*([A-Z0-9]{5,15})'
+    group: 1
+    key: "dl_license_number"
+    target_path: "deal.parties[0].individual.license_number"
+
+  - id: dl_dob_regex
+    type: regex
+    pattern: '(?:DOB|Date of Birth|BIRTH DATE)[:\s]*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "dl_date_of_birth"
+    target_path: "deal.parties[0].individual.dob"
+
+  - id: dl_expiration_regex
+    type: regex
+    pattern: '(?:EXP|EXPIRES?|Expiration)[:\s]*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "dl_expiration_date"
+    target_path: "deal.parties[0].individual.id_expiration_date"
+
+  - id: dl_issue_date_regex
+    type: regex
+    pattern: '(?:ISS|ISSUED?|Issue Date)[:\s]*(\d{2}[/-]\d{2}[/-]\d{4})'
+    group: 1
+    key: "dl_issue_date"
+    target_path: "deal.parties[0].individual.id_issue_date"
+
+  - id: dl_address_city_state_zip
+    type: regex
+    pattern: '(?:Address|ADDR)[:\s]*.*?\n\s*([A-Za-z ]+),?\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)'
+    flags: [DOTALL]
+    groups:
+      1: "deal.parties[0].addresses[0].city"
+      2: "deal.parties[0].addresses[0].state"
+      3: "deal.parties[0].addresses[0].zip_code"
+    groups_keys:
+      1: "dl_address_city"
+      2: "dl_address_state"
+      3: "dl_address_zip"
+
+  # ----------------------------------------------------------
+  # 3. STATIC FIELDS
+  # ----------------------------------------------------------
+  - id: source_doc_type
+    type: static
+    value: "DriversLicense"
+    key: "dl_source_doc_type"
+    target_path: "document_metadata.source_document_type"
+
+  - id: party_role
+    type: static
+    value: "Borrower"
+    key: "dl_party_role"
+    target_path: "deal.parties[0].party_role.value"

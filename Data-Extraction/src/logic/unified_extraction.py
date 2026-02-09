@@ -14,6 +14,7 @@ def unified_extract(
     file_path: str,
     existing_canonical: Optional[Dict] = None,
     output_mode: str = "nested",
+    force_ocr: bool = False,
 ):
     """Process a single document through the extraction pipeline.
 
@@ -23,6 +24,8 @@ def unified_extract(
         output_mode: "nested" (default, backward-compatible) or "flat"
                      When "flat", uses two-stage extraction:
                      RuleEngine(flat) → CanonicalAssembler → deep dict
+        force_ocr: when True, bypass classifier routing and use Doctr OCR
+                   (for image-origin files or scanned PDF fallback)
     """
     logger.info(f"Starting unified extraction for {file_path}")
 
@@ -31,8 +34,13 @@ def unified_extract(
     extractor = decision.get("recommended_tool")
     document_type = decision.get("document_category")
 
-    # 2. Extract raw content  (always prefer Docling for markdown)
-    if extractor == "parse_document_with_dockling":
+    # 2. Extract raw content
+    if force_ocr:
+        # Forced OCR: image-origin files or scanned-PDF fallback
+        logger.info(f"force_ocr=True — routing to Doctr OCR")
+        raw_data = extract_with_doctr(file_path)
+        extraction_type = "text"
+    elif extractor == "parse_document_with_dockling":
         raw_data = extract_with_dockling(file_path)
         extraction_type = "markdown"
     elif extractor == "ocr_document":
@@ -94,11 +102,13 @@ def unified_extract(
 
     # Build summary for raw_extraction (avoid dumping entire content)
     if isinstance(raw_data, dict):
-        raw_summary = raw_data.get("markdown", "")[:500] + "..."
+        raw_text = raw_data.get("markdown", "")
     elif isinstance(raw_data, str):
-        raw_summary = raw_data[:500] + "..."
+        raw_text = raw_data
     else:
-        raw_summary = str(raw_data)[:500] + "..."
+        raw_text = str(raw_data)
+
+    raw_summary = raw_text[:500] + "..." if len(raw_text) > 500 else raw_text
 
     result = {
         "classification": decision,
@@ -106,12 +116,16 @@ def unified_extract(
         "extracted_fields": extracted_fields,
         "canonical_data": canonical_data,
         "normalized_data": normalized_data,
+        "_raw_text_length": len(raw_text),
     }
 
     return result
 
 
-def unified_extract_multi(file_paths: List[str]) -> dict:
+def unified_extract_multi(
+    file_paths: List[str],
+    force_ocr_paths: Optional[set] = None,
+) -> dict:
     """Process multiple documents, merge, and assemble into single canonical.
 
     Uses the two-stage flat extraction pipeline:
@@ -121,6 +135,8 @@ def unified_extract_multi(file_paths: List[str]) -> dict:
 
     Args:
         file_paths: list of paths to input PDFs/images
+        force_ocr_paths: set of file paths that should use Doctr OCR
+                         (image-origin files)
 
     Returns:
         Deep canonical JSON dict with merged data from all documents
@@ -133,8 +149,21 @@ def unified_extract_multi(file_paths: List[str]) -> dict:
     extractions = []
     all_classifications = []
 
+    _MIN_TEXT_LENGTH = 50
+
     for path in file_paths:
-        result = unified_extract(path, output_mode="flat")
+        ocr = force_ocr_paths is not None and path in force_ocr_paths
+        result = unified_extract(path, output_mode="flat", force_ocr=ocr)
+
+        # Fallback: if Dockling returned too little text, retry with OCR
+        if (not ocr
+                and result.get("_raw_text_length", 0) < _MIN_TEXT_LENGTH):
+            logger.warning(
+                f"Low text yield ({result.get('_raw_text_length', 0)} chars) "
+                f"for {path}, retrying with OCR..."
+            )
+            result = unified_extract(path, output_mode="flat", force_ocr=True)
+
         doc_type = result["classification"]["document_category"]
         flat_data = result["extracted_fields"]
         extractions.append((doc_type, flat_data))

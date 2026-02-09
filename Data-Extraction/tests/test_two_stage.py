@@ -718,5 +718,576 @@ class TestPaystubRawKeyFallback:
         assert ivf["federal_tax_status"] == "Married"
 
 
+# ==================================================================
+# Relational Transformer tests
+# ==================================================================
+
+from src.mapping.relational_transformer import RelationalTransformer
+
+
+class TestRelationalTransformer:
+    """Tests for the RelationalTransformer (Canonical JSON → Supabase payload)."""
+
+    SAMPLE_CANONICAL = {
+        "deal": {
+            "parties": [
+                {
+                    "individual": {
+                        "ssn": "112-09-0000",
+                        "full_name": "Samuel Schultz",
+                        "home_phone": "607-279-0708",
+                        "dob": "03/29/1979",
+                        "years_school": 14,
+                        "marital_status": "Unmarried",
+                        "ethnicity": "NotHispanicOrLatino",
+                        "race": "White",
+                        "sex": "Male",
+                    },
+                    "party_role": {"value": "Borrower"},
+                    "addresses": [
+                        {
+                            "street": "46951 Hinkle Deegan Lake Road",
+                            "city_state_zip": "Willard, WI 54493",
+                        }
+                    ],
+                    "total_assets": 4000.0,
+                    "total_liabilities": 29697.0,
+                    "total_monthly_payments": 862.0,
+                    "employment": [
+                        {
+                            "employer_name": "Thompson-Bartoletti Group",
+                            "position_title": "Warehouse Manager",
+                            "business_phone": "862-244-1001",
+                            "monthly_income": {
+                                "base": 1733.0,
+                                "overtime": 580.0,
+                                "total": 2313.0,
+                            },
+                        }
+                    ],
+                },
+                {
+                    "individual": {
+                        "ssn": "999-60-5555",
+                        "full_name": "JOHNWILLOW",
+                    },
+                    "party_role": {"value": "Borrower"},
+                    "addresses": [{"street": "123MainStreet Denver,CO80202"}],
+                    "employment": [
+                        {
+                            "employer_name": "ButterBuilders",
+                            "employer_ein": "12-3523123",
+                            "income_type": {"value": "Base"},
+                            "employment_status": {"value": "Current"},
+                            "monthly_income": {"base": 8000.0},
+                        }
+                    ],
+                },
+                {
+                    "company_name": "Some Financial Group, LLC",
+                    "party_role": {"value": "Lender"},
+                },
+            ],
+            "collateral": {
+                "subject_property": {
+                    "address": "748 Thompson Island, Milwaukee, WI 53288",
+                    "number_of_units": 1,
+                    "occupancy_type": {"value": "PrimaryResidence"},
+                    "estate_type": "FeeSimple",
+                    "title_held_names": "Samuel Schultz",
+                    "valuation": {"sales_price": 72600.0},
+                }
+            },
+            "transaction_information": {
+                "mortgage_type": {"value": "FHA"},
+                "loan_purpose": {"value": "Purchase"},
+                "amortization_type": {"value": "Fixed"},
+                "application_date": "01/09/2017",
+                "estimated_prepaid_items": 1210.33,
+                "estimated_closing_costs": 6311.0,
+                "pmi_funding_fee": 1224.34,
+                "final_loan_amount": 69962.0,
+            },
+            "disclosures_and_closing": {
+                "promissory_note": {
+                    "principal_amount": 71186.0,
+                    "interest_rate": "4.25",
+                    "loan_term_months": 360,
+                }
+            },
+            "identifiers": {"agency_case_number": "012-8765111-703"},
+        }
+    }
+
+    def test_transform_produces_all_tables(self):
+        """Transform should produce rows for all expected tables."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        assert "properties" in payload
+        assert "applications" in payload
+        assert "customers" in payload
+        assert "application_customers" in payload
+        assert "employments" in payload
+        assert "incomes" in payload
+        assert "demographics" in payload
+        assert "residences" in payload
+        assert "_metadata" in payload
+
+    def test_property_row(self):
+        """Property should be parsed from collateral."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        props = payload["properties"]
+        assert len(props) == 1
+        p = props[0]
+        assert p["_ref"] == "property_0"
+        assert p["address"]["street"] == "748 Thompson Island"
+        assert p["address"]["city"] == "Milwaukee"
+        assert p["address"]["state"] == "WI"
+        assert p["address"]["zip"] == "53288"
+        assert p["purchase_price"] == 72600.0
+
+    def test_application_row(self):
+        """Application should contain loan amount, key_information, and identifiers."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        apps = payload["applications"]
+        assert len(apps) == 1
+        a = apps[0]
+        assert a["loan_amount"] == 69962.0
+        assert a["application_number"] == "012-8765111-703"
+        assert a["occupancy_type"] == "PrimaryResidence"
+        assert a["status"] == "imported"
+        ki = a["key_information"]
+        assert ki["mortgage_type"] == "FHA"
+        assert ki["loan_purpose"] == "Purchase"
+        assert ki["amortization_type"] == "Fixed"
+
+    def test_customers_exclude_lender(self):
+        """Lender parties should not produce customer rows."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        customers = payload["customers"]
+        # 3 parties in canonical, but Lender should be excluded → 2 customers
+        assert len(customers) == 2
+        names = [c.get("last_name") or c.get("first_name") for c in customers]
+        assert "Schultz" in names
+
+    def test_customer_name_splitting(self):
+        """Full name should be split into first_name + last_name."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        samuel = payload["customers"][0]
+        assert samuel["first_name"] == "Samuel"
+        assert samuel["last_name"] == "Schultz"
+        assert samuel["ssn_encrypted"] == "112-09-0000"
+        assert samuel["date_of_birth"] == "1979-03-29"
+        assert samuel["phone_home"] == "607-279-0708"
+
+    def test_customer_date_normalization(self):
+        """DOB should be converted from MM/DD/YYYY to YYYY-MM-DD."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+        assert payload["customers"][0]["date_of_birth"] == "1979-03-29"
+
+    def test_employments(self):
+        """Each employment entry should generate an employments row."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        emps = payload["employments"]
+        # Party 0: 1 employment, Party 1: 1 employment → 2 total
+        assert len(emps) == 2
+        assert emps[0]["employer_name"] == "Thompson-Bartoletti Group"
+        assert emps[0]["position_title"] == "Warehouse Manager"
+        assert emps[1]["employer_name"] == "ButterBuilders"
+
+    def test_incomes_from_monthly_income(self):
+        """Monthly income fields should decompose into income rows."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        incomes = payload["incomes"]
+        # Party 0: base + overtime (total skipped) = 2
+        # Party 1: base = 1
+        # Total = 3
+        assert len(incomes) == 3
+        base_inc = [i for i in incomes if i["income_type"] == "Base"]
+        assert len(base_inc) == 2
+        overtime_inc = [i for i in incomes if i["income_type"] == "Overtime"]
+        assert len(overtime_inc) == 1
+        assert overtime_inc[0]["monthly_amount"] == 580.0
+
+    def test_demographics(self):
+        """Demographics should be generated for parties with ethnicity/race/sex."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        demos = payload["demographics"]
+        # Party 0 has all 3 fields, Party 1 has none → 1 row
+        assert len(demos) == 1
+        d = demos[0]
+        assert d["ethnicity"] == ["NotHispanicOrLatino"]
+        assert d["race"] == ["White"]
+        assert d["sex"] == "Male"
+
+    def test_residences(self):
+        """Addresses should produce residence rows with parsed city/state/zip."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        res = payload["residences"]
+        assert len(res) == 2  # One per party
+
+        # Party 0: has city_state_zip
+        r0 = res[0]
+        assert r0["street_address"] == "46951 Hinkle Deegan Lake Road"
+        assert r0["city"] == "Willard"
+        assert r0["state"] == "WI"
+        assert r0["zip_code"] == "54493"
+
+    def test_application_customers_junction(self):
+        """Application-customer junction rows should link customers to app."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        acs = payload["application_customers"]
+        assert len(acs) == 2  # 2 borrower parties
+        assert acs[0]["role"] == "Borrower"
+        assert acs[0]["_customer_ref"] == "customer_0"
+        assert acs[0]["_application_ref"] == "application_0"
+
+    def test_liabilities_from_urla_totals(self):
+        """URLA total_liabilities/total_monthly_payments → liabilities row."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        liabs = payload["liabilities"]
+        # Only party 0 has total_liabilities
+        assert len(liabs) == 1
+        assert liabs[0]["unpaid_balance"] == 29697.0
+        assert liabs[0]["monthly_payment"] == 862.0
+
+    def test_metadata(self):
+        """Payload should include metadata with row/table counts."""
+        rt = RelationalTransformer()
+        payload = rt.transform(self.SAMPLE_CANONICAL)
+
+        meta = payload["_metadata"]
+        assert meta["total_rows"] > 0
+        assert meta["table_count"] > 0
+        assert "timestamp" in meta
+
+    def test_empty_canonical(self):
+        """Empty canonical input should produce empty tables."""
+        rt = RelationalTransformer()
+        payload = rt.transform({})
+
+        assert payload["customers"] == []
+        assert payload["applications"] == [payload["applications"][0]]
+        assert payload["_metadata"]["total_rows"] >= 1  # at least the app row
+
+    def test_no_collateral(self):
+        """Canonical without collateral should produce no property rows."""
+        rt = RelationalTransformer()
+        payload = rt.transform({
+            "deal": {
+                "parties": [{
+                    "individual": {"full_name": "Test User"},
+                    "party_role": {"value": "Borrower"},
+                }],
+                "transaction_information": {"final_loan_amount": 50000},
+            }
+        })
+
+        assert len(payload["properties"]) == 0
+        assert len(payload["customers"]) == 1
+
+
+class TestRelationalTransformerHelpers:
+    """Tests for static parsing helpers."""
+
+    def test_split_name_full(self):
+        first, last = RelationalTransformer._split_name("Samuel Schultz")
+        assert first == "Samuel"
+        assert last == "Schultz"
+
+    def test_split_name_single(self):
+        first, last = RelationalTransformer._split_name("JOHNWILLOW")
+        assert first == "JOHNWILLOW"
+        assert last is None
+
+    def test_split_name_three_parts(self):
+        first, last = RelationalTransformer._split_name("John William Smith")
+        assert first == "John"
+        assert last == "William Smith"
+
+    def test_split_name_explicit_parts(self):
+        first, last = RelationalTransformer._split_name(
+            full_name="Ignored", first_name="Sandy", last_name="America"
+        )
+        assert first == "Sandy"
+        assert last == "America"
+
+    def test_parse_city_state_zip(self):
+        city, state, z = RelationalTransformer._parse_city_state_zip(
+            "Willard, WI 54493"
+        )
+        assert city == "Willard"
+        assert state == "WI"
+        assert z == "54493"
+
+    def test_parse_address_standard(self):
+        result = RelationalTransformer._parse_address_to_jsonb(
+            "748 Thompson Island, Milwaukee, WI 53288"
+        )
+        assert result["street"] == "748 Thompson Island"
+        assert result["city"] == "Milwaukee"
+        assert result["state"] == "WI"
+        assert result["zip"] == "53288"
+
+    def test_parse_address_no_comma_before_state(self):
+        result = RelationalTransformer._parse_address_to_jsonb(
+            "123 Main St, Denver CO 80202"
+        )
+        assert result["street"] == "123 Main St"
+        assert result["city"] == "Denver"
+        assert result["state"] == "CO"
+        assert result["zip"] == "80202"
+
+    def test_parse_address_unparseable(self):
+        result = RelationalTransformer._parse_address_to_jsonb(
+            "123MainStreet Denver,CO80202"
+        )
+        # Falls back to full string as street
+        assert "street" in result
+
+    def test_to_iso_date(self):
+        assert RelationalTransformer._to_iso_date("03/29/1979") == "1979-03-29"
+        assert RelationalTransformer._to_iso_date("01/09/2017") == "2017-01-09"
+        assert RelationalTransformer._to_iso_date("2017-01-09") == "2017-01-09"
+        assert RelationalTransformer._to_iso_date(None) is None
+
+
+# ==================================================================
+# DataValidator tests
+# ==================================================================
+
+from src.logic.validator import DataValidator
+
+
+class TestDataValidator:
+    """Tests for the DataValidator quality gate."""
+
+    VALID_CANONICAL = {
+        "deal": {
+            "parties": [
+                {
+                    "individual": {
+                        "ssn": "112-09-0000",
+                        "full_name": "Samuel Schultz",
+                        "dob": "03/29/1979",
+                    },
+                    "party_role": {"value": "Borrower"},
+                    "employment": [
+                        {
+                            "employer_name": "ACME Corp",
+                            "monthly_income": {"base": 5000.0},
+                        }
+                    ],
+                }
+            ],
+            "transaction_information": {
+                "final_loan_amount": 250000.0,
+                "loan_purpose": {"value": "Purchase"},
+                "application_date": "01/09/2017",
+            },
+            "collateral": {
+                "subject_property": {
+                    "address": "123 Main St, Milwaukee, WI 53288"
+                }
+            },
+        }
+    }
+
+    def test_valid_data_no_errors(self):
+        """Fully populated canonical should pass with zero errors."""
+        v = DataValidator()
+        data, errors = v.validate(self.VALID_CANONICAL)
+        assert len(errors) == 0
+        assert data is self.VALID_CANONICAL
+
+    def test_missing_critical_fields(self):
+        """Missing borrower name/SSN should produce CRITICAL errors."""
+        v = DataValidator()
+        data, errors = v.validate({
+            "deal": {
+                "parties": [{"party_role": {"value": "Borrower"}}],
+            }
+        })
+        critical = [e for e in errors if e.startswith("CRITICAL:")]
+        assert len(critical) >= 2  # at least name + SSN
+
+    def test_invalid_ssn_format(self):
+        """SSN not matching XXX-XX-XXXX should produce FORMAT error."""
+        v = DataValidator()
+        _, errors = v.validate({
+            "deal": {
+                "parties": [{
+                    "individual": {
+                        "ssn": "12345",
+                        "full_name": "Test User",
+                    },
+                    "party_role": {"value": "Borrower"},
+                }],
+                "transaction_information": {
+                    "final_loan_amount": 100000,
+                    "loan_purpose": {"value": "Purchase"},
+                },
+                "collateral": {
+                    "subject_property": {"address": "123 Main St"}
+                },
+            }
+        })
+        format_errs = [e for e in errors if "FORMAT" in e and "ssn" in e]
+        assert len(format_errs) == 1
+
+    def test_negative_income(self):
+        """Negative monthly income should produce LOGIC error."""
+        v = DataValidator()
+        _, errors = v.validate({
+            "deal": {
+                "parties": [{
+                    "individual": {"ssn": "111-22-3333", "full_name": "Test"},
+                    "party_role": {"value": "Borrower"},
+                    "employment": [{
+                        "employer_name": "Corp",
+                        "monthly_income": {"base": -500.0},
+                    }],
+                }],
+                "transaction_information": {
+                    "final_loan_amount": 100000,
+                    "loan_purpose": {"value": "Purchase"},
+                },
+                "collateral": {
+                    "subject_property": {"address": "123 Main St"}
+                },
+            }
+        })
+        logic_errs = [e for e in errors if "LOGIC" in e and "negative" in e]
+        assert len(logic_errs) == 1
+
+    def test_negative_loan_amount(self):
+        """Negative loan amount should produce LOGIC error."""
+        v = DataValidator()
+        _, errors = v.validate({
+            "deal": {
+                "parties": [{
+                    "individual": {"ssn": "111-22-3333", "full_name": "Test"},
+                    "party_role": {"value": "Borrower"},
+                }],
+                "transaction_information": {
+                    "final_loan_amount": -50000,
+                    "loan_purpose": {"value": "Purchase"},
+                },
+                "collateral": {
+                    "subject_property": {"address": "123 Main"}
+                },
+            }
+        })
+        loan_errs = [e for e in errors if "final_loan_amount" in e]
+        assert len(loan_errs) == 1
+
+    def test_invalid_date_format(self):
+        """Non-standard date should produce FORMAT error."""
+        v = DataValidator()
+        _, errors = v.validate({
+            "deal": {
+                "parties": [{
+                    "individual": {
+                        "ssn": "111-22-3333",
+                        "full_name": "Test User",
+                        "dob": "March 5, 1990",
+                    },
+                    "party_role": {"value": "Borrower"},
+                }],
+                "transaction_information": {
+                    "final_loan_amount": 100000,
+                    "loan_purpose": {"value": "Purchase"},
+                },
+                "collateral": {
+                    "subject_property": {"address": "123 Main"}
+                },
+            }
+        })
+        date_errs = [e for e in errors if "FORMAT" in e and "dob" in e]
+        assert len(date_errs) == 1
+
+    def test_lender_parties_skipped(self):
+        """Lender parties should not be validated for SSN/name."""
+        v = DataValidator()
+        _, errors = v.validate({
+            "deal": {
+                "parties": [
+                    {
+                        "individual": {"ssn": "111-22-3333", "full_name": "Borrower"},
+                        "party_role": {"value": "Borrower"},
+                    },
+                    {
+                        "company_name": "Lender Corp",
+                        "party_role": {"value": "Lender"},
+                    },
+                ],
+                "transaction_information": {
+                    "final_loan_amount": 100000,
+                    "loan_purpose": {"value": "Purchase"},
+                },
+                "collateral": {
+                    "subject_property": {"address": "123 Main"}
+                },
+            }
+        })
+        # Should have no errors about the Lender party
+        lender_errs = [e for e in errors if "parties[1]" in e]
+        assert len(lender_errs) == 0
+
+    def test_empty_deal(self):
+        """Empty input should produce a CRITICAL error."""
+        v = DataValidator()
+        _, errors = v.validate({})
+        assert any("No 'deal' section" in e for e in errors)
+
+    def test_employment_date_ordering(self):
+        """start_date after end_date should produce LOGIC error."""
+        v = DataValidator()
+        _, errors = v.validate({
+            "deal": {
+                "parties": [{
+                    "individual": {"ssn": "111-22-3333", "full_name": "Test"},
+                    "party_role": {"value": "Borrower"},
+                    "employment": [{
+                        "employer_name": "Corp",
+                        "start_date": "06/01/2025",
+                        "end_date": "01/01/2020",
+                    }],
+                }],
+                "transaction_information": {
+                    "final_loan_amount": 100000,
+                    "loan_purpose": {"value": "Purchase"},
+                },
+                "collateral": {
+                    "subject_property": {"address": "123 Main"}
+                },
+            }
+        })
+        date_errs = [e for e in errors if "start_date" in e and "after" in e]
+        assert len(date_errs) == 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
