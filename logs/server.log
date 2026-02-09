@@ -1,0 +1,95 @@
+2026-02-09 06:35:40,651 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_000_W-2Form.pdf
+2026-02-09 06:35:40,651 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_000_W-2Form.pdf
+2026-02-09 06:35:40,651 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_000_W-2Form.pdf
+2026-02-09 06:36:21,751 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.IRS_FORM_4506C: 'IRS Form 4506-C'>, 'recommended_tool': 'parse_document_with_dockling', 'confidence': 0.95, 'reasoning': 'Document is a complex structured form (IRS Form 4506-C). Dockling recommended for thorough parsing.'}
+2026-02-09 06:36:21,752 - utility_mcp - INFO - Starting Dockling extraction for C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_000_W-2Form.pdf
+2026-02-09 06:36:51,471 - utility_mcp - INFO - Debug JSON saved to C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\dockling_output\debug.json
+2026-02-09 06:36:51,472 - utility_mcp - INFO - Dockling extraction complete: 5072 chars of markdown
+2026-02-09 06:36:51,478 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 06:36:51,509 - utility_mcp - INFO - RuleEngine extracted 0 fields for 'DocumentType.IRS_FORM_4506C' (mode=flat)
+2026-02-09 06:36:51,509 - utility_mcp - WARNING - No assembler strategy for 'DocumentType.IRS_FORM_4506C', using generic
+2026-02-09 06:36:51,509 - utility_mcp - ERROR - Structure extraction failed: CanonicalAssembler._generic_strategy() takes 2 positional arguments but 3 were given
+2026-02-09 06:36:51,509 - utility_mcp - INFO - Normalizing data
+2026-02-09 06:36:51,510 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_001_W-2Form.pdf
+2026-02-09 06:36:51,510 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_001_W-2Form.pdf
+2026-02-09 06:36:51,510 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_001_W-2Form.pdf
+2026-02-09 06:38:18,785 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.W2_FORMS: 'W-2 Form'>, 'recommended_tool': 'parse_document_with_dockling', 'confidence': 0.95, 'reasoning': 'Document is a complex structured form (W-2 Form). Dockling recommended for thorough parsing.'}
+2026-02-09 06:38:18,785 - utility_mcp - INFO - Starting Dockling extraction for C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\chunk_001_W-2Form.pdf
+2026-02-09 06:38:36,242 - utility_mcp - INFO - Debug JSON saved to C:\Users\DELL\AppData\Local\Temp\splitter_chxiykc6\dockling_output\debug.json
+2026-02-09 06:38:36,242 - utility_mcp - INFO - Dockling extraction complete: 11746 chars of markdown
+2026-02-09 06:38:36,255 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 06:38:36,387 - utility_mcp - INFO - RuleEngine extracted 5 fields for 'DocumentType.W2_FORMS' (mode=flat)
+2026-02-09 06:38:36,387 - utility_mcp - INFO - CanonicalAssembler built 5 fields for 'DocumentType.W2_FORMS'
+2026-02-09 06:38:36,387 - utility_mcp - INFO - Extracted canonical structure for DocumentType.W2_FORMS
+2026-02-09 06:38:36,387 - utility_mcp - INFO - Normalizing data
+2026-02-09 06:38:36,387 - utility_mcp - INFO - DocumentMerger merged 5 keys from 2 documents
+2026-02-09 06:38:36,387 - utility_mcp - INFO - Party identity map: {}
+2026-02-09 06:38:36,387 - utility_mcp - INFO - CanonicalAssembler built 5 fields for 'merged'
+2026-02-09 06:38:36,395 - utility_mcp - INFO - MismoEmitter: generated XML with 3 data elements
+2026-02-09 06:39:26,246 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:39:26,247 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:39:26,247 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:42:10,457 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.W2_FORMS: 'W-2 Form'>, 'recommended_tool': 'parse_document_with_dockling', 'confidence': 0.95, 'reasoning': 'Document is a complex structured form (W-2 Form). Dockling recommended for thorough parsing.'}
+2026-02-09 06:42:10,457 - utility_mcp - INFO - Starting Dockling extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:42:49,782 - utility_mcp - INFO - Debug JSON saved to C:\Users\DELL\Desktop\Temporal-Project-Practice\document\dockling_output\debug.json
+2026-02-09 06:42:49,782 - utility_mcp - INFO - Dockling extraction complete: 16820 chars of markdown
+2026-02-09 06:42:49,794 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 06:42:49,915 - utility_mcp - INFO - RuleEngine extracted 5 fields for 'DocumentType.W2_FORMS' (mode=nested)
+2026-02-09 06:42:49,915 - utility_mcp - INFO - Extracted canonical structure for DocumentType.W2_FORMS
+2026-02-09 06:42:49,916 - utility_mcp - INFO - Normalizing data
+2026-02-09 06:42:49,926 - utility_mcp - INFO - MismoEmitter: generated XML with 3 data elements
+2026-02-09 06:44:36,549 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:44:36,549 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:44:36,549 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:47:06,984 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:47:06,984 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:47:06,985 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:54:12,552 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.W2_FORMS: 'W-2 Form'>, 'recommended_tool': 'parse_document_with_dockling', 'confidence': 0.95, 'reasoning': 'Document is a complex structured form (W-2 Form). Dockling recommended for thorough parsing.'}
+2026-02-09 06:54:12,552 - utility_mcp - INFO - Starting Dockling extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:57:50,368 - utility_mcp - INFO - Debug JSON saved to C:\Users\DELL\Desktop\Temporal-Project-Practice\document\dockling_output\debug.json
+2026-02-09 06:57:50,368 - utility_mcp - INFO - Dockling extraction complete: 16820 chars of markdown
+2026-02-09 06:57:50,389 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 06:57:50,724 - utility_mcp - INFO - RuleEngine extracted 5 fields for 'DocumentType.W2_FORMS' (mode=nested)
+2026-02-09 06:57:50,724 - utility_mcp - INFO - Extracted canonical structure for DocumentType.W2_FORMS
+2026-02-09 06:57:50,724 - utility_mcp - INFO - Normalizing data
+2026-02-09 06:57:50,771 - utility_mcp - INFO - MismoEmitter: generated XML with 3 data elements
+2026-02-09 06:58:13,268 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.IRS_FORM_4506C: 'IRS Form 4506-C'>, 'recommended_tool': 'parse_document_with_dockling', 'confidence': 0.95, 'reasoning': 'Document is a complex structured form (IRS Form 4506-C). Dockling recommended for thorough parsing.'}
+2026-02-09 06:58:13,269 - utility_mcp - INFO - Starting Dockling extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 06:59:46,945 - utility_mcp - INFO - Debug JSON saved to C:\Users\DELL\Desktop\Temporal-Project-Practice\document\dockling_output\debug.json
+2026-02-09 06:59:46,945 - utility_mcp - INFO - Dockling extraction complete: 16820 chars of markdown
+2026-02-09 06:59:46,964 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 06:59:47,059 - utility_mcp - INFO - RuleEngine extracted 0 fields for 'DocumentType.IRS_FORM_4506C' (mode=nested)
+2026-02-09 06:59:47,059 - utility_mcp - INFO - Extracted canonical structure for DocumentType.IRS_FORM_4506C
+2026-02-09 06:59:47,059 - utility_mcp - INFO - Normalizing data
+2026-02-09 06:59:47,064 - utility_mcp - WARNING - MismoEmitter: no 'deal' key in canonical data
+2026-02-09 07:01:16,092 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 07:01:16,092 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 07:01:16,093 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 07:03:58,401 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.IRS_FORM_4506C: 'IRS Form 4506-C'>, 'recommended_tool': 'ocr_document', 'confidence': 0.95, 'reasoning': 'File is pdf and appears to be image-based/scanned. OCR is required.'}
+2026-02-09 07:03:58,402 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\document\IRS.pdf
+2026-02-09 07:06:37,233 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 07:06:37,263 - utility_mcp - INFO - RuleEngine extracted 1 fields for 'DocumentType.IRS_FORM_4506C' (mode=nested)
+2026-02-09 07:06:37,263 - utility_mcp - INFO - Extracted canonical structure for DocumentType.IRS_FORM_4506C
+2026-02-09 07:06:37,263 - utility_mcp - INFO - Normalizing data
+2026-02-09 07:06:37,266 - utility_mcp - WARNING - MismoEmitter: no 'deal' key in canonical data
+2026-02-09 07:43:02,382 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:43:02,382 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:43:02,382 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:43:34,105 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.UNKNOWN: 'Unknown'>, 'recommended_tool': 'ocr_document', 'confidence': 0.5, 'reasoning': 'File is pdf and appears to be image-based/scanned. OCR is required.'}
+2026-02-09 07:43:34,106 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:44:08,333 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 07:44:08,333 - utility_mcp - WARNING - Rule config not found for 'DocumentType.UNKNOWN' (tried: ['Unknown.yaml', 'Unknown.yaml'])
+2026-02-09 07:44:08,333 - utility_mcp - WARNING - No rule config found for 'DocumentType.UNKNOWN'. Returning empty.
+2026-02-09 07:44:08,333 - utility_mcp - INFO - Extracted canonical structure for DocumentType.UNKNOWN
+2026-02-09 07:44:08,333 - utility_mcp - INFO - Normalizing data
+2026-02-09 07:44:08,336 - utility_mcp - WARNING - MismoEmitter: no 'deal' key in canonical data
+2026-02-09 07:45:35,270 - utility_mcp - INFO - Starting unified extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:45:35,271 - utility_mcp - INFO - Starting classification for: C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:45:35,271 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:46:07,973 - utility_mcp - INFO - Classification decision: {'file_type': <FileType.PDF: 'pdf'>, 'pdf_type': <PDFType.SCANNED: 'scanned'>, 'document_category': <DocumentType.UTILITY_BILL: 'Utility Bill'>, 'recommended_tool': 'ocr_document', 'confidence': 0.95, 'reasoning': 'File is pdf and appears to be image-based/scanned. OCR is required.'}
+2026-02-09 07:46:07,973 - utility_mcp - INFO - Starting Doctr extraction for C:\Users\DELL\Desktop\Temporal-Project-Practice\Data-Extraction\assets\samples\UtilityBill_1.pdf
+2026-02-09 07:46:37,766 - utility_mcp - INFO - Extracting structured fields using Rule Engine (deterministic)...
+2026-02-09 07:46:37,783 - utility_mcp - INFO - RuleEngine extracted 15 fields for 'DocumentType.UTILITY_BILL' (mode=nested)
+2026-02-09 07:46:37,784 - utility_mcp - INFO - Extracted canonical structure for DocumentType.UTILITY_BILL
+2026-02-09 07:46:37,784 - utility_mcp - INFO - Normalizing data
+2026-02-09 07:46:37,788 - utility_mcp - WARNING - MismoEmitter: no 'deal' key in canonical data

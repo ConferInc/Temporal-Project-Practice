@@ -1,0 +1,35 @@
+1111 MIDNIGHT DR STE 100
+Account Name: BE CLIENT
+Sun MOONVILLE, TX 23032
+Account Number: AA-999999
+Messaging For All Inquiries:
+800 262-2626
+PAYMENT DUE: Net 60 Days
+PO#: A00000000000001
+Please send written correspondence that is not payment related to the address above.
+Page 1 of 1
+Invoice
+Invoice
+Prior
+Payments
+Current
+Amount
+Number
+Date
+Balance
+Charges
+Due
+123456789A
+01/01/21
+$2.34
+-$2.34
+$2.35
+$2.35
+Number
+Description
+Account. Activity
+Amount
+PRIOR BALANCE
+2.34
+HOME BANKING PYMNT EFT
+12/11/2...

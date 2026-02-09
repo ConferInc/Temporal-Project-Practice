@@ -1,0 +1,146 @@
+{
+    "document": {
+        "type": "UTILITY_OR_SERVICE_BILL",
+        "issuer_name": null,
+        "document_date": null,
+        "page_count": null,
+        "document_table": "documents"
+    },
+    "account_information": {
+        "account_name": null,
+        "account_number": null,
+        "payment_terms": null,
+        "payment_due_days": null,
+        "purchase_order_number": null,
+        "mapped_tables": [
+            "liabilities",
+            "documents"
+        ]
+    },
+    "service_provider": {
+        "company_name": null,
+        "mailing_address": {
+            "street": null,
+            "city": null,
+            "state": null,
+            "zip_code": null
+        },
+        "customer_service_phone": null,
+        "emergency_phone": null,
+        "website": null,
+        "mapped_tables": [
+            "organizations"
+        ]
+    },
+    "customer_information": {
+        "customer_name": null,
+        "service_address": {
+            "street": null,
+            "city": null,
+            "state": null,
+            "zip_code": null
+        },
+        "mapped_tables": [
+            "customers",
+            "residences"
+        ]
+    },
+    "billing_summary": {
+        "invoice_number": null,
+        "billing_date": null,
+        "prior_balance": null,
+        "payments_received": null,
+        "current_charges": null,
+        "total_amount_due": null,
+        "past_due_after_date": null,
+        "mapped_tables": [
+            "liabilities"
+        ]
+    },
+    "usage_information": {
+        "service_type": null,
+        "meter_number": null,
+        "rate_code": null,
+        "billing_period_start": null,
+        "billing_period_end": null,
+        "previous_meter_reading": null,
+        "current_meter_reading": null,
+        "usage_quantity": null,
+        "usage_unit": null,
+        "mapped_tables": [
+            "liabilities"
+        ]
+    },
+    "line_item_charges": [
+        {
+            "line_item_type": null,
+            "description": null,
+            "activity_date": null,
+            "amount": null,
+            "mapped_tables": [
+                "liabilities"
+            ]
+        }
+    ],
+    "tax_and_fee_charges": [
+        {
+            "charge_type": null,
+            "rate": null,
+            "amount": null,
+            "mapped_tables": [
+                "liabilities"
+            ]
+        }
+    ],
+    "payments_activity": [
+        {
+            "payment_type": null,
+            "payment_method": null,
+            "payment_date": null,
+            "payment_amount": null,
+            "mapped_tables": [
+                "liabilities"
+            ]
+        }
+    ],
+    "important_messages": [
+        {
+            "message_text": null,
+            "mapped_tables": [
+                "documents"
+            ]
+        }
+    ],
+    "remittance_section": {
+        "remit_to_name": null,
+        "remit_to_address": {
+            "street": null,
+            "city": null,
+            "state": null,
+            "zip_code": null
+        },
+        "amount_due": null,
+        "amount_paid": null,
+        "check_payable_to": null,
+        "mapped_tables": [
+            "communications",
+            "liabilities"
+        ]
+    },
+    "barcodes_and_identifiers": {
+        "barcode_present": null,
+        "encoded_account_number": null,
+        "encoded_invoice_number": null,
+        "mapped_tables": [
+            "documents"
+        ]
+    },
+    "document_flags": {
+        "late_fee_policy_present": null,
+        "disconnect_notice_present": null,
+        "regulatory_message_present": null,
+        "mapped_tables": [
+            "documents"
+        ]
+    }
+}

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MESSAGE xmlns="http://www.mismo.org/residential/2009/schemas">
+  <ABOUT_VERSIONS>
+    <ABOUT_VERSION>
+      <DataVersionIdentifier>3.4</DataVersionIdentifier>
+    </ABOUT_VERSION>
+  </ABOUT_VERSIONS>
+  <DEAL_SETS>
+    <DEAL_SET>
+      <DEALS>
+        <DEAL>
+          <PARTIES>
+            <PARTY>
+              <INDIVIDUAL>
+                <NAME />
+              </INDIVIDUAL>
+              <ROLES>
+                <ROLE>
+                  <ROLE_DETAIL>
+                    <PartyRoleType>Borrower</PartyRoleType>
+                  </ROLE_DETAIL>
+                  <BORROWER>
+                    <EMPLOYERS>
+                      <EMPLOYER>
+                        <LEGAL_ENTITY />
+                        <EmploymentStatusType>Current</EmploymentStatusType>
+                      </EMPLOYER>
+                    </EMPLOYERS>
+                  </BORROWER>
+                </ROLE>
+              </ROLES>
+            </PARTY>
+          </PARTIES>
+        </DEAL>
+      </DEALS>
+    </DEAL_SET>
+  </DEAL_SETS>
+</MESSAGE>

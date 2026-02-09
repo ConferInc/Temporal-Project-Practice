@@ -1,0 +1,7 @@
+{
+  "w2_source_doc_type": "W-2",
+  "w2_schema_version": "3.4.0",
+  "w2_income_type": "Base",
+  "w2_employment_status": "Current",
+  "w2_party_role": "Borrower"
+}

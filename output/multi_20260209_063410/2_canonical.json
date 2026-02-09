@@ -1,0 +1,25 @@
+{
+  "deal": {
+    "parties": [
+      {
+        "party_role": {
+          "value": "Borrower"
+        },
+        "employment": [
+          {
+            "income_type": {
+              "value": "Base"
+            },
+            "employment_status": {
+              "value": "Current"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "document_metadata": {
+    "source_document_type": "W-2",
+    "schema_version": "3.4.0"
+  }
+}

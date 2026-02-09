@@ -1,0 +1,138 @@
+# ============================================================
+# Document Signature Definitions — Anchor Detection
+# ============================================================
+# Each signature identifies the FIRST page of a document type
+# within a mega-PDF. Keywords/patterns here are first-page-specific
+# (e.g., titles, form numbers) — NOT continuation-page terms.
+#
+# Scoring: each keyword hit = 1 point, each regex hit = 2 points.
+# Final score = hits / total_possible. Must exceed minimum_score.
+# required_keywords: ALL must match (AND gate) or page is rejected.
+# ============================================================
+
+signatures:
+
+  # ----- W-2 Form -----
+  - doc_type: "W-2 Form"
+    required_keywords: []
+    keywords:
+      - "wage and tax statement"
+      - "w-2"
+      - "employer identification number"
+      - "employee's social security"
+      - "federal income tax withheld"
+      - "department of the treasury"
+    regex_patterns:
+      - '\bW-2\b'
+      - 'Form\s+W-2'
+      - 'Wage\s+and\s+Tax\s+Statement'
+    minimum_score: 0.25
+    max_pages: 2
+
+  # ----- URLA (Form 1003) -----
+  - doc_type: "URLA (Form 1003)"
+    required_keywords: []
+    keywords:
+      - "uniform residential loan application"
+      - "borrower information"
+      - "lender case number"
+      - "agency case number"
+      - "type of mortgage"
+      - "amortization type"
+      - "subject property address"
+    regex_patterns:
+      - 'Form\s+1003'
+      - 'Uniform\s+Residential\s+Loan\s+Application'
+      - '\bURLA\b'
+    minimum_score: 0.25
+    max_pages: 10
+
+  # ----- Pay Stub -----
+  - doc_type: "Pay Stub"
+    required_keywords: []
+    keywords:
+      - "earnings statement"
+      - "pay period"
+      - "pay begin date"
+      - "pay end date"
+      - "net pay"
+      - "total gross"
+      - "fed taxable gross"
+      - "year-to-date"
+    regex_patterns:
+      - '\bPay\s+Stub\b'
+      - '\bNet\s+Pay\b'
+      - '\bGross\s+Pay\b'
+      - '\bYTD\b'
+    minimum_score: 0.25
+    max_pages: 3
+
+  # ----- Bank Statement -----
+  - doc_type: "Bank Statement"
+    required_keywords: []
+    keywords:
+      - "account summary"
+      - "statement period"
+      - "beginning balance"
+      - "ending balance"
+      - "checking account"
+      - "savings account"
+      - "summary of accounts"
+    regex_patterns:
+      - 'Account\s+Summary'
+      - 'Statement\s+Period'
+      - 'Beginning\s+Balance'
+    minimum_score: 0.25
+    max_pages: 15
+
+  # ----- Tax Return (1040) -----
+  - doc_type: "Tax Return (1040)"
+    required_keywords: []
+    keywords:
+      - "individual income tax return"
+      - "form 1040"
+      - "adjusted gross income"
+      - "filing status"
+      - "department of the treasury"
+      - "internal revenue service"
+    regex_patterns:
+      - 'Form\s+1040'
+      - '1040\s+U\.S\.'
+      - 'Individual\s+Income\s+Tax\s+Return'
+    minimum_score: 0.25
+    max_pages: 4
+
+  # ----- Appraisal (Form 1004) -----
+  - doc_type: "Appraisal (Form 1004)"
+    required_keywords: []
+    keywords:
+      - "uniform residential appraisal"
+      - "appraisal report"
+      - "subject property"
+      - "sales comparison approach"
+      - "appraised value"
+      - "gross living area"
+      - "reconciliation"
+    regex_patterns:
+      - 'Form\s+1004'
+      - '\bURAR\b'
+      - 'Appraisal\s+Report'
+    minimum_score: 0.25
+    max_pages: 6
+
+  # ----- Loan Estimate -----
+  - doc_type: "Loan Estimate"
+    required_keywords: []
+    keywords:
+      - "loan estimate"
+      - "estimated closing costs"
+      - "estimated cash to close"
+      - "projected payments"
+      - "loan terms"
+      - "rate lock"
+    regex_patterns:
+      - 'Loan\s+Estimate'
+      - 'LOAN\s+ESTIMATE'
+      - 'CFPB\s+H-24'
+    minimum_score: 0.25
+    max_pages: 3

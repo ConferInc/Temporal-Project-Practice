@@ -1,0 +1,106 @@
+# ============================================================
+# UtilityBill.yaml — Deterministic extraction rules for
+# Standard Utility Bills (Generic / Sample)
+# ============================================================
+# Schema Source: document/utilitybill.json
+# ============================================================
+
+document_type: "UTILITY_BILL"
+schema_version: "1.0"
+
+rules:
+  # ============================================================
+  # ACCOUNT INFORMATION
+  # ============================================================
+  - id: account_name
+    type: regex
+    pattern: 'Account\s*Name:\s*(.*)'
+    group: 1
+    target_path: "account_information.account_name"
+
+  - id: account_number
+    type: regex
+    pattern: 'Account\s*Number:\s*([A-Z0-9-]+)'
+    group: 1
+    target_path: "account_information.account_number"
+
+  - id: po_number
+    type: regex
+    pattern: 'PO#:\s*([A-Z0-9]+)'
+    group: 1
+    target_path: "account_information.purchase_order_number"
+
+  - id: payment_terms
+    type: regex
+    pattern: 'PAYMENT\s*DUE:\s*(.*)'
+    group: 1
+    target_path: "account_information.payment_terms"
+
+  # ============================================================
+  # BILLING SUMMARY
+  # ============================================================
+
+  # Capturing Invoice # and Date which appear together in the sample
+  # Format in raw txt: "123456789A\n01/01/21"
+  - id: invoice_info
+    type: regex
+    pattern: '([A-Z0-9]{9,})\n(\d{2}/\d{2}/\d{2})'
+    flags: [DOTALL]
+    groups:
+      1: "billing_summary.invoice_number"
+      2: "billing_summary.billing_date"
+    groups_keys:
+      1: "invoice_number"
+      2: "invoice_date"
+
+  # Capturing Amounts Block
+  # Format in raw txt: "$2.34\n-$2.34\n$2.35\n$2.35"
+  # (Prior, Payments, Current, Total)
+  - id: billing_amounts
+    type: regex
+    pattern: '\$([\d\.]+)\n-\$([\d\.]+)\n\$([\d\.]+)\n\$([\d\.]+)'
+    flags: [DOTALL]
+    groups:
+      1: "billing_summary.prior_balance"
+      2: "billing_summary.payments_received"
+      3: "billing_summary.current_charges"
+      4: "billing_summary.total_amount_due"
+    groups_keys:
+      1: "prior_balance"
+      2: "payments_received"
+      3: "current_charges"
+      4: "total_amount_due"
+
+  # ============================================================
+  # SERVICE PROVIDER (Inferred from top address lines)
+  # ============================================================
+
+  - id: provider_address_street
+    type: regex
+    pattern: '^([^\n]+)\nAccount Name:'
+    group: 1
+    flags: [DOTALL]
+    target_path: "service_provider.mailing_address.street"
+
+  - id: provider_address_city_state_zip
+    type: regex
+    pattern: 'Account Name:.*?\n([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})'
+    flags: [DOTALL]
+    groups:
+      1: "service_provider.mailing_address.city"
+      2: "service_provider.mailing_address.state"
+      3: "service_provider.mailing_address.zip_code"
+    groups_keys:
+      1: "provider_city"
+      2: "provider_state"
+      3: "provider_zip"
+
+  # ============================================================
+  # CONTACT INFO
+  # ============================================================
+  - id: customer_service_phone
+    type: regex
+    pattern: 'Messaging For All Inquiries:\s*\n(\d{3}\s\d{3}-\d{4})'
+    flags: [DOTALL]
+    group: 1
+    target_path: "service_provider.customer_service_phone"

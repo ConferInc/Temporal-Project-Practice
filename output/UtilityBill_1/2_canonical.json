@@ -1,0 +1,25 @@
+{
+  "account_information": {
+    "account_name": "BE CLIENT",
+    "account_number": "AA-999999",
+    "purchase_order_number": "A00000000000001",
+    "payment_terms": "Net 60 Days"
+  },
+  "billing_summary": {
+    "invoice_number": "123456789A",
+    "billing_date": "01/01/21",
+    "prior_balance": "2.34",
+    "payments_received": "2.34",
+    "current_charges": "2.35",
+    "total_amount_due": "2.35"
+  },
+  "service_provider": {
+    "mailing_address": {
+      "street": "1111 MIDNIGHT DR STE 100",
+      "city": "Sun MOONVILLE",
+      "state": "TX",
+      "zip_code": "23032"
+    },
+    "customer_service_phone": "800 262-2626"
+  }
+}

@@ -1,0 +1,130 @@
+{
+    "document": {
+        "type": "IRS_FORM_4506C",
+        "version": "10-2022",
+        "omb_number": "1545-1872",
+        "catalog_number": "72627P",
+        "source": "IRS",
+        "document_table": "documents"
+    },
+    "taxpayer_primary": {
+        "first_name": null,
+        "middle_initial": null,
+        "last_name_or_business_name": null,
+        "taxpayer_identification_number": null,
+        "previous_first_name": null,
+        "previous_middle_initial": null,
+        "previous_last_name": null,
+        "current_address": {
+            "street": null,
+            "city": null,
+            "state": null,
+            "zip_code": null
+        },
+        "previous_address": {
+            "street": null,
+            "city": null,
+            "state": null,
+            "zip_code": null
+        },
+        "mapped_tables": [
+            "customers",
+            "demographics",
+            "residences"
+        ]
+    },
+    "taxpayer_spouse": {
+        "first_name": null,
+        "middle_initial": null,
+        "last_name": null,
+        "taxpayer_identification_number": null,
+        "previous_first_name": null,
+        "previous_middle_initial": null,
+        "previous_last_name": null,
+        "mapped_tables": [
+            "customers",
+            "demographics"
+        ]
+    },
+    "ives_participant": {
+        "participant_name": null,
+        "participant_id_number": null,
+        "sor_mailbox_id": null,
+        "street_address": null,
+        "city": null,
+        "state": null,
+        "zip_code": null,
+        "customer_file_number": null,
+        "unique_identifier": null,
+        "mapped_tables": [
+            "organizations",
+            "users"
+        ]
+    },
+    "third_party_requestor": {
+        "client_name": null,
+        "telephone_number": null,
+        "street_address": null,
+        "city": null,
+        "state": null,
+        "zip_code": null,
+        "mapped_tables": [
+            "organizations",
+            "communications"
+        ]
+    },
+    "transcript_request": {
+        "tax_form_number": null,
+        "return_transcript_requested": null,
+        "account_transcript_requested": null,
+        "record_of_account_requested": null,
+        "wage_and_income_transcript_requested": null,
+        "wage_and_income_form_numbers": [],
+        "request_for_taxpayer_line_1a": null,
+        "request_for_taxpayer_line_2a": null,
+        "mapped_tables": [
+            "documents",
+            "applications"
+        ]
+    },
+    "tax_periods": [
+        {
+            "year_or_period_end_date": null,
+            "mapped_tables": [
+                "applications"
+            ]
+        }
+    ],
+    "signature_primary_taxpayer": {
+        "signature_present": null,
+        "signature_date": null,
+        "phone_number": null,
+        "print_name": null,
+        "title": null,
+        "signed_by_authorized_representative": null,
+        "electronically_signed": null,
+        "mapped_tables": [
+            "declarations",
+            "documents"
+        ]
+    },
+    "signature_spouse": {
+        "signature_present": null,
+        "signature_date": null,
+        "print_name": null,
+        "signed_by_authorized_representative": null,
+        "electronically_signed": null,
+        "mapped_tables": [
+            "declarations",
+            "documents"
+        ]
+    },
+    "form_metadata": {
+        "irs_website": "www.irs.gov",
+        "privacy_act_notice_present": true,
+        "paperwork_reduction_act_notice_present": true,
+        "mapped_tables": [
+            "documents"
+        ]
+    }
+}

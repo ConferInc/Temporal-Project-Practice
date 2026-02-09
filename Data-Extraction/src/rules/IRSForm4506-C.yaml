@@ -1,0 +1,227 @@
+# ============================================================
+# IRS.yaml — Deterministic extraction rules for
+# IRS Form 4506-C (Request for Transcript of Tax Return)
+# ============================================================
+# Schema Source: document/IRS.json
+# ============================================================
+
+document_type: "IRS_FORM_4506C"
+schema_version: "10-2022"
+
+rules:
+  # ============================================================
+  # METADATA & DOCUMENT INFO
+  # ============================================================
+
+  - id: form_version
+    type: regex
+    pattern: 'Form\s*4506-C\s*\(Rev\.\s*([\d-]+)\)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "form_version"
+    target_path: "document.version"
+
+  - id: omb_number
+    type: regex
+    pattern: 'OMB\s*No\.\s*([\d-]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "omb_number"
+    target_path: "document.omb_number"
+
+  # ============================================================
+  # 1. TAXPAYER PRIMARY (Line 1a, 1b)
+  # ============================================================
+
+  # Name shown on tax return
+  - id: primary_name
+    type: regex
+    pattern: '1a\s*Name\s*shown\s*on\s*tax\s*return.*?\n+\s*([A-Za-z\s\.]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "taxpayer_primary_name"
+    target_path: "taxpayer_primary.first_name" # Storing full name here tentatively, may need parsing
+
+  # First social security number
+  - id: primary_tin
+    type: regex
+    pattern: '1b\s*First\s*social\s*security\s*number.*?\n+\s*(\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "taxpayer_primary_tin"
+    target_path: "taxpayer_primary.taxpayer_identification_number"
+
+  # Current address (Line 3)
+  - id: current_address_street
+    type: regex
+    pattern: '3\s*Current\s*name,\s*address.*?\n+\s*(\d+\s+[A-Za-z0-9\s\.,]+(?:St|Ave|Rd|Blvd|ln|Dr|Ct|Way)[A-Za-z0-9\s\.,]*)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "taxpayer_primary_current_street"
+    target_path: "taxpayer_primary.current_address.street"
+
+  - id: current_address_city_state_zip
+    type: regex
+    pattern: 'City,\s*state,\s*and\s*ZIP\s*code.*?\n+\s*([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)'
+    flags: [IGNORECASE, DOTALL]
+    groups:
+      1: "taxpayer_primary.current_address.city"
+      2: "taxpayer_primary.current_address.state"
+      3: "taxpayer_primary.current_address.zip_code"
+    groups_keys:
+      1: "taxpayer_primary_current_city"
+      2: "taxpayer_primary_current_state"
+      3: "taxpayer_primary_current_zip"
+
+  # Previous address (Line 4)
+  - id: previous_address_street
+    type: regex
+    pattern: '4\s*Previous\s*address.*?\n+\s*(\d+\s+[A-Za-z0-9\s\.,]+(?:St|Ave|Rd|Blvd|ln|Dr|Ct|Way)[A-Za-z0-9\s\.,]*)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "taxpayer_primary_previous_street"
+    target_path: "taxpayer_primary.previous_address.street"
+
+  # ============================================================
+  # 2. TAXPAYER SPOUSE (Line 2a, 2b)
+  # ============================================================
+
+  - id: spouse_name
+    type: regex
+    pattern: '2a\s*If\s*a\s*joint\s*return,\s*spouse.*?\n+\s*([A-Za-z\s\.]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "taxpayer_spouse_name"
+    target_path: "taxpayer_spouse.first_name"
+
+  - id: spouse_tin
+    type: regex
+    pattern: '2b\s*Second\s*social\s*security\s*number.*?\n+\s*(\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "taxpayer_spouse_tin"
+    target_path: "taxpayer_spouse.taxpayer_identification_number"
+
+  # ============================================================
+  # 5. IVES PARTICIPANT (Line 5a)
+  # ============================================================
+
+  - id: ives_participant_name
+    type: regex
+    pattern: '5a\s*Name\s*of\s*IVS\s*participant\s*\n+\s*([A-Za-z0-9\s\.,&]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "ives_participant_name"
+    target_path: "ives_participant.participant_name"
+
+  - id: ives_participant_id
+    type: regex
+    pattern: '5a\s*IVS\s*participant\s*ID\s*number\s*\n+\s*(\d+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "ives_participant_id"
+    target_path: "ives_participant.participant_id_number"
+
+  - id: sor_mailbox_id
+    type: regex
+    pattern: '5a\s*SOR\s*Mailbox\s*ID\s*\n+\s*([A-Za-z0-9]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "sor_mailbox_id"
+    target_path: "ives_participant.sor_mailbox_id"
+
+  # ============================================================
+  # 5b. CUSTOMER FILE NUMBER
+  # ============================================================
+
+  - id: customer_file_number
+    type: regex
+    pattern: '5b\s*Customer\s*file\s*number.*?\n+\s*([A-Za-z0-9-]+)'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "customer_file_number"
+    target_path: "ives_participant.customer_file_number"
+
+  # ============================================================
+  # 6. TRANSCRIPT REQUEST
+  # ============================================================
+
+  - id: tax_form_number
+    type: regex
+    pattern: '6\s*Transcript\s*requested.*?\n+\s*(1040|1065|1120|990|W-2)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "transcript_tax_form_number"
+    target_path: "transcript_request.tax_form_number"
+
+  # Checkboxes for Transcript Type (6a - 6c)
+  - id: return_transcript_checkbox
+    type: regex
+    pattern: '6a\s*Return\s*Transcript.*?\n+\s*(X|Check)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "return_transcript_requested"
+    target_path: "transcript_request.return_transcript_requested"
+    transform: to_boolean
+
+  - id: account_transcript_checkbox
+    type: regex
+    pattern: '6b\s*Account\s*Transcript.*?\n+\s*(X|Check)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "account_transcript_requested"
+    target_path: "transcript_request.account_transcript_requested"
+    transform: to_boolean
+
+  - id: record_of_account_checkbox
+    type: regex
+    pattern: '6c\s*Record\s*of\s*Account.*?\n+\s*(X|Check)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "record_of_account_requested"
+    target_path: "transcript_request.record_of_account_requested"
+    transform: to_boolean
+
+  # Line 7: Wage and Income
+  - id: wage_income_transcript
+    type: regex
+    pattern: '7\s*Wage\s*and\s*Income\s*Transcript.*?\n+\s*(X|Check)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "wage_and_income_transcript_requested"
+    target_path: "transcript_request.wage_and_income_transcript_requested"
+    transform: to_boolean
+
+  # ============================================================
+  # 8. TAX PERIODS
+  # ============================================================
+
+  # This usually appears as a list of dates. We capture them individually or as a block.
+  # "mm/dd/yyyy", "12/31/2020", etc.
+  - id: tax_period_1
+    type: regex
+    pattern: '8\s*Year\s*or\s*period\s*requested.*?\n+\s*(\d{2}/\d{2}/\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "tax_period_1"
+    target_path: "tax_periods[0].year_or_period_end_date"
+
+  # ============================================================
+  # SIGNATURES
+  # ============================================================
+
+  - id: signature_primary_date
+    type: regex
+    pattern: 'Signature\s*of\s*taxpayer.*?\n+\s*Date\s*(\d{2}/\d{2}/\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "signature_primary_date"
+    target_path: "signature_primary_taxpayer.signature_date"
+
+  - id: signature_phone
+    type: regex
+    pattern: 'Phone\s*number\s*of\s*taxpayer.*?\n+\s*(\d{3}-\d{3}-\d{4}|\(\d{3}\)\s*\d{3}-\d{4})'
+    flags: [IGNORECASE, DOTALL]
+    group: 1
+    key: "signature_phone"
+    target_path: "signature_primary_taxpayer.phone_number"
