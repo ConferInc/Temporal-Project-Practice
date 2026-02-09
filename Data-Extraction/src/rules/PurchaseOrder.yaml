@@ -1,0 +1,123 @@
+# ============================================================
+# PurchaseOrder.yaml — Deterministic extraction rules for
+# Standard Purchase Orders
+# ============================================================
+# Schema Source: document/purchaseorder.json
+# ============================================================
+
+document_type: "PURCHASE_ORDER"
+schema_version: "1.0"
+
+rules:
+  # ============================================================
+  # HEADER INFORMATION
+  # ============================================================
+  - id: po_number
+    type: regex
+    pattern: 'PO#\s*([A-Z0-9]+)'
+    group: 1
+    target_path: "document.tables.documents.purchase_order_number"
+
+  - id: order_date
+    type: regex
+    pattern: 'Order Date\s*Terms.*?\n(\d{1,2}/\d{1,2}/\d{4})'
+    flags: [DOTALL]
+    group: 1
+    target_path: "document.tables.documents.order_date"
+
+  - id: delivery_date
+    type: regex
+    pattern: 'Delivery Date\s*Customer PO.*?\n(\d{1,2}/\d{1,2}/\d{4})'
+    flags: [DOTALL]
+    group: 1
+    target_path: "document.tables.documents.delivery_date"
+
+  - id: terms
+    type: regex
+    pattern: 'Terms\s*Account ID.*?\n([A-Z\s0-9]+)\s+[A-Z0-9]+'
+    flags: [DOTALL]
+    group: 1
+    target_path: "document.tables.documents.terms"
+
+  - id: ship_via
+    type: regex
+    pattern: 'Ship Via\s*Delivery Date.*?\n([A-Za-z]+)\s+\d'
+    flags: [DOTALL]
+    group: 1
+    target_path: "document.tables.documents.ship_via"
+
+  # ============================================================
+  # SELLER (Issuer)
+  # ============================================================
+  - id: seller_name
+    type: regex
+    pattern: '^([^\n]+)\n\d+\s+Bear\s+Technology'
+    flags: [m]
+    group: 1
+    target_path: "document.tables.organizations.seller.organization_name"
+
+  - id: seller_address
+    type: regex
+    pattern: '(\d+\s+Bear\s+Technology\s+Parkway)\n(Suite\s+\d+,\s+Campbell,\s+CA\s+\d{5})'
+    flags: [DOTALL]
+    groups:
+      1: "document.tables.organizations.seller.street_address"
+      2: "document.tables.organizations.seller.city" # Just capturing full line for now
+    groups_keys:
+      1: "seller_street"
+      2: "seller_city_state_zip"
+
+  - id: seller_contact
+    type: regex
+    pattern: 'Fax:\s*(\([\d\)]+\s*[\d-]+).*?sales\.@([^\s]+)\nwww\.([^\s]+)'
+    flags: [DOTALL]
+    groups:
+      1: "document.tables.organizations.seller.fax"
+      2: "document.tables.organizations.seller.email"
+      3: "document.tables.organizations.seller.website"
+    groups_keys:
+      1: "seller_fax"
+      2: "seller_email"
+      3: "seller_website"
+
+  # ============================================================
+  # VENDOR & SHIP TO (Columnar Layout)
+  # ============================================================
+  # Note: The text extractor seems to serialize columns top-to-bottom or interleave them.
+  # Based on 1_raw.txt:
+  # Vendor:
+  # Ship To:
+  # BurnShip Global
+  # Bell Scooter Corp
+  # ...
+  # This suggests interleaving. We might need specific regexes or positional logic.
+  # For now, blindly grabbing lines below headers if predictable.
+
+  - id: vendor_name
+    type: regex
+    pattern: 'Vendor:\s*Ship To:\s*\n([^\n]+)'
+    flags: [DOTALL]
+    group: 1
+    target_path: "document.tables.organizations.vendor.organization_name"
+
+  - id: ship_to_name
+    type: regex
+    pattern: 'Vendor:\s*Ship To:\s*\n[^\n]+\n([^\n]+)'
+    flags: [DOTALL]
+    group: 1
+    target_path: "document.tables.organizations.ship_to.organization_name"
+
+  # ============================================================
+  # CONTACTS
+  # ============================================================
+  - id: vendor_contact_name
+    type: regex
+    pattern: 'ATTN:\s*([^\n]+)'
+    group: 1
+    target_path: "document.tables.customers.vendor_contact.contact_name"
+
+  - id: ship_to_contact_name
+    type: regex
+    pattern: 'Attn:\s*([^\n]+)'
+    group: 1
+    target_path: "document.tables.customers.ship_to_contact.contact_name"

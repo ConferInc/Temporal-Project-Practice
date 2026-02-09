@@ -1,0 +1,677 @@
+# ============================================================
+# CreditBureauReport.yaml — Comprehensive extraction rules
+# for Credit Bureau Reports (Merged Infile Reports)
+# ============================================================
+# Maps to reference JSON structure with all required fields
+# ============================================================
+
+document_type: "Credit Bureau Report"
+schema_version: "1.0"
+
+rules:
+
+  # ============================================================
+  # APPLICATION METADATA
+  # ============================================================
+
+  - id: report_id_file
+    type: regex
+    pattern: 'FILE\s*#\s*\n+\s*(\d+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_report_id"
+    target_path: "application.fields.report_id"
+
+  - id: report_id_bag
+    type: regex
+    pattern: 'Report\s+Id\s+([A-Z0-9]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_report_id_alt"
+    target_path: "application.fields.report_id"
+
+  - id: fnma_reference
+    type: regex
+    pattern: '(\d+)\s+FNMA\s*#'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_fnma_ref"
+    target_path: "application.fields.reference"
+
+  - id: reference_code
+    type: regex
+    pattern: 'Reference\s+([A-Z][A-Za-z0-9\-]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_reference"
+    target_path: "application.fields.reference"
+
+  - id: date_completed
+    type: regex
+    pattern: 'DATECOMPLETED\s*\n+\s*(\d{1,2}/\d{1,2}/\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_completed_at"
+    target_path: "application.fields.completed_at"
+
+  - id: date_completed_alt
+    type: regex
+    pattern: 'Completed\s+(\d{2}/\d{2}/\d{4}\d{2}:\d{2}:\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_completed_at_alt"
+    target_path: "application.fields.completed_at"
+
+  - id: date_ordered
+    type: regex
+    pattern: 'DATEORDERED\s*\n+\s*(\d{1,2}/\d{1,2}/\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_ordered_at"
+    target_path: "application.fields.ordered_at"
+
+  - id: date_ordered_alt
+    type: regex
+    pattern: 'Ordered\s+(\d{2}/\d{2}/\d{4}\d{2}:\d{2}:\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_ordered_at_alt"
+    target_path: "application.fields.ordered_at"
+
+  - id: date_printed
+    type: regex
+    pattern: 'Printed\s+(\d{2}/\d{2}/\d{4}\d{2}:\d{2}:\d{2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_printed_at"
+    target_path: "application.fields.printed_at"
+
+  - id: repositories
+    type: regex
+    pattern: 'Bureaus\s+([A-Z\s/β]+(?:EQF|TU|XPN)[A-Zα-ωβ\s]*)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_repositories"
+    target_path: "application.fields.repositories"
+
+  - id: merge_price
+    type: regex
+    pattern: 'Merge\s*\n+\s*\$([0-9,]+\.?\d{0,2})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_merge_price"
+    target_path: "application.fields.merge_price"
+    transform: to_float
+
+  # ============================================================
+  # ORGANIZATION / REPORTING AGENCY
+  # ============================================================
+
+  - id: org_name_partners
+    type: regex
+    pattern: '(Partners\s+Credit\s*&\s*Verification\s*Solutions)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_org_name"
+    target_path: "organization.fields.name"
+
+  - id: org_name_evergreen
+    type: regex
+    pattern: '(Evergreen\s*Credit)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_org_name_alt"
+    target_path: "organization.fields.name"
+
+  - id: org_address_full
+    type: regex
+    pattern: '(\d+[A-Z\s]+(?:COURT|STREET|AVE|DRIVE|SUITE|PLACE)\s*\d*,\s*[A-Z]+,\s*[A-Z]{2}\s*\d{5})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_org_address"
+    target_path: "organization.fields.address"
+
+  - id: org_address_table
+    type: regex
+    pattern: 'Address\s*(\d+[A-Z]\.[A-Z][a-z]+[A-Z][a-z]+[A-Z][a-z]+\d+/[A-Z][a-z]+,[A-Z]{2}\d{5})'
+    group: 1
+    key: "credit_org_address_alt"
+    target_path: "organization.fields.address"
+
+  - id: org_phone
+    type: regex
+    pattern: 'Phone:\s*\n+\s*(\d{3}-\d{3}-\d{4})'
+    group: 1
+    key: "credit_org_phone"
+    target_path: "organization.fields.phone"
+
+  - id: org_fax
+    type: regex
+    pattern: 'Fax:\s*\n+\s*(\d{3}-\d{3}-\d{4})'
+    group: 1
+    key: "credit_org_fax"
+    target_path: "organization.fields.fax"
+
+  - id: org_support_email
+    type: regex
+    pattern: 'Support\s+([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_org_support_email"
+    target_path: "organization.fields.support_email"
+
+  - id: org_website
+    type: regex
+    pattern: '(www\.[a-z0-9.-]+\.[a-z]{2,})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_org_website"
+    target_path: "organization.fields.website"
+
+  # ============================================================
+  # CUSTOMER / CONSUMER INFORMATION
+  # ============================================================
+
+  - id: customer_full_name_comma
+    type: regex
+    pattern: '##\s+APPLICANT\s*\n+\s*([A-Z]+),\s*([A-Z]+)'
+    flags: [MULTILINE]
+    groups:
+      1: "deal.parties[0].individual.last_name"
+      2: "deal.parties[0].individual.first_name"
+    groups_keys:
+      1: "credit_customer_last_name"
+      2: "credit_customer_first_name"
+
+  - id: customer_name_table
+    type: regex
+    pattern: 'LastName\s+FirstName\s+Middle[^\n]*\n+\s*([A-Z]+)\s+([A-Z]+)\s+([A-Z])?'
+    groups:
+      1: "deal.parties[0].individual.last_name"
+      2: "deal.parties[0].individual.first_name"
+      3: "deal.parties[0].individual.middle_name"
+    groups_keys:
+      1: "credit_customer_last_name_alt"
+      2: "credit_customer_first_name_alt"
+      3: "credit_customer_middle_name"
+
+  - id: customer_ssn_header
+    type: regex
+    pattern: '##\s+APPLICANT\s*\n+\s*[A-Z]+,\s*[A-Z]+\s*\n+\s*(\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_customer_ssn"
+    target_path: "deal.parties[0].individual.ssn"
+
+  - id: customer_ssn_table
+    type: regex
+    pattern: 'SSN\s+LastName[^\n]*\n+\s*(\d{3}-\d{2}-\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_customer_ssn_alt"
+    target_path: "deal.parties[0].individual.ssn"
+
+  - id: customer_dob_header
+    type: regex
+    pattern: 'DOB\s*\n+\s*\n*\s*(\d{1,2}/\d{1,2}/\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_customer_dob"
+    target_path: "deal.parties[0].individual.dob"
+
+  - id: customer_dob_table
+    type: regex
+    pattern: 'DateofBirth\s*\n+\s*(\d{1,2}/\d{1,2}/\d{4})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_customer_dob_alt"
+    target_path: "deal.parties[0].individual.dob"
+
+  # ============================================================
+  # RESIDENCES / ADDRESSES
+  # ============================================================
+
+  - id: current_address_header
+    type: regex
+    pattern: 'DOB\s*\n+\s*\n*\s*(\d+[A-Z]+),\s*([A-Z]+),\s*([A-Z]{2})\s*(\d{5})'
+    flags: [IGNORECASE]
+    groups:
+      1: "deal.parties[0].addresses[0].street"
+      2: "deal.parties[0].addresses[0].city"
+      3: "deal.parties[0].addresses[0].state"
+      4: "deal.parties[0].addresses[0].postal_code"
+    groups_keys:
+      1: "credit_current_address"
+      2: "credit_current_city"
+      3: "credit_current_state"
+      4: "credit_current_zip"
+
+  - id: primary_address_table
+    type: regex
+    pattern: 'PrimaryAddress[^\n]*\n+Address\s+City\s+State\s+Zip\s*\n+\s*([A-Z0-9]+)\s+([A-Z]+)\s+([A-Z]{2})\s+(\d{5})'
+    groups:
+      1: "deal.parties[0].addresses[0].street"
+      2: "deal.parties[0].addresses[0].city"
+      3: "deal.parties[0].addresses[0].state"
+      4: "deal.parties[0].addresses[0].postal_code"
+    groups_keys:
+      1: "credit_primary_address_alt"
+      2: "credit_primary_city_alt"
+      3: "credit_primary_state_alt"
+      4: "credit_primary_zip_alt"
+
+  # Additional addresses from ADDRESSES table
+  - id: addresses_table_1
+    type: regex
+    pattern: 'ADDRESSES-Months\s+Address[^\n]*\n+\s*(\d+[A-Z\s]+)\s+([A-Z]+)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)[^\n]*\n+\s*(\d+[A-Z\s]+)\s+([A-Z]+)\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)'
+    groups:
+      1: "residences.records[1].address"
+      2: "residences.records[1].city"
+      3: "residences.records[1].state"
+      4: "residences.records[1].zip"
+      5: "residences.records[2].address"
+      6: "residences.records[2].city"
+      7: "residences.records[2].state"
+      8: "residences.records[2].zip"
+    groups_keys:
+      1: "credit_address_1"
+      2: "credit_city_1"
+      3: "credit_state_1"
+      4: "credit_zip_1"
+      5: "credit_address_2"
+      6: "credit_city_2"
+      7: "credit_state_2"
+      8: "credit_zip_2"
+
+  # ============================================================
+  # ALIASES / ALSO KNOWN AS
+  # ============================================================
+
+  - id: alias_name
+    type: regex
+    pattern: 'ALSOKNOWNAS[^\n]*\n+LastName\s+FirstName[^\n]*\n+\s*([A-Z,\s]+)\s+Alias'
+    group: 1
+    key: "credit_alias_name"
+    target_path: "aliases.records[0].full_name"
+
+  - id: alias_type
+    type: regex
+    pattern: 'ALSOKNOWNAS[^\n]*\n+LastName\s+FirstName[^\n]*\n+\s*[A-Z,\s]+\s+(Alias|Aka)'
+    group: 1
+    key: "credit_alias_type"
+    target_path: "aliases.records[0].type"
+
+  # ============================================================
+  # CREDIT SUMMARY (from CREDITSUMMARY table)
+  # ============================================================
+
+  - id: total_accounts
+    type: regex
+    pattern: '\|\s*Total\s*\|\s*(\d+)\s*\|'
+    group: 1
+    key: "credit_total_accounts"
+    target_path: "credit_summary.fields.total_accounts"
+    transform: to_int
+
+  - id: total_balance
+    type: regex
+    pattern: '\|\s*Total\s*\|\s*\d+\s*\|\s*\$([0-9,]+)\s*\|'
+    group: 1
+    key: "credit_total_balance"
+    target_path: "credit_summary.fields.total_balance"
+    transform: to_float
+
+  - id: total_past_due
+    type: regex
+    pattern: '\|\s*Total\s*\|\s*\d+\s*\|\s*\$[0-9,]+\s*\|\s*\$([0-9O]+)\s*\|'
+    group: 1
+    key: "credit_total_past_due"
+    target_path: "credit_summary.fields.total_past_due"
+    transform: to_float
+
+  - id: total_payment
+    type: regex
+    pattern: '\|\s*Total\s*\|\s*\d+\s*\|\s*\$[0-9,]+\s*\|\s*\$[0-9O]+\s*\|\s*\$([0-9]+)\s*\|'
+    group: 1
+    key: "credit_total_payment"
+    target_path: "credit_summary.fields.total_payment"
+    transform: to_float
+
+  - id: total_credit_limit
+    type: regex
+    pattern: '\|\s*Total\s*\|[^\|]*\|[^\|]*\|[^\|]*\|[^\|]*\|\s*\$([0-9,]+)\s*\|'
+    group: 1
+    key: "credit_total_credit_limit"
+    target_path: "credit_summary.fields.total_credit_limit"
+    transform: to_float
+
+  - id: total_high_credit
+    type: regex
+    pattern: '\|\s*Total\s*\|[^\|]*\|[^\|]*\|[^\|]*\|[^\|]*\|[^\|]*\|\s*\$([0-9,]+)\s*\|'
+    group: 1
+    key: "credit_total_high_credit"
+    target_path: "credit_summary.fields.total_high_credit"
+    transform: to_float
+
+  - id: revolving_utilization
+    type: regex
+    pattern: '\|\s*Revolving\s+Credit[^\|]*\|\s*(\d+)%[^\|]*\|'
+    flags: [DOTALL]
+    group: 1
+    key: "credit_revolving_utilization"
+    target_path: "credit_summary.fields.revolving_utilization"
+
+  - id: oldest_tradeline
+    type: regex
+    pattern: '\|\s*OldestTradeline[^\|]*\|\s*(\d{4}-\d{2})\s*\|'
+    group: 1
+    key: "credit_oldest_tradeline"
+    target_path: "credit_summary.fields.oldest_trade_line"
+
+  - id: new_tradelines_6mo
+    type: regex
+    pattern: 'NewTradelines\s+(\d+)\s+\(6\s+Months\)'
+    group: 1
+    key: "credit_new_tradelines_6mo"
+    target_path: "credit_summary.fields.new_trade_lines_6_months"
+    transform: to_int
+
+  - id: new_inquiries_12mo
+    type: regex
+    pattern: 'New\s+Inquiries[^\|]*\|\s*(\d+)\s*\|'
+    group: 1
+    key: "credit_new_inquiries_12mo"
+    target_path: "credit_summary.fields.new_inquiries_12_months"
+    transform: to_int
+
+  # ============================================================
+  # LIABILITIES / TRADE LINES
+  # ============================================================
+
+  # Educational loan - WFEFS
+  - id: liability_wfefs_balance
+    type: regex
+    pattern: 'WFEFS[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit\s+\$([0-9,]+)'
+    flags: [DOTALL]
+    groups:
+      1: "deal.liabilities[0].unpaid_balance"
+      2: "deal.liabilities[0].high_balance"
+    groups_keys:
+      1: "credit_liability_0_balance"
+      2: "credit_liability_0_high_credit"
+    groups_transforms:
+      1: to_float
+      2: to_float
+
+  - id: liability_wfefs_payment
+    type: regex
+    pattern: 'WFEFS[^\n]*\n+[^\n]*Payment\s+\$(\d+)'
+    flags: [DOTALL]
+    group: 1
+    key: "credit_liability_0_payment"
+    target_path: "deal.liabilities[0].monthly_payment"
+    transform: to_float
+
+  - id: liability_wfefs_creditor
+    type: static
+    value: "WFEFS"
+    key: "credit_liability_0_creditor"
+    target_path: "deal.liabilities[0].creditor_name"
+
+  - id: liability_wfefs_type
+    type: static
+    value: "StudentLoan"
+    key: "credit_liability_0_type"
+    target_path: "deal.liabilities[0].liability_type.value"
+
+  # Educational loan - DEPT OF EDUCATION
+  - id: liability_dept_ed_balance
+    type: regex
+    pattern: 'DEPT\s+OF\s+EDUCATION/NELN[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit\s+\$([0-9,]+)'
+    flags: [DOTALL]
+    groups:
+      1: "deal.liabilities[1].unpaid_balance"
+      2: "deal.liabilities[1].high_balance"
+    groups_keys:
+      1: "credit_liability_1_balance"
+      2: "credit_liability_1_high_credit"
+    groups_transforms:
+      1: to_float
+      2: to_float
+
+  - id: liability_dept_ed_payment
+    type: regex
+    pattern: 'DEPT\s+OF\s+EDUCATION/NELN[^\n]*\n+[^\n]*Payment\s+\$(\d+)'
+    flags: [DOTALL]
+    group: 1
+    key: "credit_liability_1_payment"
+    target_path: "deal.liabilities[1].monthly_payment"
+    transform: to_float
+
+  - id: liability_dept_ed_creditor
+    type: static
+    value: "DEPT OF EDUCATION/NELNET"
+    key: "credit_liability_1_creditor"
+    target_path: "deal.liabilities[1].creditor_name"
+
+  - id: liability_dept_ed_type
+    type: static
+    value: "StudentLoan"
+    key: "credit_liability_1_type"
+    target_path: "deal.liabilities[1].liability_type.value"
+
+  # Credit card - AMEX
+  - id: liability_amex_balance
+    type: regex
+    pattern: 'AMEX[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit[^\n]*\$([0-9,]+)'
+    flags: [DOTALL]
+    groups:
+      1: "deal.liabilities[2].unpaid_balance"
+      2: "deal.liabilities[2].high_balance"
+    groups_keys:
+      1: "credit_liability_2_balance"
+      2: "credit_liability_2_high_credit"
+    groups_transforms:
+      1: to_float
+      2: to_float
+
+  - id: liability_amex_limit
+    type: regex
+    pattern: 'AMEX[^\n]*\n+[^\n]*CreditLimit[^\n]*\$([0-9,]+)'
+    flags: [DOTALL]
+    group: 1
+    key: "credit_liability_2_limit"
+    target_path: "deal.liabilities[2].credit_limit"
+    transform: to_float
+
+  - id: liability_amex_creditor
+    type: static
+    value: "AMEX"
+    key: "credit_liability_2_creditor"
+    target_path: "deal.liabilities[2].creditor_name"
+
+  - id: liability_amex_type
+    type: static
+    value: "Revolving"
+    key: "credit_liability_2_type"
+    target_path: "deal.liabilities[2].liability_type.value"
+
+  # Wells Fargo credit card
+  - id: liability_wellsfargo_balance
+    type: regex
+    pattern: 'WELLSFARGO[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit[^\n]*\$([0-9,]+)\s+TermsREV[^\n]*\$([0-9,]+)'
+    flags: [DOTALL]
+    groups:
+      1: "deal.liabilities[3].unpaid_balance"
+      2: "deal.liabilities[3].high_balance"
+      3: "deal.liabilities[3].credit_limit"
+    groups_keys:
+      1: "credit_liability_3_balance"
+      2: "credit_liability_3_high_credit"
+      3: "credit_liability_3_limit"
+    groups_transforms:
+      1: to_float
+      2: to_float
+      3: to_float
+
+  - id: liability_wellsfargo_creditor
+    type: static
+    value: "WELLS FARGO"
+    key: "credit_liability_3_creditor"
+    target_path: "deal.liabilities[3].creditor_name"
+
+  - id: liability_wellsfargo_type
+    type: static
+    value: "Revolving"
+    key: "credit_liability_3_type"
+    target_path: "deal.liabilities[3].liability_type.value"
+
+  # ============================================================
+  # INQUIRIES
+  # ============================================================
+
+  - id: inquiry_1_date
+    type: regex
+    pattern: 'INQUIRIES[^\n]*\n+Date\s+Company[^\n]*\n+\s*(\d{2}/\d{2}/\d{4})'
+    group: 1
+    key: "credit_inquiry_0_date"
+    target_path: "inquiries.records[0].inquiry_date"
+
+  - id: inquiry_1_company
+    type: regex
+    pattern: 'INQUIRIES[^\n]*\n+Date\s+Company[^\n]*\n+\s*\d{2}/\d{2}/\d{4}\s+([A-Z]+)'
+    group: 1
+    key: "credit_inquiry_0_company"
+    target_path: "inquiries.records[0].company"
+
+  - id: inquiry_1_member
+    type: regex
+    pattern: 'INQUIRIES[^\n]*\n+Date\s+Company\s+MemberNumber[^\n]*\n+\s*\d{2}/\d{2}/\d{4}\s+[A-Z]+\s+([A-Z0-9]+)'
+    group: 1
+    key: "credit_inquiry_0_member"
+    target_path: "inquiries.records[0].member_number"
+
+  # ============================================================
+  # FRAUD ALERTS
+  # ============================================================
+
+  - id: fraud_alert_facta_1
+    type: regex
+    pattern: '(FACTA:ADDRESS\s*DISCREPANCY[^|]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_fraud_alert_0_message"
+    target_path: "fraud_alerts.records[0].message"
+
+  - id: fraud_alert_type_1
+    type: static
+    value: "FACTA"
+    key: "credit_fraud_alert_0_type"
+    target_path: "fraud_alerts.records[0].type"
+
+  - id: fraud_alert_transunion
+    type: regex
+    pattern: '(TransUnion\s+HighRiskFraud\s+Alert[^\n]+)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_fraud_alert_1_message"
+    target_path: "fraud_alerts.records[1].message"
+
+  - id: fraud_alert_type_2
+    type: static
+    value: "TransUnion HighRiskFraud Alert"
+    key: "credit_fraud_alert_1_type"
+    target_path: "fraud_alerts.records[1].type"
+
+  # ============================================================
+  # OFAC (Office of Foreign Assets Control)
+  # ============================================================
+
+  - id: ofac_result_nomatch
+    type: regex
+    pattern: 'OFAC[^\n]*\n+[^\n]*\n+[^\n]*\n+\s*([A-Z]+)\s+(SPELLINGOFNAMEUSED|NOMATCHFOUND|Clearforallsearches)'
+    flags: [IGNORECASE]
+    group: 2
+    key: "credit_ofac_result"
+    target_path: "ofac.fields.result"
+
+  - id: ofac_message
+    type: regex
+    pattern: '(SPELLINGOFNAMEUSEDTOACCESSREPORTDOESNOTMATCHOFAC/PLCLIST|NOMATCHFOUND|Clearforallsearchesperformed)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_ofac_message"
+    target_path: "ofac.fields.message"
+
+  # ============================================================
+  # PUBLIC RECORDS
+  # ============================================================
+
+  - id: public_records_status
+    type: regex
+    pattern: '(No\s*public\s*records\s*found)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_public_records_status"
+    target_path: "public_records.fields.status"
+
+  # ============================================================
+  # DOCUMENT METADATA
+  # ============================================================
+
+  - id: document_name
+    type: static
+    value: "MERGED INFILE CREDIT REPORT"
+    key: "credit_document_name"
+    target_path: "document_metadata.fields.document_name"
+
+  - id: consumer_name_meta
+    type: regex
+    pattern: 'Name\s*([A-Z]+\s*[A-Z]+\s*[A-Z]*)'
+    group: 1
+    key: "credit_consumer_name_meta"
+    target_path: "document_metadata.fields.consumer_name"
+
+  - id: generated_by
+    type: regex
+    pattern: '(Partners\s+Credit\s*&\s*Verification\s*Solutions|Advantage\s+Credit|Evergreen\s*Credit)'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_generated_by"
+    target_path: "document_metadata.fields.generated_by"
+
+  - id: document_pages
+    type: regex
+    pattern: 'Page\s+(\d+)/(\d+)'
+    group: 2
+    key: "credit_document_pages"
+    target_path: "document_metadata.fields.pages"
+    transform: to_int
+
+  # ============================================================
+  # STATIC FIELDS
+  # ============================================================
+
+  - id: document_type_static
+    type: static
+    value: "Credit Bureau Report"
+    key: "credit_document_type"
+    target_path: "document_type"
+
+  - id: source_static
+    type: static
+    value: "CreditBureauReport"
+    key: "credit_source"
+    target_path: "source"
+
+  - id: party_role
+    type: static
+    value: "Borrower"
+    key: "credit_party_role"
+    target_path: "deal.parties[0].party_role.value"
+
+  - id: address_type
+    type: static
+    value: "Current"
+    key: "credit_address_type"
+    target_path: "deal.parties[0].addresses[0].address_type.value"

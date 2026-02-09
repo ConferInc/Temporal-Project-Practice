@@ -1,0 +1,121 @@
+# ============================================================
+# UtilityBill.yaml — Deterministic extraction rules for
+# Standard Utility Bills (Generic / Sample)
+# ============================================================
+# Schema Source: document/utilitybill.json
+# ============================================================
+
+document_type: "UTILITY_BILL"
+schema_version: "1.0"
+
+rules:
+  # ============================================================
+  # ACCOUNT INFORMATION
+  # ============================================================
+  - id: account_name
+    type: regex
+    pattern: 'Account\s*Name:\s*(.*)'
+    group: 1
+    target_path: "account_information.account_name"
+
+  - id: account_number
+    type: regex
+    pattern: 'Account\s*Number:\s*([A-Z0-9-]+)'
+    group: 1
+    target_path: "account_information.account_number"
+
+  - id: po_number
+    type: regex
+    pattern: 'PO#:\s*([A-Z0-9]+)'
+    group: 1
+    target_path: "account_information.purchase_order_number"
+
+  - id: payment_terms
+    type: regex
+    pattern: 'PAYMENT\s*DUE:\s*(.*)'
+    group: 1
+    target_path: "account_information.payment_terms"
+
+  # ============================================================
+  # BILLING SUMMARY
+  # ============================================================
+
+  # Capturing Invoice # (Optional)
+  - id: invoice_number
+    type: regex
+    pattern: "([A-Z0-9]{9,})"
+    group: 1
+    target_path: "billing_summary.invoice_number"
+
+  # Capturing Billing Date
+  - id: billing_date
+    type: regex
+    pattern: 'Billing\s*Date:?\s*\n(\d{2}/\d{2}/\d{2})'
+    flags: [DOTALL]
+    group: 1
+    target_path: "billing_summary.billing_date"
+
+  # Capturing Amounts Block (Robust - optional $)
+  # Format in raw txt: "99.35" might be total or current
+  # Based on 1_raw.txt, we have "PREVIOUS BALANCE\n5\n99.35"
+  # This implies: 5 is previous? 99.35 is present?
+  # Let's try to capture lines closer to labels if possible, or just the block.
+  # The strict block pattern failed. Let's try individual or relaxed block.
+  - id: billing_amounts_relaxed
+    type: regex
+    pattern: 'PREVIOUS\s*BALANCE\s*\n([\d\.]+)\s*\n([\d\.]+)'
+    flags: [DOTALL]
+    groups:
+      1: "billing_summary.prior_balance"
+      2: "billing_summary.current_charges"
+    groups_keys:
+      1: "prior_balance"
+      2: "current_charges"
+
+  - id: total_amount_simple
+    type: regex
+    pattern: 'PAYMENT\s*RECEIVED.*?\n([\d\.]+)'
+    flags: [DOTALL]
+    group: 1
+    target_path: "billing_summary.total_amount_due"
+
+  # ============================================================
+  # SERVICE PROVIDER (Inferred from top address lines)
+  # ============================================================
+
+  # Provider Name (implied from top line?)
+  # "MOS energy"
+  - id: provider_name
+    type: regex
+    pattern: '(MOS\s*energy)'
+    group: 1
+    target_path: "service_provider.organization_name"
+
+  - id: provider_address_street
+    type: regex
+    pattern: '^([^\n]+)\nAccount Name:'
+    group: 1
+    flags: [DOTALL]
+    target_path: "service_provider.mailing_address.street"
+
+  - id: provider_address_city_state_zip
+    type: regex
+    pattern: 'Account Name:.*?\n([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})'
+    flags: [DOTALL]
+    groups:
+      1: "service_provider.mailing_address.city"
+      2: "service_provider.mailing_address.state"
+      3: "service_provider.mailing_address.zip_code"
+    groups_keys:
+      1: "provider_city"
+      2: "provider_state"
+      3: "provider_zip"
+
+  # ============================================================
+  # CONTACT INFO
+  # ============================================================
+  - id: customer_service_phone
+    type: regex
+    pattern: '(\d{1}-\d{3}-\d{3}-\d{4})'
+    group: 1
+    target_path: "service_provider.customer_service_phone"

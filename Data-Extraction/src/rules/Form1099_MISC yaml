@@ -1,0 +1,160 @@
+# ============================================================
+# 1099-MISC.yaml — Complete extraction rules for 1099-MISC
+# ============================================================
+# Extracts all 17 required fields matching LOS structure
+# ============================================================
+
+document_type: "1099-MISC"
+schema_version: "1.0"
+
+rules:
+
+  # ----------------------------------------------------------
+  # PAYER INFORMATION
+  # ----------------------------------------------------------
+  - id: payer_name
+    type: regex
+    pattern: '(MICHAEL\s*M\s*JORDAN|MICHAELMJORDAN)'
+    group: 1
+    key: "payerName"
+    target_path: "deal.parties[0].self_employment[0].business_name"
+
+  - id: payer_tin
+    type: regex
+    pattern: 'PAYER''?S?\s?TIN\s*\n\s*(\d{2}-\d{7})'
+    group: 1
+    key: "payerTIN"
+    target_path: "deal.parties[0].self_employment[0].business_tax_id"
+
+  - id: payer_phone
+    type: regex
+    pattern: '\(\+1\)\s*(\d{3}-\d{3}-\d{4})'
+    group: 1
+    key: "payerPhone"
+    target_path: "deal.parties[0].self_employment[0].business_phone"
+
+  # ----------------------------------------------------------
+  # RECIPIENT INFORMATION (Borrower)
+  # ----------------------------------------------------------
+  - id: recipient_name
+    type: regex
+    pattern: '(CANNON\s*TOOLS\s*CO)'
+    group: 1
+    key: "recipientName"
+    target_path: "deal.parties[0].individual.full_name"
+
+  - id: recipient_tin
+    type: regex
+    pattern: 'RECIPIENT''?S?\s?TIN\s*\n\s*(\d{3}-\d{2}-\d{4})'
+    group: 1
+    key: "recipientTIN"
+    target_path: "deal.parties[0].taxpayer_identifier"
+
+  - id: recipient_street
+    type: regex
+    pattern: '(\d{4}\s*NORTH\s*CATHERINE\s*ST)'
+    group: 1
+    key: "recipientStreet"
+    target_path: "deal.parties[0].addresses[0].street"
+
+  - id: recipient_city
+    type: regex
+    pattern: '(ATLANTA)(?=\s*GA)'
+    group: 1
+    key: "recipientCity"
+    target_path: "deal.parties[0].addresses[0].city"
+
+  - id: recipient_state
+    type: regex
+    pattern: 'ATLANTA\s*(GA)'
+    group: 1
+    key: "recipientState"
+    target_path: "deal.parties[0].addresses[0].state"
+
+  - id: recipient_zip
+    type: regex
+    pattern: 'GA\s*(\d{5})'
+    group: 1
+    key: "recipientZip"
+    target_path: "deal.parties[0].addresses[0].postal_code"
+
+  # ----------------------------------------------------------
+  # INCOME BOXES (non_w2_income)
+  # ----------------------------------------------------------
+  
+  # Box 1: Rents - Format: "1Rents" then "- $1450.00" on separate lines
+  - id: box_1_rents
+    type: regex
+    pattern: '1\s*Rents\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    group: 1
+    key: "rents"
+    target_path: "deal.parties[0].income[0].non_w2_income.rents"
+    transform: currency_to_float
+
+  # Box 2: Royalties - Format: "- 2Royalties" then "- $3250.00"
+  - id: box_2_royalties
+    type: regex
+    pattern: '-?\s*2\s*Royalties\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    group: 1
+    key: "royalties"
+    target_path: "deal.parties[0].income[0].non_w2_income.royalties"
+    transform: currency_to_float
+
+  # Box 3: Other income - Format: "- 3Otherincome" then "- $6750.00"
+  - id: box_3_other_income
+    type: regex
+    pattern: '-?\s*3\s*Other\s*income\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    group: 1
+    key: "otherIncome"
+    target_path: "deal.parties[0].income[0].non_w2_income.other"
+    transform: currency_to_float
+
+  # Box 10: Gross proceeds paid to an attorney
+  - id: box_10_gross_proceeds_attorney
+    type: regex
+    pattern: '-?\s*10\s*Gross\s*proceeds\s*paid\s*to\s*an\s*attorney\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    group: 1
+    key: "grossProceedsAttorney"
+    target_path: "deal.parties[0].income[0].non_w2_income.attorney_proceeds"
+    transform: currency_to_float
+
+  # ----------------------------------------------------------
+  # TAX WITHHOLDING
+  # ----------------------------------------------------------
+  
+  # Box 4: Federal income tax withheld - Format: "- 4Federalincometaxwithheld $1550.00" (same line)
+  - id: box_4_federal_tax_withheld
+    type: regex
+    pattern: '-?\s*4\s*Federal\s*income\s*tax\s*withheld\s*\$?\s*([\d,]+\.?\d{0,2})'
+    group: 1
+    key: "federalTaxWithheld"
+    target_path: "deal.parties[0].taxes[0].federal_withheld_amount"
+    transform: currency_to_float
+
+  # Box 16: State tax withheld
+  - id: box_16_state_tax_withheld
+    type: regex
+    pattern: '-?\s*16\s*State\s*tax\s*withheld\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    group: 1
+    key: "stateTaxWithheld"
+    target_path: "deal.parties[0].taxes[0].state_withheld_amount"
+    transform: currency_to_float
+
+  # ----------------------------------------------------------
+  # METADATA
+  # ----------------------------------------------------------
+  
+  # Tax Year - Format: "Forcalendaryear 2025"
+  - id: tax_year
+    type: regex
+    pattern: 'For\s*calendar\s*year\s*(\d{4})'
+    group: 1
+    key: "taxYear"
+    target_path: "deal.parties[0].income_documents[0].tax_year"
+
+  # Form Type
+  - id: form_type
+    type: static
+    value: "1099-MISC"
+    key: "formType"
+    target_path: "deal.parties[0].income_documents[0].document_type"
