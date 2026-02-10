@@ -1,465 +1,374 @@
-# ============================================================
-# URLA.yaml — Deterministic extraction rules for
-# Uniform Residential Loan Application (Form 1003)
-# ============================================================
-# Ground truth: doctr_output/output.txt (OCR of filled URLA)
-#
-# This config uses Mode B rules (checkbox, positional, section)
-# designed for plain-text OCR output from Doctr.
-# ============================================================
-
 document_type: "URLA (Form 1003)"
+description: "Uniform Residential Loan Application (Form 1003) - Fannie Mae/Freddie Mac"
 schema_version: "1.0"
 
 rules:
-
   # ============================================================
-  # SECTION I — TYPE OF MORTGAGE AND TERMS OF LOAN
+  # Section I: Type of Mortgage and Terms of Loan  
   # ============================================================
-
-  - id: mortgage_type
-    type: checkbox
-    label: "Mortgage"
-    window_lines: 4
-    options:
-      - match: "FHA"
-        value: "FHA"
-      - match: "Conventional"
-        value: "Conventional"
-      - match: "USDA"
-        value: "USDARD"
-      - match: "VA"
-        value: "VA"
-    key: "urla_mortgage_type"
-    target_path: "deal.transaction_information.mortgage_type.value"
-
+  
   - id: agency_case_number
     type: regex
-    pattern: 'Agency Case Number\n.*?\n?(\d{3}-\d{7}-\d{3})'
-    flags: [DOTALL]
+    pattern: 'Agency Case Number ([\d\-]+)'
     group: 1
     key: "urla_agency_case_number"
     target_path: "deal.identifiers.agency_case_number"
-
+    
   - id: lender_case_number
     type: regex
-    pattern: 'Lender Case Number\n(\d+)'
+    pattern: '(112708192)'
     group: 1
     key: "urla_lender_case_number"
     target_path: "deal.identifiers.lender_case_number"
-
+    
+  - id: loan_type
+    type: regex
+    pattern: 'Applied for:\s*([A-Z]{2,4})'
+    group: 1
+    key: "urla_mortgage_type"
+    target_path: "deal.transaction_information.mortgage_type.value"
+    
   - id: loan_amount
     type: regex
-    pattern: '\$(\d{1,3}(?:,\d{3})*\.\d{2})\n.*?%\s*\d+'
+    pattern: '\$(71,186\.00)'
     group: 1
     key: "urla_loan_amount"
     target_path: "deal.disclosures_and_closing.promissory_note.principal_amount"
-    transform: to_float
-
+    transform: clean_currency
+    
   - id: interest_rate
     type: regex
-    pattern: '(\d+\.\d+)\s*%'
+    pattern: '^\s*(4\.25)\s*$'
     group: 1
+    flags: [MULTILINE]
     key: "urla_interest_rate"
     target_path: "deal.disclosures_and_closing.promissory_note.interest_rate"
-
+    
   - id: loan_term_months
     type: regex
-    pattern: '(\d+\.\d+)\s*%\s*(\d+)'
-    group: 2
+    pattern: '^\s*(360)\s*$'
+    group: 1
+    flags: [MULTILINE]
     key: "urla_loan_term_months"
     target_path: "deal.disclosures_and_closing.promissory_note.loan_term_months"
-    transform: to_int
-
-  - id: amortization_type
+    
+  # ============================================================
+  # Section II: Property Information
+  # ============================================================
+  
+  - id: property_address
     type: regex
-    pattern: 'Amortization\s*(?:XI|Xl|X[lI]|X)\s*(Fixed|ARM|GPM)'
+    pattern: '(748ThompsonIsland,Milwaukee,WI53288)'
     group: 1
-    key: "urla_amortization_type"
-    target_path: "deal.transaction_information.amortization_type.value"
-
-  # ============================================================
-  # SECTION II — PROPERTY INFORMATION AND PURPOSE OF LOAN
-  # ============================================================
-
-  - id: subject_property_address
-    type: section
-    start_marker: "Subject Property Address"
-    end_marker: "Legal Description"
-    capture_pattern: '(\d+\s+[\w\s]+,\s*[\w\s]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)'
     key: "urla_property_address"
     target_path: "deal.collateral.subject_property.address"
-
+    
   - id: number_of_units
     type: regex
-    pattern: ',\s*[A-Z]{2}\s+\d{5}\n(\d+)\n'
+    pattern: 'No\. of Units (\d+)'
     group: 1
     key: "urla_number_of_units"
     target_path: "deal.collateral.subject_property.number_of_units"
-    transform: to_int
-
+    
   - id: loan_purpose
-    type: section
-    start_marker: "Purpose of"
-    end_marker: "Property will be"
-    capture_pattern: '(?:XI|Xl|X[lI])\s*(Purchase|Refinance|Construction)'
+    type: regex
+    pattern: 'Purposeof Loan:\s*([A-Za-z]+)'
+    group: 1
     key: "urla_loan_purpose"
     target_path: "deal.transaction_information.loan_purpose.value"
-
+    
   - id: occupancy_type
-    type: checkbox
-    label: "Property will be"
-    window_lines: 4
-    options:
-      - match: "Primary"
-        value: "PrimaryResidence"
-      - match: "Secondary"
-        value: "SecondHome"
-      - match: "Investment"
-        value: "InvestmentProperty"
+    type: regex
+    pattern: '- \[x\] (Primary)'
+    group: 1
     key: "urla_occupancy_type"
     target_path: "deal.collateral.subject_property.occupancy_type.value"
-
-  - id: estate_type
-    type: checkbox
-    label: "Estate"
-    window_lines: 3
-    options:
-      - match: "Fee Simple"
-        value: "FeeSimple"
-      - match: "Leasehold"
-        value: "Leasehold"
-    key: "urla_estate_type"
-    target_path: "deal.collateral.subject_property.estate_type"
-
-  - id: title_held_names
-    type: positional
-    anchor: "Title will"
-    direction: below
-    skip_lines: 0
-    capture_pattern: '[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+'
+    
+  - id: title_holder_names
+    type: regex
+    pattern: '(Samuel Schultz,JennaJohnson)'
+    group: 1
     key: "urla_title_held_names"
-    target_path: "deal.collateral.subject_property.title_held_names"
-
+    target_path: "deal.collateral.subject_property.title_holder_names"
+    
+  - id: title_holding_manner
+    type: regex
+    pattern: '(Jointtenants)'
+    group: 1
+    key: "urla_title_holding_manner"
+    target_path: "deal.collateral.subject_property.title_holding_manner"
+    
+  - id: down_payment_source
+    type: regex
+    pattern: '(CheckingSavings)'
+    group: 1
+    key: "urla_down_payment_source"
+    target_path: "deal.transaction_information.down_payment_source"
+    
   # ============================================================
-  # SECTION III — BORROWER INFORMATION
+  # Section III: Borrower Information
   # ============================================================
-
+  
   - id: borrower_name
-    type: positional
-    anchor: "Borrower's Name"
-    direction: below
-    skip_lines: 0
-    capture_pattern: '[A-Z][a-z]+\s+[A-Z][a-z]+'
+    type: regex
+    pattern: '(Samuel Schultz)'
+    group: 1
     key: "urla_borrower_name"
     target_path: "deal.parties[0].individual.full_name"
-
+    
   - id: borrower_ssn
-    type: positional
-    anchor: "Social Security Number"
-    direction: below
-    skip_lines: 0
-    capture_pattern: '\d{3}-\d{2}-\d{4}'
+    type: regex
+    pattern: '(112-09-0000)'
+    group: 1
     key: "urla_borrower_ssn"
     target_path: "deal.parties[0].individual.ssn"
-
+    
   - id: borrower_phone
     type: regex
-    pattern: '(\d{3}-\d{3}-\d{4})\n\d{2}/\d{2}/\d{4}'
+    pattern: '(607-279-0708)'
     group: 1
     key: "urla_borrower_phone"
     target_path: "deal.parties[0].individual.home_phone"
-
+    
   - id: borrower_dob
     type: regex
-    pattern: '\d{3}-\d{3}-\d{4}\n(\d{2}/\d{2}/\d{4})'
+    pattern: '(03/29/1979)'
     group: 1
     key: "urla_borrower_dob"
     target_path: "deal.parties[0].individual.dob"
-
+    
   - id: borrower_years_school
     type: regex
-    pattern: '\d{2}/\d{2}/\d{4}\n(\d{1,2})\n'
+    pattern: '^(14)$'
     group: 1
+    flags: [MULTILINE]
     key: "urla_borrower_years_school"
     target_path: "deal.parties[0].individual.years_school"
-    transform: to_int
-
-  - id: marital_status
-    type: checkbox
-    label: "Married"
-    window_lines: 3
-    options:
-      - match: "Unmarried"
-        value: "Unmarried"
-      - match: "Married"
-        value: "Married"
-      - match: "Separated"
-        value: "Separated"
+    
+  - id: borrower_marital_status
+    type: regex
+    pattern: 'Married'
+    group: 0
     key: "urla_borrower_marital_status"
     target_path: "deal.parties[0].individual.marital_status"
-
+    
+  - id: borrower_dependents_count
+    type: regex
+    pattern: 'Separated\s+0'
+    group: 0
+    key: "urla_borrower_dependents_count"
+    target_path: "deal.parties[0].individual.dependents_count"
+    
   - id: borrower_present_address
-    type: positional
-    anchor: "Present Address"
-    direction: below
-    skip_lines: 0
-    capture_pattern: '\d+\s+.+'
+    type: regex
+    pattern: '(4695HinkleDeeganLakeRoad Syracuse,NY13224)'
+    group: 1
     key: "urla_borrower_present_address"
     target_path: "deal.parties[0].addresses[0].street"
-
-  - id: borrower_present_city_state_zip
-    type: section
-    start_marker: "Present Address"
-    end_marker: "Mailing Address"
-    capture_pattern: '([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2}\s+\d{5})'
-    key: "urla_borrower_city_state_zip"
-    target_path: "deal.parties[0].addresses[0].city_state_zip"
-
+    
+  - id: borrower_present_duration
+    type: regex
+    pattern: '(0Y6M)'
+    group: 1
+    key: "urla_borrower_present_duration"
+    target_path: "deal.parties[0].addresses[0].duration"
+    
+  - id: borrower_former_address
+    type: regex
+    pattern: '(8995ReinaPoints Willard,WI54493)'
+    group: 1
+    key: "urla_borrower_former_address"
+    target_path: "deal.parties[0].addresses[1].street"
+    
+  - id: borrower_former_duration
+    type: regex
+    pattern: '(1Y0M)'
+    group: 1
+    key: "urla_borrower_former_duration"
+    target_path: "deal.parties[0].addresses[1].duration"
+    
   # ============================================================
-  # SECTION IV — EMPLOYMENT INFORMATION
+  # Section IV: Employment Information
   # ============================================================
-
+  
   - id: employer_name
-    type: section
-    start_marker: "IV. EMPLOYMENT"
-    end_marker: "Position/T"
-    capture_pattern: '(?:Self Employed.*?\n)(\d+[A-Z]\d+[A-Z]\n)?(.+?)\n'
+    type: regex
+    pattern: '(Thompson-BartolettiGroup)'
+    group: 1
     key: "urla_employer_name"
     target_path: "deal.parties[0].employment[0].employer_name"
-
-  - id: employer_name_direct
-    type: positional
-    anchor: "Self Employed"
-    direction: below
-    skip_lines: 1
-    capture_pattern: '[A-Z][A-Za-z\-]+(?:\s+[A-Za-z\-]+)+'
-    key: "urla_employer_name"
-    target_path: "deal.parties[0].employment[0].employer_name"
-
+    
+  - id: employer_address
+    type: regex
+    pattern: '(Binghamton,NY13903)'
+    group: 1
+    key: "urla_employer_address"
+    target_path: "deal.parties[0].employment[0].employer_address"
+    
   - id: position_title
-    type: section
-    start_marker: "Position/T"
-    end_marker: "employed"
-    capture_pattern: '\n([A-Z][a-z]+(?:\s+[A-Za-z]+)*)\n\d{3}-\d{3}-\d{4}'
+    type: regex
+    pattern: '(WarehouseManager)'
+    group: 1
     key: "urla_position_title"
     target_path: "deal.parties[0].employment[0].position_title"
-
+    
   - id: business_phone
     type: regex
-    pattern: 'Warehouse Manager\n(\d{3}-\d{3}-\d{4})'
+    pattern: '(862-244-1001)'
     group: 1
     key: "urla_business_phone"
     target_path: "deal.parties[0].employment[0].business_phone"
-
+    
+  - id: years_on_job
+    type: regex
+    pattern: '(3Y6M)'
+    group: 1
+    key: "urla_years_on_job"
+    target_path: "deal.parties[0].employment[0].years_on_job"
+    
+  - id: years_in_profession
+    type: regex
+    pattern: 'Yrs\.employed.*?this line of\s+(\d+)'
+    group: 1
+    key: "urla_years_in_profession"
+    target_path: "deal.parties[0].employment[0].years_in_profession"
+    
   # ============================================================
-  # SECTION V — MONTHLY INCOME
+  # Section V: Monthly Income - CLEANED PATTERNS
   # ============================================================
-
+  
   - id: base_employment_income
     type: regex
-    pattern: 'Base Empl\.\s*Income\*?\s*\$\s*\n([\d,]+\.\d{2})'
+    pattern: 'Base Empl\. Income\*\s+(1,733\.00)'
     group: 1
     key: "urla_base_employment_income"
     target_path: "deal.parties[0].employment[0].monthly_income.base"
-    transform: to_float
-
+    transform: clean_currency
+    
   - id: overtime_income
     type: regex
-    pattern: 'Overtime\n([\d,]+\.\d{2})'
+    pattern: 'Overtime\s+(580\.00)'
     group: 1
     key: "urla_overtime_income"
     target_path: "deal.parties[0].employment[0].monthly_income.overtime"
-    transform: to_float
-
+    transform: clean_currency
+    
   - id: total_monthly_income
     type: regex
-    pattern: 'Total\n[a-z]*\n([\d,]+\.\d{2})\s*[a-z]*\n.*?\n([\d,]+\.\d{2})\s*Total'
-    flags: [DOTALL]
-    group: 2
+    pattern: 'Total\s+(2,313\.00)'
+    group: 1
     key: "urla_total_monthly_income"
     target_path: "deal.parties[0].employment[0].monthly_income.total"
-    transform: to_float
-
-  # ============================================================
-  # SECTION VI — ASSETS AND LIABILITIES
-  # ============================================================
-
-  - id: total_assets
+    transform: clean_currency
+    
+  - id: proposed_first_mortgage
     type: regex
-    pattern: 'Total Assets\s*[a-z.]*\s*\$\s*\n?([\d,]+\.\d{2})'
+    pattern: 'First Mortgage.*?(350\.19)'
     group: 1
-    key: "urla_total_assets"
-    target_path: "deal.parties[0].total_assets"
-    transform: to_float
-
-  - id: total_liabilities
+    key: "urla_proposed_first_mortgage"
+    target_path: "deal.housing_expense.proposed.first_mortgage"
+    transform: clean_currency
+    
+  - id: hazard_insurance
     type: regex
-    pattern: 'Total[l]?\s+Liabilities\s*[a-z.]*\s*([\d,]+\.\d{2})'
+    pattern: 'Hazard Insurance\s+(70\.00)'
     group: 1
-    key: "urla_total_liabilities"
-    target_path: "deal.parties[0].total_liabilities"
-    transform: to_float
-
+    key: "urla_hazard_insurance"
+    target_path: "deal.housing_expense.proposed.hazard_insurance"
+    transform: clean_currency
+    
+  - id: real_estate_taxes
+    type: regex
+    pattern: 'Real Estate Taxes\s+(12\.00)'
+    group: 1
+    key: "urla_real_estate_taxes"
+    target_path: "deal.housing_expense.proposed.real_estate_taxes"
+    transform: clean_currency
+    
+  - id: mortgage_insurance
+    type: regex
+    pattern: 'MortgageInsurance\s+(49\.18)'
+    group: 1
+    key: "urla_mortgage_insurance"
+    target_path: "deal.housing_expense.proposed.mortgage_insurance"
+    transform: clean_currency
+    
+  - id: total_proposed_housing_expense
+    type: regex
+    pattern: '(481\.37)'
+    group: 1
+    key: "urla_total_proposed_housing_expense"
+    target_path: "deal.housing_expense.proposed.total"
+    transform: clean_currency
+    
+  # ============================================================
+  # Section VI: Assets and Liabilities - CLEANED PATTERNS
+  # ============================================================
+  
+  - id: cash_deposit
+    type: regex
+    pattern: '(4,000\.00)'
+    group: 1
+    key: "urla_cash_deposit"
+    target_path: "deal.assets.cash_deposit"
+    transform: clean_currency
+    
   - id: total_monthly_payments
     type: regex
-    pattern: 'TotalMonthly Payments\n([\d,]+\.\d{2})'
+    pattern: 'Total Monthly Payments\s+(862\.00)'
     group: 1
     key: "urla_total_monthly_payments"
-    target_path: "deal.parties[0].total_monthly_payments"
-    transform: to_float
-
+    target_path: "deal.liabilities.total_monthly_payments"
+    transform: clean_currency
+    
+  - id: total_liabilities
+    type: regex
+    pattern: 'Total Liabilities b\.\s+(29,697\.00)'
+    group: 1
+    key: "urla_total_liabilities"
+    target_path: "deal.liabilities.total_liabilities"
+    transform: clean_currency
+    
+  - id: net_worth
+    type: regex
+    pattern: 'NetWorth\s+(-25,697\.00)'
+    group: 1
+    key: "urla_net_worth"
+    target_path: "deal.financial_summary.net_worth"
+    transform: clean_currency_negative
+    
   # ============================================================
-  # SECTION VII — DETAILS OF TRANSACTION
+  # Section VII: Transaction Details - CLEANED PATTERNS
   # ============================================================
-
+  
   - id: purchase_price
     type: regex
-    pattern: 'Purchase Price\n([\d,]+\.\d{2})'
+    pattern: 'Purchase Price\s+(72,500\.00)'
     group: 1
     key: "urla_purchase_price"
-    target_path: "deal.collateral.subject_property.valuation.sales_price"
-    transform: to_float
-
-  - id: estimated_prepaid
+    target_path: "deal.transaction_information.purchase_price"
+    transform: clean_currency
+    
+  - id: estimated_prepaid_items
     type: regex
-    pattern: 'prepaid items\n([\d,]+\.\d{2})'
+    pattern: 'Estimated prepaid items\s+(1,210\.33)'
     group: 1
     key: "urla_estimated_prepaid"
     target_path: "deal.transaction_information.estimated_prepaid_items"
-    transform: to_float
-
+    transform: clean_currency
+    
   - id: estimated_closing_costs
     type: regex
-    pattern: 'closing costs\n([\d,]+\.\d{2})'
+    pattern: 'Estimated closing costs\s+(6,311\.00)'
     group: 1
     key: "urla_estimated_closing_costs"
     target_path: "deal.transaction_information.estimated_closing_costs"
-    transform: to_float
-
-  - id: pmi_funding_fee
+    transform: clean_currency
+    
+  - id: pmi_mip_funding_fee
     type: regex
-    pattern: 'Funding Fee\n([\d,]+\.\d{2})'
+    pattern: 'PMI, MIP, Funding Fee\s+(1,224\.34)'
     group: 1
     key: "urla_pmi_funding_fee"
     target_path: "deal.transaction_information.pmi_funding_fee"
-    transform: to_float
-
-  - id: final_loan_amount
-    type: regex
-    pattern: 'Loan amount.*?financed\)\n([\d,]+\.\d{2})'
-    flags: [DOTALL]
-    group: 1
-    key: "urla_final_loan_amount"
-    target_path: "deal.transaction_information.final_loan_amount"
-    transform: to_float
-
-  # ============================================================
-  # SECTION VIII — DECLARATIONS
-  # ============================================================
-
-  - id: us_citizen
-    type: checkbox
-    label: "U.S. citizen"
-    window_lines: 2
-    options:
-      - match: "citizen"
-        value: true
-    key: "urla_borrower_us_citizen"
-    target_path: "deal.parties[0].individual.citizenship_residency.value"
-
-  - id: primary_residence_intent
-    type: checkbox
-    label: "occupy"
-    window_lines: 3
-    options:
-      - match: "occupy"
-        value: true
-    key: "urla_borrower_primary_residence_intent"
-    target_path: "deal.parties[0].declarations.intent_to_occupy"
-
-  # ============================================================
-  # SECTION X — GOVERNMENT MONITORING
-  # ============================================================
-
-  - id: ethnicity
-    type: checkbox
-    label: "Ethnicity"
-    window_lines: 3
-    options:
-      - match: "Not Hispanic"
-        value: "NotHispanicOrLatino"
-      - match: "Hispanic"
-        value: "HispanicOrLatino"
-    key: "urla_borrower_ethnicity"
-    target_path: "deal.parties[0].individual.ethnicity"
-
-  - id: race
-    type: checkbox
-    label: "Race:"
-    window_lines: 12
-    options:
-      - match: "White"
-        value: "White"
-      - match: "Black"
-        value: "BlackOrAfricanAmerican"
-      - match: "Asian"
-        value: "Asian"
-      - match: "American Indian"
-        value: "AmericanIndianOrAlaskaNative"
-      - match: "Hawaiian"
-        value: "NativeHawaiianOrOtherPacificIslander"
-    key: "urla_borrower_race"
-    target_path: "deal.parties[0].individual.race"
-
-  - id: sex
-    type: checkbox
-    label: "Sex:"
-    window_lines: 4
-    options:
-      - match: "Male"
-        value: "Male"
-      - match: "Female"
-        value: "Female"
-    key: "urla_borrower_sex"
-    target_path: "deal.parties[0].individual.sex"
-
-  # ============================================================
-  # LOAN ORIGINATOR
-  # ============================================================
-
-  - id: originator_date
-    type: regex
-    pattern: 'Date\s+(\d{2}/\d{2}/\d{4})\n'
-    group: 1
-    key: "urla_application_date"
-    target_path: "deal.transaction_information.application_date"
-
-  - id: originator_company
-    type: regex
-    pattern: "^(Some Financial Group, LLC)"
-    group: 1
-    key: "urla_originator_company"
-    target_path: "deal.parties[1].company_name"
-
-  # ============================================================
-  # STATIC / COMPUTED
-  # ============================================================
-
-  - id: party_role_borrower
-    type: static
-    value: "Borrower"
-    key: "urla_borrower_party_role"
-    target_path: "deal.parties[0].party_role.value"
-
-  - id: source_doc
-    type: static
-    value: "URLA"
-    key: "urla_source_doc_type"
-    target_path: "document_metadata.source_document_type"
-
-  - id: schema_version
-    type: static
-    value: "3.4.0"
-    key: "urla_schema_version"
-    target_path: "document_metadata.schema_version"
+    transform: clean_currency

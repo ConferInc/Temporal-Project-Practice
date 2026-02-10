@@ -1,0 +1,55 @@
+{
+  "_metadata": {
+    "source": "RelationalTransformer",
+    "timestamp": "2026-02-10T09:00:01.817754Z",
+    "table_count": 4,
+    "total_rows": 4
+  },
+  "properties": [],
+  "applications": [
+    {
+      "_ref": "application_0",
+      "_operation": "upsert",
+      "status": "imported",
+      "stage": "processing",
+      "_primary_customer_ref": "customer_0",
+      "loan_product_id": null
+    }
+  ],
+  "customers": [
+    {
+      "_ref": "customer_0",
+      "_operation": "upsert",
+      "customer_type": "individual",
+      "first_name": "John",
+      "last_name": "R. Doe"
+    }
+  ],
+  "application_customers": [
+    {
+      "_ref": "app_cust_0",
+      "_operation": "insert",
+      "_application_ref": "application_0",
+      "_customer_ref": "customer_0",
+      "role": "Borrower",
+      "sequence": 1
+    }
+  ],
+  "employments": [
+    {
+      "_ref": "employment_0_0",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "employment_type": "W2",
+      "is_current": true,
+      "start_date": null,
+      "employer_name": null
+    }
+  ],
+  "incomes": [],
+  "demographics": [],
+  "residences": [],
+  "assets": [],
+  "liabilities": []
+}

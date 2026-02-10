@@ -12,12 +12,21 @@ rules:
   # ----------------------------------------------------------
   # PAYER INFORMATION
   # ----------------------------------------------------------
-  - id: payer_name
+  # Capture the Payer block using the standard top-left position or "PAYER'S name" label
+  # leveraging the specific 1099 layout structure.
+  
+  - id: payer_name_generic
     type: regex
-    pattern: '(MICHAEL\s*M\s*JORDAN|MICHAELMJORDAN)'
+    pattern: 'Miscellaneous\s*\n+([A-Z\s]+?)(?=\n)' # Look for name under "Miscellaneous" label
     group: 1
     key: "payerName"
     target_path: "deal.parties[0].self_employment[0].business_name"
+
+  - id: payer_address_generic
+    type: regex
+    pattern: 'Miscellaneous\s*\n+[^\n]+\n+([^\n]+)' # Line below Name is typically Street
+    group: 1
+    target_path: "deal.parties[0].self_employment[0].business_address_street"
 
   - id: payer_tin
     type: regex
@@ -28,7 +37,9 @@ rules:
 
   - id: payer_phone
     type: regex
-    pattern: '\(\+1\)\s*(\d{3}-\d{3}-\d{4})'
+    # Generic phone capture in Payer section
+    pattern: 'PAYER''?S?.*?\n.*?(\d{3}-\d{3}-\d{4})'
+    flags: [DOTALL]
     group: 1
     key: "payerPhone"
     target_path: "deal.parties[0].self_employment[0].business_phone"
@@ -36,9 +47,10 @@ rules:
   # ----------------------------------------------------------
   # RECIPIENT INFORMATION (Borrower)
   # ----------------------------------------------------------
-  - id: recipient_name
+  - id: recipient_name_generic
     type: regex
-    pattern: '(CANNON\s*TOOLS\s*CO)'
+    # Capture text immediately under "RECIPIENT'S name"
+    pattern: 'RECIPIENT''?S?\s?name\s*\n([^\n]+)'
     group: 1
     key: "recipientName"
     target_path: "deal.parties[0].individual.full_name"
@@ -50,60 +62,67 @@ rules:
     key: "recipientTIN"
     target_path: "deal.parties[0].taxpayer_identifier"
 
-  - id: recipient_street
+  - id: recipient_address_block
     type: regex
-    pattern: '(\d{4}\s*NORTH\s*CATHERINE\s*ST)'
-    group: 1
-    key: "recipientStreet"
-    target_path: "deal.parties[0].addresses[0].street"
+    # Capture address lines under "Street address" label
+    # Looks for: Street address ... \n <Line 1> \n City... \n <Line 2>
+    pattern: 'Street\s*address\s*[^\n]*\n([^\n]+)\n(?:City[^\n]*\n)?([^\n]+)'
+    flags: [DOTALL]
+    groups:
+      1: "deal.parties[0].addresses[0].street"
+      2: "deal.parties[0].addresses[0].city_state_zip_raw"
+    groups_keys:
+      1: "recipientStreet"
+      2: "recipientRegionRaw"
 
-  - id: recipient_city
+  # Refine City/State/Zip from the raw region string (e.g. "ATLANTA GA 30019")
+  - id: recipient_city_state_zip_parse
     type: regex
-    pattern: '(ATLANTA)(?=\s*GA)'
-    group: 1
-    key: "recipientCity"
-    target_path: "deal.parties[0].addresses[0].city"
-
-  - id: recipient_state
-    type: regex
-    pattern: 'ATLANTA\s*(GA)'
-    group: 1
-    key: "recipientState"
-    target_path: "deal.parties[0].addresses[0].state"
-
-  - id: recipient_zip
-    type: regex
-    pattern: 'GA\s*(\d{5})'
-    group: 1
-    key: "recipientZip"
-    target_path: "deal.parties[0].addresses[0].postal_code"
+    # Matches: City Name  State  Zip
+    pattern: '([A-Za-z\s]+?)\s+([A-Z]{2})\s+(\d{5})'
+    # We apply this to the full text but constrained by being after "Street address"? 
+    # Or ideally, we'd process the `recipientRegionRaw` if the engine supported nested transforms.
+    # Since it doesn't, we'll try a regex that anchors to the City label.
+    pattern: 'City\s*or\s*town[^\n]*\n([A-Za-z\s]+?)\s+([A-Z]{2})\s+(\d{5})'
+    groups:
+      1: "deal.parties[0].addresses[0].city"
+      2: "deal.parties[0].addresses[0].state"
+      3: "deal.parties[0].addresses[0].postal_code"
+    groups_keys:
+      1: "recipientCity"
+      2: "recipientState"
+      3: "recipientZip"
 
   # ----------------------------------------------------------
   # INCOME BOXES (non_w2_income)
   # ----------------------------------------------------------
   
-  # Box 1: Rents - Format: "1Rents" then "- $1450.00" on separate lines
+  # Box 1: Rents - Format: "1 Rents" then "$ 1450.00" (possibly on new lines, maybe hyphenated)
+  # Box 1: Rents
   - id: box_1_rents
     type: regex
-    pattern: '1\s*Rents\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    pattern: '1\s*Rents(?:(?!\n\d).)*?\$?\s*(\d[\d,]*\.\d{2})'
+    flags: [DOTALL]
     group: 1
     key: "rents"
     target_path: "deal.parties[0].income[0].non_w2_income.rents"
     transform: currency_to_float
 
-  # Box 2: Royalties - Format: "- 2Royalties" then "- $3250.00"
+  # Box 2: Royalties
   - id: box_2_royalties
     type: regex
-    pattern: '-?\s*2\s*Royalties\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    pattern: '2\s*Royalties(?:(?!\n\d).)*?\$?\s*(\d[\d,]*\.\d{2})'
+    flags: [DOTALL]
     group: 1
     key: "royalties"
     target_path: "deal.parties[0].income[0].non_w2_income.royalties"
     transform: currency_to_float
 
-  # Box 3: Other income - Format: "- 3Otherincome" then "- $6750.00"
+  # Box 3: Other income
   - id: box_3_other_income
     type: regex
-    pattern: '-?\s*3\s*Other\s*income\s*\n(?:.*?\n)*?-\s*\$\s*([\d,]+\.?\d{0,2})'
+    pattern: '3\s*Other\s*income(?:(?!\n\d).)*?\$?\s*(\d[\d,]*\.\d{2})'
+    flags: [DOTALL]
     group: 1
     key: "otherIncome"
     target_path: "deal.parties[0].income[0].non_w2_income.other"
@@ -122,10 +141,11 @@ rules:
   # TAX WITHHOLDING
   # ----------------------------------------------------------
   
-  # Box 4: Federal income tax withheld - Format: "- 4Federalincometaxwithheld $1550.00" (same line)
+  # Box 4: Federal income tax withheld
   - id: box_4_federal_tax_withheld
     type: regex
-    pattern: '-?\s*4\s*Federal\s*income\s*tax\s*withheld\s*\$?\s*([\d,]+\.?\d{0,2})'
+    pattern: '4\s*Federal\s*income\s*tax\s*withheld(?:(?!\n\d).)*?\$?\s*(\d[\d,]*\.\d{2})'
+    flags: [DOTALL]
     group: 1
     key: "federalTaxWithheld"
     target_path: "deal.parties[0].taxes[0].federal_withheld_amount"

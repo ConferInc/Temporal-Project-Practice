@@ -1,0 +1,38 @@
+{
+  "deal": {
+    "parties": [
+      {
+        "individual": {
+          "full_name": "Philips,Alex"
+        },
+        "party_role": {
+          "value": "Borrower"
+        }
+      }
+    ],
+    "collateral": {
+      "subject_property": {
+        "address": "76 EWestlandSt",
+        "city": "Tucson",
+        "state": "AZ",
+        "zip_code": "85711",
+        "county": "Pima",
+        "legal_description": "DelMonteVillageLot270",
+        "year_built": 1952,
+        "gross_living_area_sqft": 1522,
+        "total_room_count": 7,
+        "bedroom_count": 3,
+        "bathroom_count": "2.0",
+        "lot_size": "12090",
+        "condition_rating": "C3",
+        "zoning_classification": "R-1",
+        "valuation": {
+          "appraisal_form_type": "URAR_1004"
+        }
+      }
+    },
+    "identifiers": {
+      "lender_case_number": "185675119"
+    }
+  }
+}

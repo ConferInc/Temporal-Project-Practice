@@ -1,0 +1,32 @@
+{
+  "deal": {
+    "parties": [
+      {
+        "individual": {
+          "full_name": "John R. Doe"
+        },
+        "income_verification_fragments": [
+          {
+            "current_net_pay": "418.00",
+            "ytd_net_pay": "836.00",
+            "current_gross_pay": "450.00",
+            "ytd_gross_amount": "900.00",
+            "pay_period_start": "06/02/06",
+            "pay_period_end": "06/16/06",
+            "advice_date": "06/19/06",
+            "source_doc": {
+              "value": "Paystub"
+            }
+          }
+        ],
+        "employment": [
+          {
+            "employment_status": {
+              "value": "Current"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

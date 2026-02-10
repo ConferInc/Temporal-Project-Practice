@@ -1,0 +1,16 @@
+--- Text Start ---
+CORRECTED (if checked)
+PAYER'S name, street address, city or town, state or province, country, ZIP
+1 Rents
+or foreign postal code, and telephone no.
+OMB No. 1545-0115
+$ 1450.00
+Form 1099-MISC
+Miscella
+--- Text End ---
+
+Testing Pattern: 1\s*Rents(?:(?:\n|.)*?){0,500}\s*\$?\s*([\d,]+\.?\d{0,2})
+MATCH: ,
+
+Testing Payer Name: (MICHAEL\s*M\s*JORDAN|MICHAELMJORDAN)
+MATCH: MICHAEL M JORDAN

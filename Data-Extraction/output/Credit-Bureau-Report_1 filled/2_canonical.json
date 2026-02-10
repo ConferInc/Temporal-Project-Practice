@@ -1,0 +1,109 @@
+{
+  "application": {
+    "fields": {
+      "reference": "2747819",
+      "completed_at": "3/26/2015",
+      "ordered_at": "01/13/201706:33:43"
+    }
+  },
+  "organization": {
+    "fields": {
+      "name": "EvergreenCredit",
+      "address": "65E.WackerPlaceSuite1405/Chicago,IL60601",
+      "website": "www.partnerscredit.com"
+    }
+  },
+  "deal": {
+    "parties": [
+      {
+        "individual": {
+          "last_name": "TESTCASE",
+          "first_name": "CARLOS",
+          "ssn": "000-00-0001"
+        },
+        "addresses": [
+          {
+            "street": "9614ORIOLE",
+            "city": "ANTHILL",
+            "state": "MO",
+            "postal_code": "65488",
+            "address_type": {
+              "value": "Current"
+            }
+          }
+        ],
+        "party_role": {
+          "value": "Borrower"
+        }
+      }
+    ]
+  },
+  "credit_summary": {
+    "fields": {
+      "total_accounts": 9,
+      "total_balance": 33550.0,
+      "total_past_due": 0.0,
+      "total_payment": 319.0,
+      "total_credit_limit": 22000.0,
+      "total_high_credit": 42884.0,
+      "revolving_utilization": "17",
+      "oldest_trade_line": "2014-07",
+      "new_trade_lines_6_months": 0,
+      "new_inquiries_12_months": 5
+    }
+  },
+  "credit_scores": {
+    "records": [
+      {
+        "score": 743,
+        "model": "EQUIFAX/FICO CLASSIC V5",
+        "bureau": "Equifax"
+      },
+      {
+        "score": 741,
+        "model": "TRANSUNION/FICO CLASSIC",
+        "bureau": "TransUnion"
+      },
+      {
+        "score": 745,
+        "model": "EXPERIAN/FAIR ISAAC V2",
+        "bureau": "Experian"
+      },
+      {
+        "score": 743
+      }
+    ]
+  },
+  "fraud_alerts": {
+    "records": [
+      {
+        "message": "FACTA:ADDRESSDISCREPANCY-SUBSTANTIALDIFFERENCEBETWEEN (ES) IN THE CREDIT FILE.",
+        "type": "FACTA"
+      },
+      {
+        "message": "TransUnion HighRiskFraud Alert | Clearforallsearchesperformed                                                                      |",
+        "type": "TransUnion HighRiskFraud Alert"
+      }
+    ]
+  },
+  "ofac": {
+    "fields": {
+      "message": "NOMATCHFOUND"
+    }
+  },
+  "public_records": {
+    "fields": {
+      "status": "Nopublicrecordsfound"
+    }
+  },
+  "document_metadata": {
+    "fields": {
+      "document_name": "MERGED INFILE CREDIT REPORT",
+      "consumer_name": "JONATHONDROACH",
+      "generated_by": "EvergreenCredit",
+      "pages": 4
+    }
+  },
+  "document_type": "Credit Bureau Report",
+  "source": "CreditBureauReport"
+}

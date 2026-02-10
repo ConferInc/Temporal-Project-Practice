@@ -1,0 +1,39 @@
+{
+  "deal": {
+    "parties": [
+      {
+        "self_employment": [
+          {
+            "business_name": "MICHAEL M JORDAN",
+            "business_address_street": "STERLING HEIGHTS",
+            "business_phone": "517-200-9968"
+          }
+        ],
+        "addresses": [
+          {
+            "street": "7 Payer made direct sales",
+            "city_state_zip_raw": "8 Substitute payments in lieu"
+          }
+        ],
+        "income": [
+          {
+            "non_w2_income": {
+              "rents": "1450.00",
+              "royalties": "3250.00"
+            }
+          }
+        ],
+        "taxes": [
+          {
+            "federal_withheld_amount": "6750.00"
+          }
+        ],
+        "income_documents": [
+          {
+            "document_type": "1099-MISC"
+          }
+        ]
+      }
+    ]
+  }
+}

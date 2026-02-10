@@ -51,6 +51,11 @@ class DocumentType(str, Enum):
     # Disclosures
     LOAN_ESTIMATE = "Loan Estimate"
     CLOSING_DISCLOSURE = "Closing Disclosure"
+    # Additional Document Types
+    FORM_1099_MISC = "Form 1099-MISC"
+    CREDIT_BUREAU_REPORT = "Credit Bureau Report"
+    UTILITY_BILL = "Utility Bill"
+    PURCHASE_ORDER = "Purchase Order"
 
 class ClassificationResult(BaseModel):
     file_type: FileType
@@ -142,11 +147,25 @@ class ClassificationService:
             
             # Disclosures
             DocumentType.LOAN_ESTIMATE: ['loan estimate', 'estimated closing costs', 'estimated cash to close', 'projected payments', 'comparisons', 'rate lock'],
-            DocumentType.CLOSING_DISCLOSURE: ['closing disclosure', 'loan terms', 'closing costs', 'uniform closing dataset', 'ucd', 'cash to close']
+            DocumentType.CLOSING_DISCLOSURE: ['closing disclosure', 'loan terms', 'closing costs', 'uniform closing dataset', 'ucd', 'cash to close'],
+            
+            # Additional Document Types
+            DocumentType.FORM_1099_MISC: ['1099-misc', 'form 1099-misc', 'miscellaneous information', 'rents', 'royalties', 'other income', 'payer\'s tin', 'recipient\'s tin', 'fishing boat proceeds', 'medical and health care payments'],
+            DocumentType.CREDIT_BUREAU_REPORT: ['credit report', 'credit bureau', 'merged credit report', 'infile credit report', 'credit reporting services', 'equifax', 'experian', 'transunion', 'fico score', 'credit score'],
+            DocumentType.UTILITY_BILL: ['utility bill', 'invoice', 'account number', 'payment due', 'current charges', 'prior balance', 'service address', 'billing period'],
+            DocumentType.PURCHASE_ORDER: ['purchase order', 'po number', 'vendor', 'ship to', 'bill to', 'item description', 'quantity', 'unit price', 'total amount']
         }
         
         # B. Regex Patterns
         regex_patterns = {
+            # URLA - High priority patterns (5 points each for URLA)
+            DocumentType.URLA: [
+                r'Uniform\s*Residential\s*Loan\s*Application',  # Standard form title
+                r'Form\s+1003',  # Fannie Mae form number
+                r'Form\s+65',  # Freddie Mac form number
+                r'Agency\s+Case\s+Number.*Lender\s+Case\s*Number',  # Distinctive header
+                r'TYPE\s*OF\s*MORTGAGE\s*AND\s*TERMS\s*OF\s*LOAN',  # Section I header
+            ],
             DocumentType.W2_FORMS: [r'\bW-2\b', r'Form W-2'],
             DocumentType.TAX_RETURNS_1040: [r'Form\s+1040', r'1040\s+U\.S\.'],
             DocumentType.PAY_STUBS: [r'\bYTD\b', r'\bNet Pay\b', r'\bGross Pay\b', r'\d{2}/\d{2}/\d{4}\s*-\s*\d{2}/\d{2}/\d{4}'],
@@ -155,7 +174,12 @@ class ClassificationService:
             DocumentType.LOAN_ESTIMATE: [r'Loan\s+Estimate', r'LOAN\s+ESTIMATE', r'CFPB\s+H-24'],
             DocumentType.IRS_FORM_4506C: [r'Form\s+4506-C'],
             DocumentType.VA_FORM_26_1880: [r'26-1880'],
-            DocumentType.VA_FORM_26_8937: [r'26-8937']
+            DocumentType.VA_FORM_26_8937: [r'26-8937'],
+            # Additional Document Types
+            DocumentType.FORM_1099_MISC: [r'Form\s+1099-MISC', r'1099-MISC', r'\bMiscellaneous\s+Information\b'],
+            DocumentType.CREDIT_BUREAU_REPORT: [r'Credit\s+Report', r'MERGED\s+.*CREDIT\s+REPORT', r'Credit\s+Bureau'],
+            DocumentType.UTILITY_BILL: [r'Invoice\s+Number', r'Account\s+Number', r'Payment\s+Due'],
+            DocumentType.PURCHASE_ORDER: [r'Purchase\s+Order', r'PO\s*#', r'P\.O\.\s*Number']
         }
         
         if text_content:
@@ -169,11 +193,13 @@ class ClassificationService:
                     if word in text_lower:
                         scores[cat] += 1
             
-            # Check Regex (3 points each)
+            # Check Regex (3 points each, 5 points for URLA patterns)
             for cat, patterns in regex_patterns.items():
                 for pattern in patterns:
                     if re.search(pattern, text_content, re.IGNORECASE):
-                        scores[cat] += 3
+                        # Give URLA higher weight to avoid misclassification
+                        points = 5 if cat == DocumentType.URLA else 3
+                        scores[cat] += points
 
             # Find best category
             best_match = max(scores, key=scores.get)
@@ -189,18 +215,20 @@ class ClassificationService:
             DocumentType.SCIF, DocumentType.W2_FORMS, DocumentType.TAX_RETURNS_1040,
             DocumentType.IRS_FORM_4506C, DocumentType.BANK_STATEMENTS, DocumentType.PAY_STUBS,
             DocumentType.MILITARY_LES, DocumentType.INVESTMENT_STATEMENTS,
-            DocumentType.VA_FORM_26_1880, DocumentType.VA_FORM_26_8937,
-            DocumentType.APPRAISAL, DocumentType.LOAN_ESTIMATE, DocumentType.CLOSING_DISCLOSURE
+            DocumentType.APPRAISAL, DocumentType.LOAN_ESTIMATE, DocumentType.CLOSING_DISCLOSURE,
+            # Additional complex document types
+            DocumentType.CREDIT_BUREAU_REPORT,  # Re-enabled: Uses Dockling for table-aware extraction
+            DocumentType.UTILITY_BILL, DocumentType.PURCHASE_ORDER
         ]
         
-        # URLA documents use OCR instead of Dockling (Dockling can timeout on complex forms)
+        # URLA documents should use Dockling for better table and structure parsing
         urla_types = [
             DocumentType.URLA, DocumentType.URLA_UNMARRIED_ADDENDUM, DocumentType.URLA_CONTINUATION_SHEET
         ]
         
         if category in urla_types:
-            recommended_tool = "ocr_document"
-            reasoning = f"Document is a URLA form ({category.value}). Using OCR for reliable extraction."
+            recommended_tool = "parse_document_with_dockling"
+            reasoning = f"Document is a URLA form ({category.value}). Using Dockling for structured parsing."
         elif category in complex_types:
             recommended_tool = "parse_document_with_dockling"
             reasoning = f"Document is a complex structured form ({category.value}). Dockling recommended for thorough parsing."

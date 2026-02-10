@@ -4,6 +4,17 @@
 
 Welcome to the comprehensive documentation for the **Utility MCP Server's Canonical Model**. This suite provides complete coverage of the canonical schema architecture, mapping system, and data transformation pipeline.
 
+### ✨ **NEW: Automatic Schema Enforcement**
+
+The pipeline now includes **automatic schema enforcement** to ensure all relational payloads are fully compliant with the Supabase database schema. Every document processed produces a complete, database-ready JSON payload with:
+
+- ✅ All required fields guaranteed present
+- ✅ Disallowed fields automatically removed  
+- ✅ Schema-defined defaults applied
+- ✅ Zero manual post-processing needed
+
+**See**: `docs/SCHEMA_ENFORCEMENT.md` | `PIPELINE_UPDATE_SUMMARY.md`
+
 ---
 
 ## 📖 Documentation Files

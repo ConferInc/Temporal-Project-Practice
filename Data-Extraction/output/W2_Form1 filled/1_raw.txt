@@ -1,0 +1,23 @@
+- aEmployee'ssocial securitynumber 999-60-5555
+
+Thisinformationisbeingfurnished totheInternal RevenueService.lf you maybeimposed onyouif this incomeistaxable andyoufailtoreport it.
+
+OMB No.1545-0008
+
+- bEmployeridentification number(EIN)
+
+- 1Wages,tips,other compensation 96000
+
+- 2Federal income tax withheld 9867.72
+
+12-3476543
+
+- cEmployer'sname,address,andZIPcode ButterBuilders
+
+- 3Social securitywages 96000
+
+- 4Social security taxwithheld 3635.88
+
+- 5Medicare wages and tips 96000
+
+- 6Medicare...

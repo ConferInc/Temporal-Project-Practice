@@ -1,0 +1,62 @@
+{
+  "_metadata": {
+    "source": "RelationalTransformer",
+    "timestamp": "2026-02-09T23:58:40.854435Z",
+    "table_count": 4,
+    "total_rows": 4
+  },
+  "properties": [
+    {
+      "_ref": "property_0",
+      "_operation": "upsert",
+      "address": {
+        "street": "76 EWestlandSt"
+      },
+      "year_built": 1952,
+      "bedrooms": 3,
+      "bathrooms": "2.0",
+      "square_feet": 1522,
+      "property_type": "R-1"
+    }
+  ],
+  "applications": [
+    {
+      "_ref": "application_0",
+      "_operation": "upsert",
+      "status": "imported",
+      "stage": "processing",
+      "_property_ref": "property_0",
+      "key_information": {
+        "identifiers": {
+          "lender_case_number": "185675119"
+        }
+      },
+      "_primary_customer_ref": "customer_0",
+      "loan_product_id": null
+    }
+  ],
+  "customers": [
+    {
+      "_ref": "customer_0",
+      "_operation": "upsert",
+      "customer_type": "individual",
+      "first_name": "Philips,Alex"
+    }
+  ],
+  "application_customers": [
+    {
+      "_ref": "app_cust_0",
+      "_operation": "insert",
+      "_application_ref": "application_0",
+      "_customer_ref": "customer_0",
+      "role": "Borrower",
+      "sequence": 1
+    }
+  ],
+  "employments": [],
+  "incomes": [],
+  "demographics": [],
+  "residences": [],
+  "assets": [],
+  "liabilities": []
+}

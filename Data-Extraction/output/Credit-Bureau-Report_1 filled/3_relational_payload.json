@@ -1,0 +1,58 @@
+{
+  "_metadata": {
+    "source": "RelationalTransformer",
+    "timestamp": "2026-02-10T00:56:57.602398Z",
+    "table_count": 4,
+    "total_rows": 4
+  },
+  "properties": [],
+  "applications": [
+    {
+      "_ref": "application_0",
+      "_operation": "upsert",
+      "status": "imported",
+      "stage": "processing",
+      "_primary_customer_ref": "customer_0",
+      "loan_product_id": null
+    }
+  ],
+  "customers": [
+    {
+      "_ref": "customer_0",
+      "_operation": "upsert",
+      "customer_type": "individual",
+      "first_name": "CARLOS",
+      "last_name": "TESTCASE",
+      "ssn_encrypted": "000-00-0001"
+    }
+  ],
+  "application_customers": [
+    {
+      "_ref": "app_cust_0",
+      "_operation": "insert",
+      "_application_ref": "application_0",
+      "_customer_ref": "customer_0",
+      "role": "Borrower",
+      "sequence": 1
+    }
+  ],
+  "employments": [],
+  "incomes": [],
+  "demographics": [],
+  "residences": [
+    {
+      "_ref": "residence_customer_0_0",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "residence_type": "Current",
+      "street_address": "9614ORIOLE",
+      "city": null,
+      "state": null,
+      "zip_code": null,
+      "country": "US"
+    }
+  ],
+  "assets": [],
+  "liabilities": []
+}

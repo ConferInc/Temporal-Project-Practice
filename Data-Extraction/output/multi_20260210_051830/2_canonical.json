@@ -1,0 +1,65 @@
+{
+  "deal": {
+    "parties": [
+      {
+        "individual": {
+          "full_name": "Michael Jones and Mary Stone"
+        },
+        "party_role": {
+          "value": "Borrower"
+        }
+      },
+      {
+        "company_name": "Ficus Bank",
+        "individual": {
+          "full_name": "Joe Smith",
+          "nmls_id": "12345"
+        },
+        "party_role": {
+          "value": "Lender"
+        }
+      }
+    ],
+    "transaction_information": {
+      "loan_purpose": {
+        "value": "Purchase"
+      },
+      "mortgage_type": {
+        "value": "Conventional"
+      }
+    },
+    "disclosures_and_closing": {
+      "promissory_note": {
+        "principal_amount": 211000.0,
+        "interest_rate": "4",
+        "loan_term_years": 30
+      },
+      "loan_estimate_h24": {
+        "date_issued": "2/15/2013",
+        "product_description": "5 Year Interest Only, 5/3 Adjustable Rate",
+        "rate_lock_indicator": "YES",
+        "rate_lock_expiration_date": "4/16/2013",
+        "monthly_principal_interest": 703.33,
+        "prepayment_penalty": "NO",
+        "total_closing_costs": 8791.0,
+        "estimated_cash_to_close": 27791.0,
+        "origination_charges": 3110.0,
+        "points_percent": "1",
+        "points_amount": "2,110",
+        "services_cannot_shop": 820.0,
+        "services_can_shop": 1921.0,
+        "total_loan_costs": 5851.0,
+        "prepaid_interest_per_day": "23.44",
+        "prepaid_interest_days": "15",
+        "down_payment": 29000.0,
+        "annual_percentage_rate": "4.617",
+        "total_interest_percentage": "81.18",
+        "five_year_total_paid": "54,944",
+        "five_year_principal_reduction": "0"
+      }
+    },
+    "identifiers": {
+      "lender_case_number": "1234567891330172608"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "_metadata": {
+    "source": "RelationalTransformer",
+    "timestamp": "2026-02-10T10:29:06.793272Z",
+    "table_count": 3,
+    "total_rows": 5
+  },
+  "properties": [],
+  "applications": [
+    {
+      "_ref": "application_0",
+      "_operation": "upsert",
+      "status": "imported",
+      "stage": "processing",
+      "loan_product_id": null
+    }
+  ],
+  "customers": [],
+  "application_customers": [],
+  "employments": [
+    {
+      "_ref": "employment_0_self_0",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "employment_type": "SelfEmployed",
+      "is_self_employed": true,
+      "is_current": true,
+      "start_date": null,
+      "employer_name": "MICHAEL M JORDAN",
+      "employer_phone": "517-200-9968",
+      "employer_street_address": "STERLING HEIGHTS"
+    }
+  ],
+  "incomes": [
+    {
+      "_ref": "income_0_generic_0_rents",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "income_source": "Other",
+      "income_type": "Rents",
+      "monthly_amount": "1450.00",
+      "include_in_qualification": true
+    },
+    {
+      "_ref": "income_0_generic_0_royalties",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "income_source": "Other",
+      "income_type": "Royalties",
+      "monthly_amount": "3250.00",
+      "include_in_qualification": true
+    },
+    {
+      "_ref": "income_0_tax_0",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "income_source": "TaxWithholding",
+      "income_type": "Federal Withheld",
+      "monthly_amount": "0",
+      "metadata": {
+        "annual_withheld": "6750.00",
+        "is_withholding": true
+      },
+      "include_in_qualification": true
+    }
+  ],
+  "demographics": [],
+  "residences": [],
+  "assets": [],
+  "liabilities": []
+}

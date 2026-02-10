@@ -236,7 +236,9 @@ Examples:
         # =================================================================
         print("  [2/5] Saving raw extraction & canonical...")
         raw_path = run_dir / "1_raw.txt"
-        raw_path.write_text(raw_summary, encoding="utf-8")
+        # Save full raw text if available, otherwise use summary
+        raw_full_text = result.get("raw_extraction_full", raw_summary)
+        raw_path.write_text(raw_full_text, encoding="utf-8")
 
         canonical_path = run_dir / "2_canonical.json"
         canonical_path.write_text(
@@ -283,6 +285,11 @@ Examples:
         print("  [4/5] Generating relational payload...")
         rt = RelationalTransformer()
         relational_payload = rt.transform(canonical_data)
+        
+        # Apply schema enforcement to ensure database compliance
+        from src.mapping.schema_enforcer import SchemaEnforcer
+        enforcer = SchemaEnforcer()
+        relational_payload = enforcer.enforce(relational_payload)
 
         relational_path = run_dir / "3_relational_payload.json"
         relational_path.write_text(

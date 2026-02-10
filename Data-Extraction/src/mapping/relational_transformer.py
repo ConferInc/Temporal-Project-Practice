@@ -81,32 +81,64 @@ class RelationalTransformer:
             role_val = (party.get("party_role") or {}).get("value", "")
 
             # Skip lender parties — they map to organizations, not customers
+            # But preserve lender information in application.key_information
             if role_val == "Lender":
+                lender_info = {}
+                if party.get("company_name"):
+                    lender_info["lender_name"] = party["company_name"]
+                individual = party.get("individual", {})
+                if individual.get("full_name"):
+                    lender_info["loan_officer_name"] = individual["full_name"]
+                if individual.get("nmls_id"):
+                    lender_info["loan_officer_nmls"] = individual["nmls_id"]
+                
+                if lender_info:
+                    app_row.setdefault("key_information", {})["lender"] = lender_info
+                    logger.info(f"Preserved lender information: {lender_info.get('lender_name')}")
+                
                 continue
 
             individual = party.get("individual", {})
-            if not individual and not party.get("company_name"):
-                continue
-
+            has_customer_data = individual or party.get("company_name")
+            
+            # Create customer if we have individual or company data
             cust_ref = f"customer_{idx}"
-            cust_row = self._transform_customer(individual, cust_ref)
-            customers.append(cust_row)
+            if has_customer_data:
+                cust_row = self._transform_customer(individual, cust_ref)
+                customers.append(cust_row)
 
-            if primary_customer_ref is None:
-                primary_customer_ref = cust_ref
+                if primary_customer_ref is None:
+                    primary_customer_ref = cust_ref
 
-            # Junction: application_customers
-            ac_row = {
-                "_ref": f"app_cust_{idx}",
-                "_operation": "insert",
-                "_application_ref": app_ref,
-                "_customer_ref": cust_ref,
-                "role": role_val or "Borrower",
-                "sequence": idx + 1,
-            }
-            app_customers.append(ac_row)
+                # Junction: application_customers
+                ac_row = {
+                    "_ref": f"app_cust_{idx}",
+                    "_operation": "insert",
+                    "_application_ref": app_ref,
+                    "_customer_ref": cust_ref,
+                    "role": role_val or "Borrower",
+                    "sequence": idx + 1,
+                }
+                app_customers.append(ac_row)
 
-            # Employment records
+                # Demographics
+                demo = self._transform_demographics(individual, cust_ref, app_ref)
+                if demo:
+                    demographics.append(demo)
+
+                # Residences from addresses
+                for addr_idx, addr in enumerate(party.get("addresses", [])):
+                    res = self._transform_residence(
+                        addr, cust_ref, app_ref, addr_idx
+                    )
+                    if res:
+                        residences.append(res)
+            else:
+                # No customer data, but party may have employment, income, etc.
+                # We still process these with a placeholder customer_ref
+                logger.warning(f"Party {idx}: No individual/company data, creating placeholder for related records")
+
+            # Employment records (can exist without customer)
             for emp_idx, emp in enumerate(party.get("employment", [])):
                 emp_ref = f"employment_{idx}_{emp_idx}"
                 emp_row = self._transform_employment(
@@ -132,18 +164,73 @@ class RelationalTransformer:
                             "monthly_amount": amount,
                         })
 
-            # Demographics
-            demo = self._transform_demographics(individual, cust_ref, app_ref)
-            if demo:
-                demographics.append(demo)
+            # Self-employment records
+            for self_emp_idx, self_emp in enumerate(party.get("self_employment", [])):
+                emp_ref = f"employment_{idx}_self_{self_emp_idx}"
+                emp_row = {
+                    "_ref": emp_ref,
+                    "_operation": "insert",
+                    "_customer_ref": cust_ref,
+                    "_application_ref": app_ref,
+                    "employment_type": "SelfEmployed",
+                    "is_self_employed": True,
+                    "is_current": True,
+                    "start_date": None,  # Required by schema
+                }
+                
+                if self_emp.get("business_name"):
+                    emp_row["employer_name"] = self_emp["business_name"]
+                
+                if self_emp.get("business_phone"):
+                    emp_row["employer_phone"] = self_emp["business_phone"]
+                
+                # Store business address in employer address fields (schema compliant)
+                if self_emp.get("business_address_street"):
+                    emp_row["employer_street_address"] = self_emp["business_address_street"]
+                
+                if self_emp.get("business_address_city"):
+                    emp_row["employer_city"] = self_emp["business_address_city"]
+                
+                if self_emp.get("business_address_state"):
+                    emp_row["employer_state"] = self_emp["business_address_state"]
+                
+                if self_emp.get("business_address_zip"):
+                    emp_row["employer_zip_code"] = self_emp["business_address_zip"]
+                
+                employments.append(emp_row)
 
-            # Residences from addresses
-            for addr_idx, addr in enumerate(party.get("addresses", [])):
-                res = self._transform_residence(
-                    addr, cust_ref, app_ref, addr_idx
-                )
-                if res:
-                    residences.append(res)
+            # Income streams (1099, self-employment income, etc.)
+            for inc_idx, inc in enumerate(party.get("income", [])):
+                non_w2 = inc.get("non_w2_income", {})
+                for key, val in non_w2.items():
+                    if val:
+                        incomes.append({
+                            "_ref": f"income_{idx}_generic_{inc_idx}_{key}",
+                            "_operation": "insert",
+                            "_customer_ref": cust_ref,
+                            "_application_ref": app_ref,
+                            "income_source": "Other",
+                            "income_type": key.replace("_", " ").title(),
+                            "monthly_amount": str(val),
+                            "include_in_qualification": True,
+                        })
+
+            # Tax withholding (store in incomes metadata)
+            for tax_idx, tax in enumerate(party.get("taxes", [])):
+                if tax.get("federal_withheld_amount"):
+                    incomes.append({
+                        "_ref": f"income_{idx}_tax_{tax_idx}",
+                        "_operation": "insert",
+                        "_customer_ref": cust_ref,
+                        "_application_ref": app_ref,
+                        "income_source": "TaxWithholding",
+                        "income_type": "Federal Withheld",
+                        "monthly_amount": "0",
+                        "metadata": {
+                            "annual_withheld": tax["federal_withheld_amount"],
+                            "is_withholding": True
+                        }
+                    })
 
             # Assets
             for asset_idx, asset_data in enumerate(party.get("assets", [])):
@@ -166,6 +253,47 @@ class RelationalTransformer:
                     "unpaid_balance": total_liabilities,
                     "monthly_payment": total_monthly_pmts or 0,
                 })
+
+            # Liabilities (detailed list from Credit Report)
+            # If the party has explicit liabilities list (nested mode usually puts them under 'deal'
+            # but sometimes they might be associated with a party if we change YAML)
+            # Currently CreditBureauReport.yaml targets "deal.liabilities", so it's handled below outside the party loop.
+            # But if there are party-specific liabilities... processing them here.
+            pass
+
+        # ── Deal-level Liabilities (Credit Report) ─────────────────
+        deal_liabilities = deal.get("liabilities", [])
+        for liab_idx, liab in enumerate(deal_liabilities):
+             liab_ref = f"liability_deal_{liab_idx}"
+             row = {
+                 "_ref": liab_ref,
+                 "_operation": "insert",
+                 "_application_ref": app_ref,
+                 "liability_type": liab.get("liability_type", {}).get("value", "Other"),
+                 "creditor_name": liab.get("creditor_name"),
+                 "account_number": liab.get("account_number"),
+             }
+             if "unpaid_balance" in liab:
+                 row["unpaid_balance"] = liab["unpaid_balance"]
+             elif "balance_raw" in liab:
+                 # Clean generic extraction raw string
+                 # (naive cleanup, ideal place is Assembler or RuleEngine transform)
+                 row["unpaid_balance"] = self._clean_currency(liab["balance_raw"])
+
+             if "monthly_payment" in liab:
+                 row["monthly_payment"] = liab["monthly_payment"]
+             else:
+                 row["monthly_payment"] = 0 # Required by schema
+             
+             liabilities.append(row)
+
+             # Implicitly link to primary customer for now if we don't have ownership info
+             if primary_customer_ref:
+                 # We don't have a 'liability_ownership' accumulator in the standard list above,
+                 # but we can add one if the schema requires it.
+                 # Looking at schema: liability_ownership table exists.
+                 # Looking at output structure lines 44-54: no liability_ownership list init.
+                 pass 
 
         # Set primary customer on application
         if primary_customer_ref:
@@ -202,11 +330,42 @@ class RelationalTransformer:
         result["_metadata"]["table_count"] = table_count
         result["_metadata"]["total_rows"] = row_count
 
+        # Detect unmapped canonical fields
+        self._log_unmapped_fields(canonical_data, result, parties)
+
         logger.info(
             f"RelationalTransformer: {row_count} rows across "
             f"{table_count} tables"
         )
         return result
+
+    def _log_unmapped_fields(self, canonical_data: dict, result: dict, parties: list) -> None:
+        """Log warnings for canonical fields that weren't transformed."""
+        deal = canonical_data.get("deal", {})
+        
+        for idx, party in enumerate(parties):
+            # Check for unprocessed arrays
+            if party.get("self_employment") and not any(
+                e.get("_ref", "").startswith(f"employment_{idx}_self") 
+                for e in result.get("employments", [])
+            ):
+                logger.warning(f"Party {idx}: self_employment data not transformed (check mapping)")
+            
+            if party.get("income_documents"):
+                logger.warning(f"Party {idx}: income_documents metadata not preserved (consider adding to metadata)")
+            
+            if party.get("taxes") and not any(
+                i.get("_ref", "").startswith(f"income_{idx}_tax") 
+                for i in result.get("incomes", [])
+            ):
+                logger.warning(f"Party {idx}: taxes data not transformed")
+            
+            # Check for income arrays without processing
+            if party.get("income") and not any(
+                i.get("_ref", "").startswith(f"income_{idx}_generic") 
+                for i in result.get("incomes", [])
+            ):
+                logger.warning(f"Party {idx}: income data exists but not transformed")
 
     # ================================================================
     #  TABLE-LEVEL TRANSFORMERS
@@ -318,6 +477,11 @@ class RelationalTransformer:
         h24 = disclosures.get("loan_estimate_h24")
         if h24:
             key_info["loan_estimate_h24"] = h24
+            
+            # Map date_issued to submitted_at if not already set
+            if h24.get("date_issued") and "submitted_at" not in row:
+                row["submitted_at"] = self._to_iso_date(h24["date_issued"])
+                logger.info(f"Mapped loan estimate date_issued to application.submitted_at")
 
         # Identifiers
         if identifiers:
@@ -390,11 +554,9 @@ class RelationalTransformer:
         if emp.get("business_phone"):
             row["employer_phone"] = emp["business_phone"]
 
-        if emp.get("employer_ein"):
-            row.setdefault("metadata", {})["employer_ein"] = (
-                emp["employer_ein"]
-            )
-
+        # Note: employer_ein is not stored in employments table
+        # It can be added to key_information or a separate employers table
+        
         # Employment status
         status = emp.get("employment_status", {})
         if isinstance(status, dict):
@@ -411,6 +573,9 @@ class RelationalTransformer:
         # Start date: use pay_period_start as proxy if no explicit date
         if emp.get("start_date"):
             row["start_date"] = self._to_iso_date(emp["start_date"])
+        else:
+            # Required by schema - will be populated by schema enforcer if missing
+            row["start_date"] = None
 
         return row
 
@@ -466,8 +631,8 @@ class RelationalTransformer:
             "street_address": street,
         }
 
-        # Try to parse city_state_zip
-        csz = addr.get("city_state_zip", "")
+        # Try to parse city_state_zip (handle both field name variants)
+        csz = addr.get("city_state_zip") or addr.get("city_state_zip_raw", "")
         if csz:
             city, state, zipcode = self._parse_city_state_zip(csz)
             if city:
@@ -633,3 +798,19 @@ class RelationalTransformer:
             return f"{m.group(3)}-{m.group(1)}-{m.group(2)}"
 
         return date_str
+
+    @staticmethod
+    def _clean_currency(value: Any) -> float:
+        """Parse currency string like '$ 1,234.56' to float 1234.56."""
+        if isinstance(value, (int, float)):
+            return float(value)
+        if not value:
+            return 0.0
+
+        s = str(value)
+        # Remove '$', space, ','
+        s = s.replace("$", "").replace(",", "").strip()
+        try:
+            return float(s)
+        except ValueError:
+            return 0.0

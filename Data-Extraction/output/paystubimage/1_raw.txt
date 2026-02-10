@@ -1,0 +1,49 @@
+123 - John R. Doe
+Pay Period 06/02/06 to 06/16/06 Required Deductions
+Earnings
+Federal Income Tax
+00.00
+00.00
+FICA - Medicare
+06.08
+12.16
+Hours
+Rate
+This Period
+YTD
+50
+9.00
+450.00
+900.00
+WI State Income Tax 00.00
+00.00
+FICA - Social Security 25.92
+51.84
+Gross Pay
+450.00
+900.00
+Other Deductions
+Health Insurance
+00.00
+00.00
+401k
+00.00
+00.00
+Parking
+00.00
+00.00
+NET PAY
+$418.00 $836.00
+Your Employer
+Check Number: XXXXXX
+1234 Some Street
+Pay Date: 06/19/06
+Milwaukee, WI ZIPCODE
+PAY ***Four hundred eighteen dollars and 00 cents**
+a $418.00
+To the Order of
+John R. Doe
+555 Some Street
+Milwaukee, WI ZIP CODE
+
+

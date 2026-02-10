@@ -1,0 +1,91 @@
+{
+  "deal": {
+    "identifiers": {
+      "agency_case_number": "012-8765111-703",
+      "lender_case_number": "112708192"
+    },
+    "transaction_information": {
+      "mortgage_type": {
+        "value": "FHA"
+      },
+      "loan_purpose": {
+        "value": "Purchase"
+      },
+      "down_payment_source": "CheckingSavings"
+    },
+    "disclosures_and_closing": {
+      "promissory_note": {
+        "principal_amount": "$71,186.00",
+        "interest_rate": "4.25",
+        "loan_term_months": "360"
+      }
+    },
+    "collateral": {
+      "subject_property": {
+        "address": "748ThompsonIsland,Milwaukee,WI53288",
+        "number_of_units": "1",
+        "occupancy_type": {
+          "value": "Primary"
+        },
+        "title_holder_names": "Samuel Schultz,JennaJohnson",
+        "title_holding_manner": "Jointtenants"
+      }
+    },
+    "parties": [
+      {
+        "individual": {
+          "full_name": "Samuel Schultz",
+          "ssn": "112-09-0000",
+          "home_phone": "607-279-0708",
+          "dob": "03/29/1979",
+          "years_school": "14",
+          "marital_status": "MarriedX",
+          "dependents_count": "0"
+        },
+        "addresses": [
+          {
+            "street": "4695HinkleDeeganLakeRoad Syracuse,NY13224",
+            "duration": "0Y6M"
+          },
+          {
+            "street": "8995ReinaPoints Willard,WI54493",
+            "duration": "1Y0M"
+          }
+        ],
+        "employment": [
+          {
+            "employer_name": "Thompson-BartolettiGroup",
+            "employer_address": "Binghamton,NY13903",
+            "position_title": "WarehouseManager",
+            "business_phone": "862-244-1001",
+            "years_on_job": "3Y6M",
+            "years_in_profession": "3",
+            "monthly_income": {
+              "base": "Base Empl. Income*\n\n1,733.00",
+              "overtime": "Overtime\n\n580.00",
+              "total": "Total\n\n2,313.00"
+            }
+          }
+        ]
+      }
+    ],
+    "housing_expense": {
+      "proposed": {
+        "hazard_insurance": "Hazard Insurance\n\n70.00",
+        "real_estate_taxes": "Real Estate Taxes\n\n12.00",
+        "mortgage_insurance": "MortgageInsurance\n\n49.18",
+        "total": "481.37"
+      }
+    },
+    "assets": {
+      "cash_deposit": "4,000.00"
+    },
+    "liabilities": {
+      "total_monthly_payments": "Total Monthly Payments\n\n862.00",
+      "total_liabilities": "Total Liabilities b.\n\n29,697.00"
+    },
+    "financial_summary": {
+      "net_worth": "NetWorth\n\n-25,697.00"
+    }
+  }
+}

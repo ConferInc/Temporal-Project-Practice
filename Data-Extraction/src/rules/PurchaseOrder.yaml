@@ -46,26 +46,29 @@ rules:
     group: 1
     target_path: "document.tables.documents.ship_via"
 
+
   # ============================================================
   # SELLER (Issuer)
   # ============================================================
   - id: seller_name
     type: regex
-    pattern: '^([^\n]+)\n\d+\s+Bear\s+Technology'
-    flags: [m]
+    # Capture first line of the document as Seller Name
+    pattern: '^([^\n]+)'
     group: 1
     target_path: "document.tables.organizations.seller.organization_name"
 
   - id: seller_address
     type: regex
-    pattern: '(\d+\s+Bear\s+Technology\s+Parkway)\n(Suite\s+\d+,\s+Campbell,\s+CA\s+\d{5})'
+    # Capture address block at the top (lines 2-3 typically)
+    # Assumes Seller Name is line 1, Address is lines 2-3
+    pattern: '^[^\n]+\n([^\n]+)\n([^\n]+)'
     flags: [DOTALL]
     groups:
       1: "document.tables.organizations.seller.street_address"
-      2: "document.tables.organizations.seller.city" # Just capturing full line for now
+      2: "document.tables.organizations.seller.city_state_zip_raw" 
     groups_keys:
       1: "seller_street"
-      2: "seller_city_state_zip"
+      2: "seller_region_raw"
 
   - id: seller_contact
     type: regex
@@ -93,17 +96,21 @@ rules:
   # This suggests interleaving. We might need specific regexes or positional logic.
   # For now, blindly grabbing lines below headers if predictable.
 
+  # ============================================================
+  # VENDOR & SHIP TO (Columnar Layout)
+  # ============================================================
+  # Generic extraction using "Vendor:" and "Ship To:" labels.
+  # Caputures the text block immediately following the labels.
+  
   - id: vendor_name
     type: regex
-    pattern: 'Vendor:\s*Ship To:\s*\n([^\n]+)'
-    flags: [DOTALL]
+    pattern: 'Vendor:\s*[\r\n]+([^\r\n]+)'
     group: 1
     target_path: "document.tables.organizations.vendor.organization_name"
 
   - id: ship_to_name
     type: regex
-    pattern: 'Vendor:\s*Ship To:\s*\n[^\n]+\n([^\n]+)'
-    flags: [DOTALL]
+    pattern: 'Ship To:\s*[\r\n]+([^\r\n]+)'
     group: 1
     target_path: "document.tables.organizations.ship_to.organization_name"
 

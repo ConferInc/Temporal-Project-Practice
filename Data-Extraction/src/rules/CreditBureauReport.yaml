@@ -10,6 +10,8 @@ schema_version: "1.0"
 
 rules:
 
+
+
   # ============================================================
   # APPLICATION METADATA
   # ============================================================
@@ -385,146 +387,96 @@ rules:
     transform: to_int
 
   # ============================================================
-  # LIABILITIES / TRADE LINES
+  # CREDIT SCORES (FICO & Bureau Scores)
   # ============================================================
-
-  # Educational loan - WFEFS
-  - id: liability_wfefs_balance
+  
+  - id: equifax_fico_score
     type: regex
-    pattern: 'WFEFS[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit\s+\$([0-9,]+)'
-    flags: [DOTALL]
-    groups:
-      1: "deal.liabilities[0].unpaid_balance"
-      2: "deal.liabilities[0].high_balance"
-    groups_keys:
-      1: "credit_liability_0_balance"
-      2: "credit_liability_0_high_credit"
-    groups_transforms:
-      1: to_float
-      2: to_float
-
-  - id: liability_wfefs_payment
-    type: regex
-    pattern: 'WFEFS[^\n]*\n+[^\n]*Payment\s+\$(\d+)'
-    flags: [DOTALL]
+    pattern: 'EQUIFAX/FICO[^:]*:\s*(\d{3})'
+    flags: [IGNORECASE]
     group: 1
-    key: "credit_liability_0_payment"
-    target_path: "deal.liabilities[0].monthly_payment"
-    transform: to_float
-
-  - id: liability_wfefs_creditor
+    key: "credit_score_equifax_fico"
+    target_path: "credit_scores.records[0].score"
+    transform: to_int
+  
+  - id: equifax_fico_model
     type: static
-    value: "WFEFS"
-    key: "credit_liability_0_creditor"
-    target_path: "deal.liabilities[0].creditor_name"
-
-  - id: liability_wfefs_type
+    value: "EQUIFAX/FICO CLASSIC V5"
+    key: "credit_score_equifax_model"
+    target_path: "credit_scores.records[0].model"
+  
+  - id: equifax_fico_bureau
     type: static
-    value: "StudentLoan"
-    key: "credit_liability_0_type"
-    target_path: "deal.liabilities[0].liability_type.value"
-
-  # Educational loan - DEPT OF EDUCATION
-  - id: liability_dept_ed_balance
+    value: "Equifax"
+    key: "credit_score_equifax_bureau"
+    target_path: "credit_scores.records[0].bureau"
+  
+  - id: transunion_fico_score
     type: regex
-    pattern: 'DEPT\s+OF\s+EDUCATION/NELN[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit\s+\$([0-9,]+)'
-    flags: [DOTALL]
-    groups:
-      1: "deal.liabilities[1].unpaid_balance"
-      2: "deal.liabilities[1].high_balance"
-    groups_keys:
-      1: "credit_liability_1_balance"
-      2: "credit_liability_1_high_credit"
-    groups_transforms:
-      1: to_float
-      2: to_float
-
-  - id: liability_dept_ed_payment
-    type: regex
-    pattern: 'DEPT\s+OF\s+EDUCATION/NELN[^\n]*\n+[^\n]*Payment\s+\$(\d+)'
-    flags: [DOTALL]
+    pattern: 'TRANSUNION/FICO[^:]*:\s*(\d{3})'
+    flags: [IGNORECASE]
     group: 1
-    key: "credit_liability_1_payment"
-    target_path: "deal.liabilities[1].monthly_payment"
-    transform: to_float
-
-  - id: liability_dept_ed_creditor
+    key: "credit_score_transunion_fico"
+    target_path: "credit_scores.records[1].score"
+    transform: to_int
+  
+  - id: transunion_fico_model
     type: static
-    value: "DEPT OF EDUCATION/NELNET"
-    key: "credit_liability_1_creditor"
-    target_path: "deal.liabilities[1].creditor_name"
-
-  - id: liability_dept_ed_type
+    value: "TRANSUNION/FICO CLASSIC"
+    key: "credit_score_transunion_model"
+    target_path: "credit_scores.records[1].model"
+  
+  - id: transunion_fico_bureau
     type: static
-    value: "StudentLoan"
-    key: "credit_liability_1_type"
-    target_path: "deal.liabilities[1].liability_type.value"
-
-  # Credit card - AMEX
-  - id: liability_amex_balance
+    value: "TransUnion"
+    key: "credit_score_transunion_bureau"
+    target_path: "credit_scores.records[1].bureau"
+  
+  - id: experian_fico_score
     type: regex
-    pattern: 'AMEX[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit[^\n]*\$([0-9,]+)'
-    flags: [DOTALL]
-    groups:
-      1: "deal.liabilities[2].unpaid_balance"
-      2: "deal.liabilities[2].high_balance"
-    groups_keys:
-      1: "credit_liability_2_balance"
-      2: "credit_liability_2_high_credit"
-    groups_transforms:
-      1: to_float
-      2: to_float
-
-  - id: liability_amex_limit
-    type: regex
-    pattern: 'AMEX[^\n]*\n+[^\n]*CreditLimit[^\n]*\$([0-9,]+)'
-    flags: [DOTALL]
+    pattern: 'EXPERIAN/FAIR[^:]*:\s*(\d{3})'
+    flags: [IGNORECASE]
     group: 1
-    key: "credit_liability_2_limit"
-    target_path: "deal.liabilities[2].credit_limit"
-    transform: to_float
-
-  - id: liability_amex_creditor
+    key: "credit_score_experian_fico"
+    target_path: "credit_scores.records[2].score"
+    transform: to_int
+  
+  - id: experian_fico_model
     type: static
-    value: "AMEX"
-    key: "credit_liability_2_creditor"
-    target_path: "deal.liabilities[2].creditor_name"
-
-  - id: liability_amex_type
+    value: "EXPERIAN/FAIR ISAAC V2"
+    key: "credit_score_experian_model"
+    target_path: "credit_scores.records[2].model"
+  
+  - id: experian_fico_bureau
     type: static
-    value: "Revolving"
-    key: "credit_liability_2_type"
-    target_path: "deal.liabilities[2].liability_type.value"
-
-  # Wells Fargo credit card
-  - id: liability_wellsfargo_balance
+    value: "Experian"
+    key: "credit_score_experian_bureau"
+    target_path: "credit_scores.records[2].bureau"
+  
+  # Alternative pattern for scores in "SCORE: XXX" format
+  - id: score_alternative_pattern_1
     type: regex
-    pattern: 'WELLSFARGO[^\n]*\n+[^\n]*\n+[^\n]*\$([0-9,]+)[^\n]*High\s+Credit[^\n]*\$([0-9,]+)\s+TermsREV[^\n]*\$([0-9,]+)'
-    flags: [DOTALL]
+    pattern: 'SCORE:\s*(\d{3})'
+    flags: [IGNORECASE]
+    group: 1
+    key: "credit_score_generic_1"
+    target_path: "credit_scores.records[3].score"
+    transform: to_int
+
+  # ============================================================
+  # LIABILITIES (Generic List Extraction)
+  # ============================================================
+  - id: liabilities_list
+    type: regex_findall
+    # Generic pattern to capture multiple liabilities
+    # Name (proximacy 3-30 chars, no newlines) ... Type ... Balance
+    pattern: '([A-Z0-9 /&]{3,30}?)\s+(StudentLoan|Revolving|Mortgage|Installment|Open)\s+.*?\n.*?\$?([\d,]+\.?\d{0,2})'
+    flags: [DOTALL, MULTILINE]
     groups:
-      1: "deal.liabilities[3].unpaid_balance"
-      2: "deal.liabilities[3].high_balance"
-      3: "deal.liabilities[3].credit_limit"
-    groups_keys:
-      1: "credit_liability_3_balance"
-      2: "credit_liability_3_high_credit"
-      3: "credit_liability_3_limit"
-    groups_transforms:
-      1: to_float
-      2: to_float
-      3: to_float
-
-  - id: liability_wellsfargo_creditor
-    type: static
-    value: "WELLS FARGO"
-    key: "credit_liability_3_creditor"
-    target_path: "deal.liabilities[3].creditor_name"
-
-  - id: liability_wellsfargo_type
-    type: static
-    value: "Revolving"
-    key: "credit_liability_3_type"
-    target_path: "deal.liabilities[3].liability_type.value"
+       1: "creditor_name"
+       2: "liability_type_raw" 
+       3: "balance_raw"
+    target_path: "deal.liabilities"
 
   # ============================================================
   # INQUIRIES

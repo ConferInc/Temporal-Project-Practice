@@ -12,7 +12,7 @@ venv/
 env/
 
 # Data and Outputs
-output/
+
 logs/
 dockling_output/
 doctr_output/

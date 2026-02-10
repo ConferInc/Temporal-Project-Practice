@@ -1,0 +1,57 @@
+{
+  "_metadata": {
+    "source": "RelationalTransformer",
+    "timestamp": "2026-02-09T23:52:03.673051Z",
+    "table_count": 4,
+    "total_rows": 4
+  },
+  "properties": [],
+  "applications": [
+    {
+      "_ref": "application_0",
+      "_operation": "upsert",
+      "status": "imported",
+      "stage": "processing",
+      "_primary_customer_ref": "customer_0",
+      "loan_product_id": null
+    }
+  ],
+  "customers": [
+    {
+      "_ref": "customer_0",
+      "_operation": "upsert",
+      "customer_type": "individual",
+      "first_name": "ABEL",
+      "last_name": "NEWTON"
+    }
+  ],
+  "application_customers": [
+    {
+      "_ref": "app_cust_0",
+      "_operation": "insert",
+      "_application_ref": "application_0",
+      "_customer_ref": "customer_0",
+      "role": "Borrower",
+      "sequence": 1
+    }
+  ],
+  "employments": [],
+  "incomes": [],
+  "demographics": [],
+  "residences": [],
+  "assets": [
+    {
+      "_ref": "asset_0_0",
+      "_operation": "insert",
+      "_application_ref": "application_0",
+      "asset_category": "LiquidAsset",
+      "institution_name": "Bank of America, N.A.",
+      "account_number": "333 4444 5555",
+      "cash_or_market_value": 25000.0,
+      "asset_type": "Checking",
+      "is_gift_or_grant": false,
+      "verification_status": "not_verified"
+    }
+  ],
+  "liabilities": []
+}

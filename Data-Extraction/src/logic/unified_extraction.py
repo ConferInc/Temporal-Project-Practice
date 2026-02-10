@@ -100,7 +100,7 @@ def unified_extract(
     # 4. Normalization
     normalized_data = normalize_data(canonical_data)
 
-    # Build summary for raw_extraction (avoid dumping entire content)
+    # Build summary for display (avoid dumping entire content in logs)
     if isinstance(raw_data, dict):
         raw_text = raw_data.get("markdown", "")
     elif isinstance(raw_data, str):
@@ -113,6 +113,7 @@ def unified_extract(
     result = {
         "classification": decision,
         "raw_extraction_summary": raw_summary,
+        "raw_extraction_full": raw_text,  # Full text for saving to file
         "extracted_fields": extracted_fields,
         "canonical_data": canonical_data,
         "normalized_data": normalized_data,

@@ -87,29 +87,40 @@ rules:
   # "MOS energy"
   - id: provider_name
     type: regex
-    pattern: '(MOS\s*energy)'
+    # Generic: Capture the first significant line of the document as the Provider Name
+    # OR look for "Make checks payable to"
+    pattern: '^([A-Za-z0-9\s]+)\n'
     group: 1
     target_path: "service_provider.organization_name"
 
-  - id: provider_address_street
+  - id: provider_address_generic
     type: regex
-    pattern: '^([^\n]+)\nAccount Name:'
-    group: 1
-    flags: [DOTALL]
-    target_path: "service_provider.mailing_address.street"
-
-  - id: provider_address_city_state_zip
-    type: regex
-    pattern: 'Account Name:.*?\n([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})'
+    # Capture address block at the top left, before "Account Name"
+    # Assumes standard header layout: Provider Name \n Address Line 1 \n Address Line 2
+    pattern: '^[^\n]+\n([^\n]+)\n([^\n]+)(?=\nAccount Name:)'
     flags: [DOTALL]
     groups:
-      1: "service_provider.mailing_address.city"
-      2: "service_provider.mailing_address.state"
-      3: "service_provider.mailing_address.zip_code"
+      1: "service_provider.mailing_address.street"
+      2: "service_provider.mailing_address.city_state_zip_raw"
     groups_keys:
-      1: "provider_city"
-      2: "provider_state"
-      3: "provider_zip"
+      1: "provider_street"
+      2: "provider_region_raw"
+
+  - id: provider_city_state_zip_parse
+    type: regex
+    pattern: '^.*?\n.*?\n([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})'
+    flags: [DOTALL]
+    groups:
+       1: "service_provider.mailing_address.city"
+       2: "service_provider.mailing_address.state"
+       3: "service_provider.mailing_address.zip_code"
+    groups_keys:
+       1: "provider_city"
+       2: "provider_state"
+       3: "provider_zip"
+
+
+
 
   # ============================================================
   # CONTACT INFO

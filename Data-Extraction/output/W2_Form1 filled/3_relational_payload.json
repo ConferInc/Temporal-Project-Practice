@@ -1,0 +1,81 @@
+{
+  "_metadata": {
+    "source": "RelationalTransformer",
+    "timestamp": "2026-02-09T23:33:54.160569Z",
+    "table_count": 6,
+    "total_rows": 6
+  },
+  "properties": [],
+  "applications": [
+    {
+      "_ref": "application_0",
+      "_operation": "upsert",
+      "status": "imported",
+      "stage": "processing",
+      "_primary_customer_ref": "customer_0",
+      "loan_product_id": null
+    }
+  ],
+  "customers": [
+    {
+      "_ref": "customer_0",
+      "_operation": "upsert",
+      "customer_type": "individual",
+      "first_name": "Sandy",
+      "last_name": "America",
+      "ssn_encrypted": "999-60-5555"
+    }
+  ],
+  "application_customers": [
+    {
+      "_ref": "app_cust_0",
+      "_operation": "insert",
+      "_application_ref": "application_0",
+      "_customer_ref": "customer_0",
+      "role": "Borrower",
+      "sequence": 1
+    }
+  ],
+  "employments": [
+    {
+      "_ref": "employment_0_0",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "employment_type": "W2",
+      "employer_name": "ButterBuilders",
+      "is_current": true,
+      "start_date": null
+    }
+  ],
+  "incomes": [
+    {
+      "_ref": "income_0_0_base",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "_employment_ref": "employment_0_0",
+      "income_source": "Employment",
+      "income_type": "Base",
+      "monthly_amount": 8000.0,
+      "include_in_qualification": true
+    }
+  ],
+  "demographics": [],
+  "residences": [
+    {
+      "_ref": "residence_customer_0_0",
+      "_operation": "insert",
+      "_customer_ref": "customer_0",
+      "_application_ref": "application_0",
+      "residence_type": "Current",
+      "street_address": "123MainStreet Denver,CO80202",
+      "city": null,
+      "state": null,
+      "zip_code": null,
+      "country": "US"
+    }
+  ],
+  "assets": [],
+  "liabilities": []
+}

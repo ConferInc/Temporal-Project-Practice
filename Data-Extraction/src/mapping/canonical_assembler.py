@@ -10,8 +10,10 @@ prefixed flat keys into the correct nested structure.
 Dependencies: stdlib only (no AI libraries)
 """
 
+import copy
+import re
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from src.utils.logging import logger
 
@@ -34,11 +36,116 @@ class CanonicalAssembler:
             logger.warning(f"No assembler strategy for '{doc_type}', using generic")
             strategy = self._generic_strategy
         result = strategy(self, flat)
+        
+        # Apply data quality improvements
+        result = self._apply_data_quality_fixes(result)
+        
         field_count = self._count_fields(result)
         logger.info(
             f"CanonicalAssembler built {field_count} fields for '{doc_type}'"
         )
         return result
+    
+    # ================================================================
+    #  DATA QUALITY IMPROVEMENTS
+    # ================================================================
+    
+    def _apply_data_quality_fixes(self, canonical: dict) -> dict:
+        """Apply data quality fixes to canonical JSON."""
+        # Expand multiple borrowers
+        canonical = self._expand_multiple_borrowers(canonical)
+        
+        # Coerce numeric fields
+        canonical = self._coerce_numeric_fields(canonical)
+        
+        return canonical
+    
+    def _expand_multiple_borrowers(self, canonical: dict) -> dict:
+        """Detect and split 'Name1 and Name2' into separate parties."""
+        deal = canonical.get("deal", {})
+        parties = deal.get("parties", [])
+        
+        if not parties:
+            return canonical
+        
+        expanded_parties = []
+        for party in parties:
+            individual = party.get("individual", {})
+            full_name = individual.get("full_name", "")
+            
+            # Check if name contains " and " conjunction
+            if " and " in full_name.lower():
+                names = re.split(r'\s+and\s+', full_name, flags=re.IGNORECASE)
+                names = [n.strip() for n in names if n.strip()]
+                
+                if len(names) > 1:
+                    logger.info(f"Detected multiple borrowers: {names}")
+                    
+                    # Create separate party for each borrower
+                    for idx, name in enumerate(names):
+                        party_copy = copy.deepcopy(party)
+                        party_copy["individual"]["full_name"] = name
+                        
+                        # Adjust role for co-borrowers
+                        if idx > 0:
+                            role = party_copy.get("party_role", {})
+                            if role.get("value") == "Borrower":
+                                party_copy["party_role"] = {"value": "Co-Borrower"}
+                        
+                        expanded_parties.append(party_copy)
+                else:
+                    expanded_parties.append(party)
+            else:
+                expanded_parties.append(party)
+        
+        if len(expanded_parties) != len(parties):
+            canonical["deal"]["parties"] = expanded_parties
+            logger.info(f"Expanded {len(parties)} parties to {len(expanded_parties)}")
+        
+        return canonical
+    
+    def _coerce_numeric_fields(self, canonical: dict) -> dict:
+        """Convert string numbers to floats for financial fields."""
+        financial_fields = {
+            "interest_rate", "annual_percentage_rate", "total_interest_percentage",
+            "points_percent", "points_amount", "prepaid_interest_per_day",
+            "five_year_total_paid", "five_year_principal_reduction",
+            "principal_amount", "monthly_principal_interest", "total_closing_costs",
+            "estimated_cash_to_close", "origination_charges", "services_cannot_shop",
+            "services_can_shop", "total_loan_costs", "down_payment", "earnest_money_deposit",
+            "closing_costs_financed", "seller_credits", "adjustments_other_credits",
+            "loan_amount", "estimated_prepaid_items", "pmi_funding_fee",
+            "appraised_value", "sales_price", "purchase_price"
+        }
+        
+        def _coerce_value(value: Any) -> Union[float, Any]:
+            """Convert string numbers to float."""
+            if isinstance(value, (int, float)):
+                return float(value)
+            
+            if not isinstance(value, str):
+                return value
+            
+            # Clean and try to convert
+            cleaned = value.replace(',', '').replace('$', '').replace('%', '').strip()
+            
+            try:
+                return float(cleaned)
+            except ValueError:
+                return value  # Return original if not numeric
+        
+        def _coerce_recursive(obj, path=""):
+            """Recursively coerce numeric fields."""
+            if isinstance(obj, dict):
+                return {
+                    k: _coerce_value(v) if k in financial_fields else _coerce_recursive(v, f"{path}.{k}")
+                    for k, v in obj.items()
+                }
+            elif isinstance(obj, list):
+                return [_coerce_recursive(item, f"{path}[]") for item in obj]
+            return obj
+        
+        return _coerce_recursive(canonical)
 
     # ================================================================
     #  STRATEGIES (one per document type)
@@ -1366,6 +1473,77 @@ class CanonicalAssembler:
             return sum(CanonicalAssembler._count_fields(v, _depth + 1) for v in d)
         return 1 if d is not None else 0
 
+
+    def _form1099_misc_strategy(self, flat: dict) -> dict:
+        """Form 1099-MISC: Payer -> Recipient (Borrower)."""
+        # Recipient (Borrower)
+        borrower = self._build_party(
+            first_name=flat.get("recipient_first_name"),
+            last_name=flat.get("recipient_last_name"),
+            full_name=flat.get("recipient_name"),
+            role="Borrower"
+        )
+        if flat.get("recipient_tin"):
+            borrower.setdefault("individual", {})["ssn"] = flat.get("recipient_tin")
+            
+        if flat.get("recipient_street"):
+            addr = {
+                "street": flat.get("recipient_street"),
+            }
+            if flat.get("recipient_city_state_zip"):
+                addr["city_state_zip"] = flat.get("recipient_city_state_zip")
+            borrower.setdefault("addresses", []).append(addr)
+        
+        # Income (Non-W2)
+        income_data = {}
+        for k in ["rents", "royalties", "other_income", "medical_payments", 
+                  "nonemployee_compensation", "fishing_boat_proceeds", "substitute_payments"]:
+             val = flat.get(k) or flat.get(f"form1099_{k}") # Support prefix?
+             if val:
+                 income_dict = {"monthly_amount": val} # Assume flat key has amount
+                 borrower.setdefault("income", []).append({
+                     "non_w2_income": {k: val}
+                 })
+
+        # Payer (Party 1)
+        parties = [borrower]
+        if flat.get("payer_name"):
+            payer = {
+                "company_name": flat.get("payer_name"), 
+                "party_role": {"value": "Payer"}
+            }
+            if flat.get("payer_tin"):
+                payer.setdefault("ids", {})["tin"] = flat["payer_tin"]
+            parties.append(payer)
+
+        result = {"deal": {"parties": parties}}
+        result["document_metadata"] = self._build_metadata(flat, "form1099_")
+        return result
+
+    def _credit_bureau_report_strategy(self, flat: dict) -> dict:
+        """Credit Bureau Report: Liabilities, Inquiries, Public Records."""
+        parties = []
+        # Try to find applicant info if available
+        if flat.get("applicant_name") or flat.get("applicant_ssn"):
+             party = self._build_party(
+                 full_name=flat.get("applicant_name"),
+                 ssn=flat.get("applicant_ssn"),
+                 role="Borrower"
+             )
+             parties.append(party)
+        
+        result = {"deal": {"parties": parties}}
+
+        # Liabilities list
+        # If output_mode="flat", the regex_findall result is likely stored 
+        # under the rule key (e.g. "liabilities_list") as a list of dicts.
+        liabilities_list = flat.get("liabilities_list", [])
+        if liabilities_list:
+            result.setdefault("deal", {})["liabilities"] = liabilities_list
+        
+        result["document_metadata"] = self._build_metadata(flat, "credit_")
+        return result
+
     # ================================================================
     #  STRATEGY DISPATCH
     # ================================================================
@@ -1384,4 +1562,7 @@ CanonicalAssembler._STRATEGIES = {
     "Loan Estimate": CanonicalAssembler._loan_estimate_strategy,
     "Loan Estimate (H-24)": CanonicalAssembler._loan_estimate_strategy,
     "merged": CanonicalAssembler._merged_strategy,
+    "Form 1099-MISC": CanonicalAssembler._form1099_misc_strategy,
+    "Credit Bureau Report": CanonicalAssembler._credit_bureau_report_strategy,
 }
+

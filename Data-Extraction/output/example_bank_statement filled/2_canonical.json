@@ -1,0 +1,79 @@
+{
+  "deal": {
+    "parties": [
+      {
+        "assets": [
+          {
+            "institution_name": "Bank of America, N.A.",
+            "account_number": "333 4444 5555",
+            "account_type": "Adv Plus Banking",
+            "statement_period_start": "May l, 2019",
+            "statement_period_end": "May 31, 2019",
+            "beginning_balance": 25000.0,
+            "cash_or_market_value_amount": 25000.0,
+            "ending_balance": 25000.0,
+            "total_deposits": 200.0,
+            "total_withdrawals": 200.0,
+            "transactions": [
+              {
+                "date": "01/05/19",
+                "description": "Deposit",
+                "amount": 50.0
+              },
+              {
+                "date": "11/05/19",
+                "description": "Counter credit",
+                "amount": 50.0
+              },
+              {
+                "date": "19/05/19",
+                "description": "SEVENELEVENSALARYMAY",
+                "amount": 50.0
+              },
+              {
+                "date": "29/05/2019",
+                "description": "Deposit",
+                "amount": 50.0
+              }
+            ],
+            "withdrawal_transactions": [
+              {
+                "date": "01/05/19",
+                "description": "Deposit",
+                "amount": 50.0
+              },
+              {
+                "date": "11/05/19",
+                "description": "Counter credit",
+                "amount": 50.0
+              },
+              {
+                "date": "19/05/19",
+                "description": "SEVENELEVENSALARYMAY",
+                "amount": 50.0
+              },
+              {
+                "date": "29/05/2019",
+                "description": "Deposit",
+                "amount": 50.0
+              }
+            ],
+            "asset_type": {
+              "value": "Checking"
+            }
+          }
+        ],
+        "individual": {
+          "full_name": "ABEL NEWTON"
+        },
+        "party_role": {
+          "value": "Borrower"
+        }
+      }
+    ]
+  },
+  "document_metadata": {
+    "source_document_type": "BankStatement",
+    "schema_version": "3.4.0"
+  }
+}

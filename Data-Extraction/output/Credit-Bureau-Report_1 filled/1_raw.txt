@@ -1,0 +1,586 @@
+<!-- image -->
+
+32065CASTLECOURTSUITE300,EVERGREEN,CO80439
+
+Phone:
+
+Fax:
+
+FILE#
+
+SENDTO
+
+## PROPERTYADDRESS
+
+APPLICANT
+
+SOCSEC#
+
+MARITALSTATUS
+
+CURRENTADDRESS
+
+PREVIOUSADDRESS
+
+303-670-7993
+
+303-670-8067
+
+2747819 FNMA#
+
+EvergreenCreditA-1101099
+
+32065CASTLECOURT
+
+EVERGREEN,CO80439
+
+## APPLICANT
+
+TESTCASE,CARLOS
+
+000-00-0001
+
+DOB
+
+9614ORIOLE,ANTHILL,MO65488
+
+## ALERT
+
+EXPERIANOFACNAMEMATCHINGSERVICE:NOMATCHFOUNDUNLESSOTHERWISEINDICATED
+
+## MERGEDINFILECREDITREPORT
+
+ReportingBureaucertifiescompliancecontractualrequirements governingcheckofpublicrecordswiththeseresults.
+
+PublicRecordsFoundFor:
+
+DATECOMPLETED
+
+3/26/2015
+
+- [ ] Applicant
+
+RQD'BY
+
+DATEORDERED
+
+REPOSITORIES
+
+PRICE
+
+REF.#
+
+CO-APPLICANT
+
+SOCSEC#
+
+DEPENDENTS
+
+## SCOREMODELS
+
+EQUIFAX/FICOCLASSICV5FACTA-MARISOLLEMUSTESTCASE-000000001
+
+SCORE:743
+
+00014-LENGTHOFTIMEACCOUNTSHAVEBEENESTABLISHED
+
+00030-TIMESINCEMOSTRECENTACCOUNTOPENINGISTOOSHORT
+
+00008-TOOMANYINQUIRIESLAST12MONTHS
+
+O0012-LENGTHOFTIMEREVOLVINGACCOUNTSHAVEBEENESTABLISHED
+
+TRANSUNION/FICOCLASSIC(98)-MARISOLLTESTCASE-000000001
+
+## SCORE:741
+
+014-LENGTHOFTIMEACCOUNTSHAVEBEENESTABLISHED
+
+008-TOOMANYINQUIRIESLAST12MONTHS
+
+030-TIMESINCEMOSTRECENTACCOUNTOPENINGISTOOSHORT
+
+FA-INQUIRIESIMPACTEDTHECREDITSCORE
+
+EXPERIAN/FAIR,ISAAC(VER.2)-MARISOLTESTCASE-000000001
+
+14-LENGTHOFTIMEACCOUNTSHAVEBEENESTABLISHED
+
+SCORE:745
+
+08-TOOMANYINQUIRIESLAST12MONTHS
+
+09-TOOMANYACCOUNTSRECENTLYOPENED
+
+- 1-MARISOLTESTCASEYOB:1980
+
+## RequestNewTradeline
+
+| EC A   | W H CREDITOR                   | REPORTED DATE   | OPENED DATE   | HIGHCREDIT ORLIMIT   | BALANCE         | PAST DUE   | REV MO   | 30   |    | 60   | 90+ STATUS          |
+|--------|--------------------------------|-----------------|---------------|----------------------|-----------------|------------|----------|------|----|------|---------------------|
+|        | SE                             | REPORTED DATE   | DLA           | ACCTTYPE             | TERMS           | PAST DUE   | REV MO   | 30   |    | 60   | SOURCE              |
+| B      | BCITI ACCT000004               | 03/15           | 03/14 02/15   | $230000 MTG          | $120000 360$975 | $O         | 12       | 0    | 0  |      | 0 ASAGREED XP/TU/EF |
+| B      | BUSAAFEDERALSAVINGS ACCT000006 | 02/15           | 06/14 08/14   | $31206 AUTO          | $28626 069$533  | $O         | 9        |      | 0  | 0    | 0 ASAGREED XP/TU/EF |
+| B      | B CHASE ACCT000002             | 03/15           | 08/14 03/15   | $4000 REV            | $228 MIN $10    | $O         | 7        |      | 0  | 0    | 0 ASAGREED XP/TU/EF |
+
+## OPENACCOUNTS
+
+ECOAKEY:B=BORROWER;C=CO-BORROWER;J=JOINT;U=UNDESIGNATED;A=AUTHORIZEDUSER;P=PARTICIPANT;S=CO-SIGNER
+
+Theinformationisfurnishedinresponsetoaninquiryforthepurposeofevaluatingcreditrisks.lt hasbeenobtainedfromsourcesdeemedreliable,theaccuracyofwhichthisorganizationdoesnotguarantee.The inquirerhasagreed toindemnifythatreportingbureauforanydamagearisingfrommisuseof thisinformation,andthisreport isfurnishedinrelianceuponthatindemnity.It mustbeheld instrictconfidenceand complieswiththeprovisionsofPublicLaw91508,theFairCreditReportingActReportingbureaucertifiesthatallResidentialMortgageCreditReportsmeetthestandardsprescribedbyFNMAFHMC,FHAA and the Farmers Home Administration.
+
+3/19/2015
+
+XP
+
+- [ ] Spouse
+
+HAPPYDAZE
+
+PRPD'BY
+
+LOAN TYPE
+
+## CO-APPLICANT
+
+DOB
+
+LENGTH
+
+LENGTH
+
+<!-- image -->
+
+<!-- image -->
+
+| Partners Credit&VerificationSolutions   | Partners Credit&VerificationSolutions           | Partners Credit&VerificationSolutions           | Merge                  | Page 1/4               |
+|-----------------------------------------|-------------------------------------------------|-------------------------------------------------|------------------------|------------------------|
+|                                         | Address65E.WackerPlaceSuite1405/Chicago,IL60601 | Address65E.WackerPlaceSuite1405/Chicago,IL60601 | $15.00                 |                        |
+|                                         |                                                 | Bureaus                                         | XPN β EQF              | TUα                    |
+| Support                                 | support@partnerscredit.com                      | support@partnerscredit.com                      | www.partnerscredit.com | www.partnerscredit.com |
+| Company                                 | Regulatory Solutions,LLC                        | Regulatory Solutions,LLC                        |                        |                        |
+| Department                              | MountainBrook                                   | MountainBrook                                   |                        |                        |
+| Operator                                | Ross Page                                       | Ross Page                                       |                        |                        |
+| Requestor                               | Ross Page                                       | Ordered                                         | 01/13/201706:33:43     | 01/13/201706:33:43     |
+| Report Id                               | BAG44854                                        | Completed                                       | 01/13/201706:33:44     | 01/13/201706:33:44     |
+| Reference                               | BXSFraud                                        | Printed                                         | 01/13/201706:34:59     | 01/13/201706:34:59     |
+
+| INQUIRYIDENTIFICATION   | INQUIRYIDENTIFICATION   | INQUIRYIDENTIFICATION   | INQUIRYIDENTIFICATION   | INQUIRYIDENTIFICATION   | INQUIRYIDENTIFICATION   |
+|-------------------------|-------------------------|-------------------------|-------------------------|-------------------------|-------------------------|
+| Applicant               | Applicant               | Applicant               | Applicant               | Applicant               | Applicant               |
+| SSN                     | Last Name               | FirstName               | Middle                  | xns                     | DateofBirth             |
+| 632-34-5921             | ROACH                   | JONATHON                | D                       |                         |                         |
+
+| INQUIRYADDRESS   |              |       |       |
+|------------------|--------------|-------|-------|
+| PrimaryAddress   |              |       |       |
+| Address          | City         | State | Zip   |
+| 1331OWASATRL     | MURFREESBORO | TN    | 37130 |
+
+| FILEVARIATIONS   | FILEVARIATIONS   | FILEVARIATIONS   | FILEVARIATIONS   | FILEVARIATIONS   |
+|------------------|------------------|------------------|------------------|------------------|
+| Bureau           | Variation        | NSS              | Name             | DateofBirth      |
+| Equifax          | BEQ1             | 632-34-5921      | JONATHONDROACH   | 11/13/1992       |
+| Experian         | BXP1             | 632-34-5921      | JONATHONROACH    | 11/13/1992       |
+| TransUnion       | BTU1             | 632-34-5921      | JONATHONROACH    | 11/1992          |
+
+| FRAUD ALERT   | FRAUD ALERT                    | FRAUD ALERT                                                                                       |
+|---------------|--------------------------------|---------------------------------------------------------------------------------------------------|
+| File          | Type/Product                   | Text                                                                                              |
+| BEQ1          | FACTA                          | FACTA:ADDRESSDISCREPANCY-SUBSTANTIALDIFFERENCEBETWEEN (ES) IN THE CREDIT FILE.                    |
+| BXP1          | FACTA                          | FACTA:ADDRESSDISCREPANCY-SUBSTANTIALDIFFERENCEBETWEEN THEADDRESSONINQUIRYINPUTANDTHEADDRESSONFILE |
+| BTU1          | FACTA                          | FACTA:ADDRESSDISCREPANCY-CURRENTINPUTADDRESSDOESNOT MATCHFILEADDRESS(ES)                          |
+| BTU1          | TransUnion HighRiskFraud Alert | Clearforallsearchesperformed                                                                      |
+
+| OFFICEOFFOREIGNASSETSCONTROL(OFAC)   | OFFICEOFFOREIGNASSETSCONTROL(OFAC)                       |
+|--------------------------------------|----------------------------------------------------------|
+| File                                 | Text                                                     |
+| BXP1                                 | SPELLINGOFNAMEUSEDTOACCESSREPORTDOESNOTMATCHOFAC/PLCLIST |
+
+|               | SSN 632-34-5921   | SSN 632-34-5921   | NameJONATHONDROACH   | NameJONATHONDROACH   | NameJONATHONDROACH   | NameJONATHONDROACH   | Ordered                                                         | Ordered   | 01/13/201706:33:43   | Page   | 2/4   |
+|---------------|-------------------|-------------------|----------------------|----------------------|----------------------|----------------------|-----------------------------------------------------------------|-----------|----------------------|--------|-------|
+| CREDITSUMMARY | CREDITSUMMARY     | CREDITSUMMARY     | CREDITSUMMARY        | CREDITSUMMARY        | CREDITSUMMARY        | CREDITSUMMARY        |                                                                 |           |                      |        |       |
+| Account Type  | #Accts            | Balance           | PastDue              |                      |                      |                      | PaymentCreditLimitHighCreditCurDerogPastDerog30days60days90days |           |                      |        |       |
+| Revolving     | 4                 | $3,768            | $O                   | $O                   | $22,000              | $1,884               | 0                                                               | 0         | 0                    | 0      | 0     |
+| Installment   | 5                 | $29,782           | $O                   | $319                 | $O                   | $41,000              | 0                                                               | 0         | 0                    | 0      | 0     |
+| Mortgage      | 0                 | $O                | $O                   | $O                   | $O                   | $O                   | 0                                                               | 0         | 0                    | 0      | 0     |
+| Other         | 0                 | $O                | $O                   | $O                   | $O                   | $O                   | 0                                                               | 0         | 0                    | 0      | 0     |
+| Total         | 9                 | $33,550           | $0                   | $319                 | $22,000              | $42,884              | 0                                                               | 0         | 0                    |        | 0     |
+
+| OldestTradeline   | 2014-07   | NewTradelines 0 (6 Months)   | Revolving Credit                                                                              | 17%         | New Inquiries   | 5   |
+|-------------------|-----------|------------------------------|-----------------------------------------------------------------------------------------------|-------------|-----------------|-----|
+|                   |           |                              | Disclaimer:Thissummary includesallavailable datafrom thebureau(s) regarding the applicant(s). | Utilization | (12 Months)     |     |
+
+CREDIT HISTORY
+
+Primary Grouping:
+
+Tradelines
+
+| M-B   | TU Reported 12/2016        | Opened LastActive Reviewed 01/2015 12/2016 23mos   | Balance   | Payment $92   | PastDue $O    | 30-5960-89 0   |   0 | 90+ 0   |
+|-------|----------------------------|----------------------------------------------------|-----------|---------------|---------------|----------------|-----|---------|
+|       | File                       | Installment Educational                            | Balance   | HighCredit    | PastDue $O    | 30-5960-89 0   |   0 | 90+ 0   |
+|       | BTU1                       |                                                    | Balance   | $14,000       |               | 30-5960-89 0   |   0 | 90+ 0   |
+|       | Payment Grid               | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC                     |           | Terms 180     | ActualPavment | 30-5960-89 0   |   0 | 90+ 0   |
+|       | Contact ，,/Tel:8006583567 |                                                    |           | OWL           | ActualPavment | 30-5960-89 0   |   0 | 90+ 0   |
+|       | Status                     | Open/Paidorpayingasagreed/AsAgreed                 |           | Terms 180     |               | 30-5960-89 0   |   0 | 90+ 0   |
+
+| XPN                                       |                                             | Reported 12/2016                            | Opened 01/2015                              | LastActive 12/2016                          | Reviewed 24 mos                             | Balance                                     | Payment $92                         | PastDue                             | 30-59 0                             | 60-89 0                             | 90+ 0                               |
+|-------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|
+|                                           | File                                        | File                                        | Installment                                 | Installment                                 |                                             | $11,157                                     | High Credit $14,000                 | CreditLimit                         |                                     |                                     |                                     |
+| WFEFS                                     | BXP1BEQ1                                    | BXP1BEQ1                                    | Educational                                 | Educational                                 | Educational                                 |                                             | Terms 180                           | ActualPavment                       |                                     |                                     |                                     |
+| 5773846060140001 (Miscellaneous andPublic | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC |                                     |                                     |                                     |                                     |                                     |
+| Record)                                   | Contact                                     |                                             |                                             |                                             |                                             |                                             |                                     |                                     |                                     |                                     |                                     |
+|                                           | Status                                      | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed |
+
+| I-B                                     | EQF XPN                                 |                    | Reported 12/2016                            | Opened 01/2015                              | LastActive 12/2016                          | Balance                                     | Payment $57                                 | PastDue                                     | 30-5960-89 0 0                              | +06 0                                       |                                             |                                             |
+|-----------------------------------------|-----------------------------------------|--------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|---------------------------------------------|
+| DEPT OF                                 | DEPT OF                                 | File               | File                                        | Iinstallment                                | Iinstallment                                | $3,142                                      | High Credit $5,500                          | Credit Limit                                |                                             |                                             |                                             |                                             |
+| EDUCATION/NELN                          | EDUCATION/NELN                          | BXP1BEQ1           | BXP1BEQ1                                    | Educational                                 | Educational                                 | Educational                                 |                                             | ActualPavment                               |                                             |                                             |                                             |                                             |
+| 900000478968425 (MiscellaneousandPublic | 900000478968425 (MiscellaneousandPublic | Payment Grid Terms | Payment Grid Terms                          | Payment Grid Terms                          | Payment Grid Terms                          | Payment Grid Terms                          | 120                                         |                                             |                                             |                                             |                                             |                                             |
+| Record)                                 | Record)                                 | Contact            | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 |
+|                                         |                                         | Status             | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         | Open/Accountingoodstanding/AsAgreed         |
+
+| I-B          | TU   | Reported 12/2016   | Opened 01/2015                      | LastActive 12/2016                  | Reviewed 23mos                      | Balance                             | Payment $57                         | PastDue $O                          | 30-5960-89 0 0                      | 90+ 0                               |
+|--------------|------|--------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|-------------------------------------|
+|              | File |                    |                                     | Installment                         | Installment                         | $3,142                              | High Credit                         | CreditLimit                         |                                     |                                     |
+| DEPTEDNELNET |      | BTU1BTU1           | BTU1BTU1                            | Educational                         | Educational                         |                                     | $5,500                              |                                     |                                     |                                     |
+| (Employment) |      | PaymentGrid        | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC      | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC      | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC      | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC      | Terms 120                           | ActualPavment                       |                                     |                                     |
+| (Employment) |      | Contact            | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               | ，,/Tel:8884864722 oW               |
+| (Employment) |      | Status             | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed |
+
+|                   | SSN 632-34-5921   | NameJONATHONDROACH   | Ordered 01/13/201706:33:43   | Page 3/4   |
+|-------------------|-------------------|----------------------|------------------------------|------------|
+| Primary Grouping: | Tradelines        |                      |                              |            |
+
+I-B
+
+TU
+
+Reported
+
+12/2016
+
+Opened
+
+09/2015
+
+File
+
+BTU1
+
+Payment Grid
+
+Revolving
+
+Reviewed
+
+14mos
+
+CreditCard
+
+12/16-XCCCCCCCCCCCCCC
+
+Contact
+
+,,/Tel:8008742717
+
+Status
+
+Open/Paid or paying as agreed/As Agreed
+
+| I-B               | EQF XPN                                     | Reported 12/2016       | Opened 09/2015         | LastActive 12/2016     | Reviewed 15mos         | Balance                                       | Payment PastDue        | 30-5960-89 0 0         | +06 0                  | +06 0                  | +06 0                  | +06 0                  | +06 0                  | +06 0                  | +06 0                  | +06 0                  |                        |                        |
+|-------------------|---------------------------------------------|------------------------|------------------------|------------------------|------------------------|-----------------------------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|------------------------|
+|                   | File                                        |                        |                        | Revolving              |                        |                                               | CreditLimit            |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |
+| AMEX              | BEQ1BXP1                                    |                        | CreditCard             | CreditCard             | $1,884                 | High Credit                                   | $11,000                |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |
+| -3499922617933823 | Payment Grid                                |                        | 12/16-CCCCCCCCCCCCCCCC |                        |                        | Terms REV                                     | ActualPavment          |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |
+| (Banking)         |                                             |                        |                        |                        |                        |                                               |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |
+|                   | Contact                                     |                        |                        |                        |                        | P.O.BOX981537,ELPASO,TX79998/Tel:800-528-4800 |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |
+|                   | Status Open/Pays account as agreed/AsAgreed |                        |                        |                        |                        |                                               |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |                        |
+|                   | OtherRemarksCREDITCARD                      | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD                        | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD |
+
+| I-B                             | EQF XPN                         |                                            | Reported 12/2016                               | Opened 01/2015                                 | Last Active 12/2016                            | Reviewed Balance 24mos                         | Payment $21                                    | PastDue                                        | 30-5960-89 0 0                                 | +06 0                                          |                                                |                                                |
+|---------------------------------|---------------------------------|--------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|------------------------------------------------|
+| DEPTOF                          | DEPTOF                          | File                                       | File                                           | Installment                                    | Installment                                    | $1,184                                         | High Credit $2,000                             | CreditLimit                                    |                                                |                                                |                                                |                                                |
+| EDUCATION/NELN                  | EDUCATION/NELN                  | BXP1BEQ1                                   | BXP1BEQ1                                       | Educational                                    | Educational                                    | Educational                                    |                                                | ActualPavment                                  |                                                |                                                |                                                |                                                |
+| 900000478968525                 | 900000478968525                 | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC     | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC     | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC     | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC     | Terms 120                                      |                                                |                                                |                                                |                                                |                                                |
+| (MiscellaneousandPublic Record) | (MiscellaneousandPublic Record) | Contact                                    | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo |
+|                                 |                                 | Status                                     | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            | Open/Accountingoodstanding/AsAgreed            |
+
+| I-B        | Reported 12/2016   | Opened 07/2014                       | LastActive 10/2015                   | Reviewed 28mos                       | Balance                              | Payment $O                           | PastDue $O                           | 30-5960-89 0                         | 0                                    | +06 0                                |
+|------------|--------------------|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|--------------------------------------|
+| WELLSFARGO | File               | File                                 | Revolving                            | Revolving                            | $0                                   | High Credit                          | CreditLimit                          |                                      |                                      |                                      |
+|            | BTU1               | BTU1                                 | CreditCard                           | CreditCard                           |                                      | $1,728 TermsREV                      | $1,900                               |                                      |                                      |                                      |
+| (Banking)  | PaymentGrid        | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC      | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC      | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC      | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC      |                                      | ActualPavment                        |                                      |                                      |                                      |
+| (Banking)  | Contact            | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    | ,,/Tel:8006424720                    |
+| (Banking)  | Status             | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed |
+
+| I-B   | XPN        | Reported 12/2016   | Opened 07/2014                                | Last Active 10/2015                           | Reviewed 29 mos                               | Balance                                       | Payment $O                                    | PastDue $O                                    | 0                                             | 30-5960-89 90+ 0 0                            |                                               |
+|-------|------------|--------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|-----------------------------------------------|
+|       |            | File               | File                                          | Revolving                                     | Revolving                                     | $0                                            | High Credit                                   | CreditLimit                                   |                                               |                                               |                                               |
+|       | WFCRDSVC   | BXP1BEQ1           | BXP1BEQ1                                      | Credit Card                                   | Credit Card                                   |                                               | $1,728                                        | $1,900                                        |                                               |                                               |                                               |
+|       | 4465400073 | Payment Grid       |                                               |                                               |                                               |                                               | Terms REV                                     | ActualPavment                                 |                                               |                                               |                                               |
+|       | (Banking)  | Contact            | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 |
+|       |            | Status             | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         | Paid/Account in goodstanding/AsAgreed         |
+
+Last Active
+
+Balance
+
+$1,884
+
+Payment
+
+High Credit
+
+$1,884
+
+Terms
+
+REV
+
+PastDue
+
+$O
+
+CreditLimit
+
+$11,000
+
+ActualPavment
+
+30-59
+
+60-89
+
+0
+
+0
+
+90+
+
+0
+
+AMEX
+
+(Banking)
+
+| SSN 632-34-5921   | NameJONATHONDROACH   | Ordered   | 01/13/201706:33:43   | Page4/4   |
+|-------------------|----------------------|-----------|----------------------|-----------|
+
+## PUBLICRECORDS
+
+Nopublicrecordsfound
+
+| ALSOKNOWNAS      |           |                  |          |      |
+|------------------|-----------|------------------|----------|------|
+| LastName         | FirstName | MiddleNameSuffix | NameType | File |
+| ROACH,JONATHON,D |           |                  | Alias    | BTU1 |
+
+| ADDRESSES-Months Address   | City         | State   | Zip        | Type   | Reported   | Updated    | File   |
+|----------------------------|--------------|---------|------------|--------|------------|------------|--------|
+| 1215MONTPIERDR             | FRANKLIN     | TN      | 37069      |        | 06/01/2014 | 01/01/2017 | BEQ1   |
+| 1331OWASATRL               | MURFREESBORO | TN      | 37130-4714 |        | 12/16/2016 | 12/16/2016 | BXP1   |
+| 1215MONTPIERDR             | FRANKLIN     | TN      | 37069-4701 |        | 06/20/2014 | 11/03/2015 | BXP1   |
+| 1215MONTPIERDR             | FRANKLIN     | TN      | 37069      |        | 06/20/2014 |            | BTU1   |
+
+| INQUIRIES-4Months   | INQUIRIES-4Months   | INQUIRIES-4Months   | INQUIRIES-4Months   | INQUIRIES-4Months   | INQUIRIES-4Months   |
+|---------------------|---------------------|---------------------|---------------------|---------------------|---------------------|
+| Date                | Company             | MemberNumber        | Name                | SSN                 | File                |
+| 12/19/2016          | ATTSRVS             | 910UT46192          | JONATHONDROACH      | 632-34-5921         | BEQ1                |
+
+PartnersCredit&amp;VerificationSolutions,formerlyOldRepublicCreditServices,isa consumer reporting agencyandresellerof consumerreports and relatedproducts andservices,asdefinedby theFairCreditReportingAct.PartnersCredit&amp;VerificationSolutionsassemblescreditreportsvia mergingconsumercreditinformationmaintainedandprovidedbyoneormoreofthenationalcredit informationrepositories/bureaus(Equifax,Experian,andTransUnion;referredtocollectivelyas "Bureaus").PartnersCredit&amp;VerificationSolutionsdoesnotupdateoralterunderlying consumer credit information administered by theBureaus,and doesnotmaintaina databaseof information fromwhichnewconsumerreportsareproduced.
+
+Thisreport isprovided byPartners Credit&amp;VerificationSolutions inresponse toa businessor consumerrequest,and incompliancewiththeFairCreditReportingAct.Thisreportmustbeheld originalpurposeforwhichitwasrequested,ortothoseauthorizedbylawtodoso.Theinformatior inthisreporthasbeenobtainedfromsourcesconsideredreliable.PartnersCredit&amp;Verification SolutionsdoesnotguaranteetheaccuracyoftheBureau-provided information.Thisreportmay containtradelinediscrepanciesbaseduponvaryinginformationprovidedbyeachBureau.Partners Credit&amp;VerificationSolutionsrecommendsthattherequestorofthereportand/ortheconsumer namedinthereportcarefullyreviewthereportandseekadditionalinformationasnecessaryto verify thecontentsof thereport before relying upon it tomake a credit-related decision.The reportingagencypertheguidelinesof theFairCreditReportingAct.
+
+Thisprinted form shallserveas theoriginal of the electronic fileforall purposes.
+
+EquifaxConsumerRelations 800-685-1111 P.O.Box740241 Atlanta,GA30374-0193
+
+ExperianConsumerRelations 888-397-3742 P.O.Box2002 Allen,TX75013
+
+TransUnionConsumerRelations 800-888-4213 P.O.Box1000 Chester,PA19022
+
+## End of Report
+
+
+================================================================================
+EXTRACTED TABLES (Table-Aware OCR)
+================================================================================
+
+
+--- Table 1 (Page 1) ---
+EC A | W H CREDITOR | REPORTED DATE | OPENED DATE | HIGHCREDIT ORLIMIT | BALANCE | PAST DUE | REV MO | 30 |  | 60 | 90+ STATUS
+ | W H CREDITOR SE | REPORTED DATE | DLA | ACCTTYPE | TERMS | PAST DUE | REV MO | 30 |  | 60 | 90+ STATUS SOURCE
+B | BCITI ACCT000004 | 03/15 | 03/14 02/15 | $230000 MTG | $120000 360$975 | $O | 12 | 0 | 0 |  | 0 ASAGREED XP/TU/EF
+B | BUSAAFEDERALSAVINGS ACCT000006 | 02/15 | 06/14 08/14 | $31206 AUTO | $28626 069$533 | $O | 9 |  | 0 | 0 | 0 ASAGREED XP/TU/EF
+B | B CHASE ACCT000002 | 03/15 | 08/14 03/15 | $4000 REV | $228 MIN $10 | $O | 7 |  | 0 | 0 | 0 ASAGREED XP/TU/EF
+
+
+--- Table 2 (Page 2) ---
+Partners Credit&VerificationSolutions | Partners Credit&VerificationSolutions | Merge Partners Credit&VerificationSolutions | Merge | Page 1/4
+ | Address65E.WackerPlaceSuite1405/Chicago,IL60601 | Price Address65E.WackerPlaceSuite1405/Chicago,IL60601 | $15.00 | 
+ |  | Bureaus | XPN β EQF | TUα
+Support | support@partnerscredit.com | Website support@partnerscredit.com | www.partnerscredit.com | www.partnerscredit.com
+Company | Regulatory Solutions,LLC | Regulatory Solutions,LLC |  | 
+Department | MountainBrook | MountainBrook |  | 
+Operator | Ross Page | Ross Page |  | 
+Requestor | Ross Page | Ross Page Ordered | 01/13/201706:33:43 | 01/13/201706:33:43
+Report Id | BAG44854 | BAG44854 Completed | 01/13/201706:33:44 | 01/13/201706:33:44
+Reference | BXSFraud | BXSFraud Printed | 01/13/201706:34:59 | 01/13/201706:34:59
+
+
+--- Table 3 (Page 2) ---
+INQUIRYIDENTIFICATION | INQUIRYIDENTIFICATION | INQUIRYIDENTIFICATION | INQUIRYIDENTIFICATION | INQUIRYIDENTIFICATION | INQUIRYIDENTIFICATION
+Applicant | Applicant | Applicant | Applicant | Applicant | Applicant
+SSN | Last Name | FirstName | Middle | xns | DateofBirth
+632-34-5921 | ROACH | JONATHON | D |  | 
+
+
+--- Table 4 (Page 2) ---
+INQUIRYADDRESS |  |  | 
+PrimaryAddress |  |  | 
+Address | City | State | Zip
+1331OWASATRL | MURFREESBORO | TN | 37130
+
+
+--- Table 5 (Page 2) ---
+FILEVARIATIONS | FILEVARIATIONS | FILEVARIATIONS | FILEVARIATIONS | FILEVARIATIONS
+Bureau | Variation | NSS | Name | DateofBirth
+Equifax | BEQ1 | 632-34-5921 | JONATHONDROACH | 11/13/1992
+Experian | BXP1 | 632-34-5921 | JONATHONROACH | 11/13/1992
+TransUnion | BTU1 | 632-34-5921 | JONATHONROACH | 11/1992
+
+
+--- Table 6 (Page 2) ---
+FRAUD ALERT | FRAUD ALERT | FRAUD ALERT
+File | Type/Product | Text
+BEQ1 | FACTA | FACTA:ADDRESSDISCREPANCY-SUBSTANTIALDIFFERENCEBETWEEN (ES) IN THE CREDIT FILE.
+BXP1 | FACTA | FACTA:ADDRESSDISCREPANCY-SUBSTANTIALDIFFERENCEBETWEEN THEADDRESSONINQUIRYINPUTANDTHEADDRESSONFILE
+BTU1 | FACTA | FACTA:ADDRESSDISCREPANCY-CURRENTINPUTADDRESSDOESNOT MATCHFILEADDRESS(ES)
+BTU1 | TransUnion HighRiskFraud Alert | Clearforallsearchesperformed
+
+
+--- Table 7 (Page 2) ---
+OFFICEOFFOREIGNASSETSCONTROL(OFAC) | OFFICEOFFOREIGNASSETSCONTROL(OFAC)
+File | Text
+BXP1 | SPELLINGOFNAMEUSEDTOACCESSREPORTDOESNOTMATCHOFAC/PLCLIST
+
+
+--- Table 8 (Page 3) ---
+ | SSN 632-34-5921 | SSN 632-34-5921 | NameJONATHONDROACH | NameJONATHONDROACH | NameJONATHONDROACH | NameJONATHONDROACH | Ordered | Ordered | 01/13/201706:33:43 | 01/13/201706:33:43 Page | 2/4
+CREDITSUMMARY | CREDITSUMMARY | CREDITSUMMARY | CREDITSUMMARY | CREDITSUMMARY | CREDITSUMMARY | CREDITSUMMARY |  |  |  |  | 
+Account Type | #Accts | Balance | PastDue |  |  |  | PaymentCreditLimitHighCreditCurDerogPastDerog30days60days90days |  |  |  | 
+Revolving | 4 | $3,768 | $O | $O | $22,000 | $1,884 | 0 | 0 | 0 | 0 | 0
+Installment | 5 | $29,782 | $O | $319 | $O | $41,000 | 0 | 0 | 0 | 0 | 0
+Mortgage | 0 | $O | $O | $O | $O | $O | 0 | 0 | 0 | 0 | 0
+Other | 0 | $O | $O | $O | $O | $O | 0 | 0 | 0 | 0 | 0
+Total | 9 | $33,550 | $0 | $319 | $22,000 | $42,884 | 0 | 0 | 0 |  | 0
+
+
+--- Table 9 (Page 3) ---
+OldestTradeline | 2014-07 | NewTradelines 0 (6 Months) | Revolving Credit | 17% | New Inquiries | 5
+ |  |  | Disclaimer:Thissummary includesallavailable datafrom thebureau(s) regarding the applicant(s). | Utilization | (12 Months) | 
+
+
+--- Table 10 (Page 3) ---
+M-B | TU Reported 12/2016 | Opened LastActive Reviewed 01/2015 12/2016 23mos | Balance | Payment $92 | PastDue $O | 30-5960-89 0 | 0 | 90+ 0
+ | File | Installment Educational | Balance | Payment $92 HighCredit | PastDue $O | 30-5960-89 0 | 0 | 90+ 0
+ | BTU1 |  | Balance | $14,000 |  | 30-5960-89 0 | 0 | 90+ 0
+ | Payment Grid | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC |  | Terms 180 | ActualPavment | 30-5960-89 0 | 0 | 90+ 0
+ | Contact ，,/Tel:8006583567 |  |  | Terms 180 OWL | ActualPavment | 30-5960-89 0 | 0 | 90+ 0
+ | Status | Open/Paidorpayingasagreed/AsAgreed |  | Terms 180 |  | 30-5960-89 0 | 0 | 90+ 0
+
+
+--- Table 11 (Page 3) ---
+XPN |  | Reported 12/2016 | Opened 01/2015 | LastActive 12/2016 | Reviewed 24 mos | Balance | Payment $92 | PastDue | 30-59 0 | 60-89 0 | 90+ 0
+ | File | File | Installment | Installment |  | $11,157 | High Credit $14,000 | CreditLimit |  |  | 
+WFEFS | BXP1BEQ1 | BXP1BEQ1 | Educational | Educational | Educational |  | Terms 180 | ActualPavment |  |  | 
+5773846060140001 (Miscellaneous andPublic | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | Payment Grid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC |  |  |  |  | 
+Record) | Contact |  |  |  |  |  |  |  |  |  | 
+ | Status | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed
+
+
+--- Table 12 (Page 3) ---
+I-B | EQF XPN |  | Reported 12/2016 | Opened 01/2015 | LastActive 12/2016 | Balance | Payment $57 | PastDue | 30-5960-89 0 0 | +06 0 |  | 
+DEPT OF | DEPT OF | DEPT OF File | File | Iinstallment | Iinstallment | $3,142 | High Credit $5,500 | Credit Limit |  |  |  | 
+EDUCATION/NELN | EDUCATION/NELN | EDUCATION/NELN BXP1BEQ1 | BXP1BEQ1 | Educational | Educational | Educational |  | ActualPavment |  |  |  | 
+900000478968425 (MiscellaneousandPublic | 900000478968425 (MiscellaneousandPublic | 900000478968425 (MiscellaneousandPublic Payment Grid Terms | Payment Grid Terms | Payment Grid Terms | Payment Grid Terms | Payment Grid Terms | Payment Grid Terms 120 |  |  |  |  | 
+Record) | Record) | Record) Contact | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722
+ |  | Status | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed
+
+
+--- Table 13 (Page 3) ---
+I-B | TU | Reported 12/2016 | Opened 01/2015 | LastActive 12/2016 | Reviewed 23mos | Balance | Payment $57 | PastDue $O | 30-5960-89 0 0 | 90+ 0
+ | File |  |  | Installment | Installment | $3,142 | High Credit | CreditLimit |  | 
+DEPTEDNELNET |  | BTU1BTU1 | BTU1BTU1 | Educational | Educational |  | $5,500 |  |  | 
+(Employment) |  | PaymentGrid | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC | 12/16-XCCCCCCCCCCCCCCCCCCCCCCC | Terms 120 | ActualPavment |  | 
+(Employment) |  | Contact | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW | ，,/Tel:8884864722 oW
+(Employment) |  | Status | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed | Open/Paidorpaying asagreed/AsAgreed
+
+
+--- Table 14 (Page 4) ---
+ | SSN 632-34-5921 | NameJONATHONDROACH | Ordered 01/13/201706:33:43 | Page 3/4
+Primary Grouping: | Tradelines |  |  | 
+
+
+--- Table 15 (Page 4) ---
+I-B | EQF XPN | Reported 12/2016 | Opened 09/2015 | LastActive 12/2016 | Reviewed 15mos | Balance | Payment PastDue | 30-5960-89 0 0 | +06 0 | +06 0 | +06 0 | +06 0 | +06 0 | +06 0 | +06 0 | +06 0 |  | 
+ | File |  |  | Revolving |  |  | CreditLimit |  |  |  |  |  |  |  |  |  |  | 
+AMEX | BEQ1BXP1 |  | CreditCard | CreditCard | $1,884 | High Credit | $11,000 |  |  |  |  |  |  |  |  |  |  | 
+-3499922617933823 | Payment Grid |  | 12/16-CCCCCCCCCCCCCCCC |  |  | Terms REV | ActualPavment |  |  |  |  |  |  |  |  |  |  | 
+(Banking) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+ | Contact |  |  |  |  | P.O.BOX981537,ELPASO,TX79998/Tel:800-528-4800 |  |  |  |  |  |  |  |  |  |  |  | 
+ | Status Open/Pays account as agreed/AsAgreed |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+ | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD | OtherRemarksCREDITCARD
+
+
+--- Table 16 (Page 4) ---
+I-B | EQF XPN |  | Reported 12/2016 | Opened 01/2015 | Last Active 12/2016 | Reviewed Balance 24mos | Payment $21 | PastDue | 30-5960-89 0 0 | +06 0 |  | 
+DEPTOF | DEPTOF | DEPTOF File | File | Installment | Installment | $1,184 | High Credit $2,000 | CreditLimit |  |  |  | 
+EDUCATION/NELN | EDUCATION/NELN | EDUCATION/NELN BXP1BEQ1 | BXP1BEQ1 | Educational | Educational | Educational |  | ActualPavment |  |  |  | 
+900000478968525 | 900000478968525 | 900000478968525 PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC | PaymentGrid 12/16-CCCCCCCCCCCCCCCCCCCCCCCC Terms 120 |  |  |  |  | 
+(MiscellaneousandPublic Record) | (MiscellaneousandPublic Record) | (MiscellaneousandPublic Record) Contact | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo | 121S13THST,LINCOLN,NE68508/Tel:888-486-4722 mo
+ |  | Status | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed | Open/Accountingoodstanding/AsAgreed
+
+
+--- Table 17 (Page 4) ---
+I-B | Reported 12/2016 | Opened 07/2014 | LastActive 10/2015 | Reviewed 28mos | Balance | Payment $O | PastDue $O | 30-5960-89 0 | 0 | +06 0
+WELLSFARGO | File | File | Revolving | Revolving | $0 | High Credit | CreditLimit |  |  | 
+ | BTU1 | BTU1 | CreditCard | CreditCard |  | $1,728 TermsREV | $1,900 |  |  | 
+(Banking) | PaymentGrid | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC | 12/16-XCCCCCCCCCCCCCCCCCCCCCCCC |  | ActualPavment |  |  | 
+(Banking) | Contact | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720 | ,,/Tel:8006424720
+(Banking) | Status | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed | Paid/Paidorpaying as agreed/AsAgreed
+
+
+--- Table 18 (Page 4) ---
+I-B | XPN | Reported 12/2016 | Opened 07/2014 | Last Active 10/2015 | Reviewed 29 mos | Balance | Payment $O | PastDue $O | 0 | 30-5960-89 90+ 0 0 | 
+ |  | File | File | Revolving | Revolving | $0 | High Credit | CreditLimit |  |  | 
+ | WFCRDSVC | BXP1BEQ1 | BXP1BEQ1 | Credit Card | Credit Card |  | $1,728 | $1,900 |  |  | 
+ | 4465400073 | Payment Grid |  |  |  |  | Terms REV | ActualPavment |  |  | 
+ | (Banking) | Contact | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720 | POBOX14517,DESMOINES,IA50306/Tel:800-642-4720
+ |  | Status | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed | Paid/Account in goodstanding/AsAgreed
+
+
+--- Table 19 (Page 5) ---
+SSN 632-34-5921 | NameJONATHONDROACH | Ordered | 01/13/201706:33:43 | Page4/4
+
+
+--- Table 20 (Page 5) ---
+ALSOKNOWNAS |  |  |  | 
+LastName | FirstName | MiddleNameSuffix | NameType | File
+ROACH,JONATHON,D |  |  | Alias | BTU1
+
+
+--- Table 21 (Page 5) ---
+ADDRESSES-Months Address | City | State | Zip | Type | Reported | Updated | File
+1215MONTPIERDR | FRANKLIN | TN | 37069 |  | 06/01/2014 | 01/01/2017 | BEQ1
+1331OWASATRL | MURFREESBORO | TN | 37130-4714 |  | 12/16/2016 | 12/16/2016 | BXP1
+1215MONTPIERDR | FRANKLIN | TN | 37069-4701 |  | 06/20/2014 | 11/03/2015 | BXP1
+1215MONTPIERDR | FRANKLIN | TN | 37069 |  | 06/20/2014 |  | BTU1
+
+
+--- Table 22 (Page 5) ---
+INQUIRIES-4Months | INQUIRIES-4Months | INQUIRIES-4Months | INQUIRIES-4Months | INQUIRIES-4Months | INQUIRIES-4Months
+Date | Company | MemberNumber | Name | SSN | File
+12/19/2016 | ATTSRVS | 910UT46192 | JONATHONDROACH | 632-34-5921 | BEQ1

@@ -283,6 +283,11 @@ class RuleEngine:
         "Sales Contract":        "PurchaseContract",
         "Proof of Insurance":    "InsuranceDecPage",
         "Title Commitment":      "TitleCommitment",
+        # Additional Document Types
+        "Form 1099-MISC":        "Form1099_MISC",
+        "Credit Bureau Report":  "CreditBureauReport",
+        "Utility Bill":          "UtilityBill",
+        "Purchase Order":        "PurchaseOrder",
     }
 
     def _load_config(self, document_type: str) -> Optional[dict]:
@@ -667,6 +672,59 @@ class RuleEngine:
             except IndexError:
                 pass
 
+    def _apply_regex_findall(self, rule, text, _tables, result):
+        """
+        Extract a list of items using re.finditer.
+        Supports:
+          - Single value list (use 'group')
+          - List of objects (use 'groups' mapping specific group IDs to item keys)
+        """
+        pattern = rule["pattern"]
+        flags = 0
+        for flag_name in rule.get("flags", []):
+            flags |= getattr(re, flag_name, 0)
+            
+        matches = re.finditer(pattern, text, flags)
+        
+        extracted_list = []
+        for match in matches:
+            if "group" in rule:
+                # LIST OF VALUES
+                try:
+                    val = match.group(rule["group"]).strip()
+                    transform = rule.get("transform")
+                    if transform:
+                        val = self._transform(val, transform)
+                    extracted_list.append(val)
+                except IndexError:
+                    pass
+            else:
+                # LIST OF OBJECTS
+                item_data = {}
+                groups = rule.get("groups", {})
+                # For regex_findall, groups maps group_id -> ITEM KEY (not full path)
+                for gid_str, item_key in groups.items():
+                    gid = int(gid_str)
+                    try:
+                        val = match.group(gid).strip()
+                        # Apply transform if we had per-group transform? (Not supported in schema yet)
+                        # clean_number / currency handled by type coercion later or needs cleaner transform logic
+                        # For now, just raw string.
+                        item_data[item_key] = val
+                    except IndexError:
+                        pass
+                if item_data:
+                    extracted_list.append(item_data)
+
+        if extracted_list:
+            # Set the entire list at the target, likely overwriting or appending?
+            # _set_nested replaces specific indices, but for a whole list we can just assign.
+            # But the helper _set_nested expects dot notation.
+            # Let's see _set_nested logic. 
+            # If target_path is "deal.liabilities", we want result["deal"]["liabilities"] = extracted_list
+            _set_nested(result, rule["target_path"], extracted_list)
+            logger.debug(f"regex_findall -> {rule['target_path']} = {len(extracted_list)} items")
+
     def _apply_static(self, rule, _text, _tables, result):
         self._set_value(rule, result, rule["value"])
 
@@ -779,6 +837,7 @@ RuleEngine._DISPATCH = {
     "section":     RuleEngine._apply_section,
     # Common
     "regex":       RuleEngine._apply_regex,
+    "regex_findall": RuleEngine._apply_regex_findall,
     "static":      RuleEngine._apply_static,
     "computed":    RuleEngine._apply_computed,
 }
